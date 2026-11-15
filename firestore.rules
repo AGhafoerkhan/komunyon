@@ -1,0 +1,312 @@
+rules_version = '2';
+
+// Komunyon — The Hague Bible studies.
+// Public study documents never store a street address.
+// studies/{studyId}/private/details holds exactAddress + entryNotes
+// and is readable only by the host and approvedUserIds.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function studyPath(studyId) {
+      return /databases/$(database)/documents/studies/$(studyId);
+    }
+
+    function studyExists(studyId) {
+      return exists(studyPath(studyId));
+    }
+
+    function studyDoc(studyId) {
+      return get(studyPath(studyId)).data;
+    }
+
+    function canReadPrivate(study) {
+      return signedIn()
+        && (
+          study.hostId == request.auth.uid
+          || (
+            study.approvedUserIds is list
+            && study.approvedUserIds.hasAny([request.auth.uid])
+          )
+        );
+    }
+
+    function isHagueArea(area) {
+      return area in [
+        'Centrum',
+        'Scheveningen',
+        'Statenkwartier',
+        'Duinoord',
+        'Zeeheldenkwartier',
+        'Archipelbuurt',
+        'Bezuidenhout',
+        'Mariahoeve',
+        'Haagse Hout',
+        'Segbroek',
+        'Regentessekwartier',
+        'Transvaalkwartier',
+        'Schildersbuurt',
+        'Laak',
+        'Binckhorst',
+        'Escamp',
+        'Moerwijk',
+        'Loosduinen',
+        'Ypenburg',
+        'Leidschenveen'
+      ];
+    }
+
+    function publicStudyKeys() {
+      return [
+        'hostId',
+        'hostName',
+        'hostAge',
+        'hostPhotoURL',
+        'title',
+        'description',
+        'format',
+        'dayOfWeek',
+        'date',
+        'time',
+        'maxCapacity',
+        'area',
+        'pendingUserIds',
+        'approvedUserIds',
+        'createdAt',
+        'updatedAt'
+      ];
+    }
+
+    function validSchedule(data) {
+      return (
+          data.format == 'recurring'
+          && data.dayOfWeek is int
+          && data.dayOfWeek >= 0
+          && data.dayOfWeek <= 6
+          && data.date == null
+        )
+        || (
+          data.format == 'one-off'
+          && data.date is string
+          && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+          && data.dayOfWeek == null
+        );
+    }
+
+    function validPublicStudy(data) {
+      return data.keys().hasOnly(publicStudyKeys())
+        && data.hostId is string
+        && data.hostName is string
+        && data.hostName.size() > 0
+        && data.hostName.size() <= 80
+        && data.hostAge is int
+        && data.hostAge >= 1
+        && data.hostAge <= 120
+        && data.hostPhotoURL is string
+        && data.hostPhotoURL.size() <= 2000
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 120
+        && data.description is string
+        && data.description.size() > 0
+        && data.description.size() <= 2000
+        && data.format in ['recurring', 'one-off']
+        && validSchedule(data)
+        && data.time is string
+        && data.time.matches('^([01]\\d|2[0-3]):[0-5]\\d$')
+        && data.maxCapacity is int
+        && data.maxCapacity >= 1
+        && data.maxCapacity <= 100
+        && data.area is string
+        && isHagueArea(data.area)
+        && data.pendingUserIds is list
+        && data.pendingUserIds.size() <= 200
+        && data.approvedUserIds is list
+        && data.approvedUserIds.size() <= data.maxCapacity
+        && data.createdAt is string
+        && data.createdAt.size() <= 40
+        && data.updatedAt is string
+        && data.updatedAt.size() <= 40;
+    }
+
+    function isHost() {
+      return signedIn() && request.auth.uid == resource.data.hostId;
+    }
+
+    function hostPreserved() {
+      return request.resource.data.hostId == resource.data.hostId
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // New list contains every previous uid plus exactly one: the caller.
+    function selfAddedTo(previous, next) {
+      return previous is list
+        && next is list
+        && !previous.hasAny([request.auth.uid])
+        && next.hasAny([request.auth.uid])
+        && next.hasAll(previous)
+        && next.size() == previous.size() + 1;
+    }
+
+    // New list is the previous list minus exactly the caller.
+    function selfRemovedFrom(previous, next) {
+      return previous is list
+        && next is list
+        && previous.hasAny([request.auth.uid])
+        && !next.hasAny([request.auth.uid])
+        && previous.hasAll(next)
+        && previous.size() == next.size() + 1;
+    }
+
+    function onlyTouched(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function selfRequestsToJoin() {
+      return signedIn()
+        && request.auth.uid != resource.data.hostId
+        && !resource.data.approvedUserIds.hasAny([request.auth.uid])
+        && resource.data.approvedUserIds.size() < resource.data.maxCapacity
+        && onlyTouched(['pendingUserIds', 'updatedAt'])
+        && selfAddedTo(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
+        && validPublicStudy(request.resource.data);
+    }
+
+    function selfCancelsRequest() {
+      return signedIn()
+        && onlyTouched(['pendingUserIds', 'updatedAt'])
+        && selfRemovedFrom(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
+        && validPublicStudy(request.resource.data);
+    }
+
+    function selfLeavesGroup() {
+      return signedIn()
+        && request.auth.uid != resource.data.hostId
+        && onlyTouched(['approvedUserIds', 'updatedAt'])
+        && selfRemovedFrom(resource.data.approvedUserIds, request.resource.data.approvedUserIds)
+        && validPublicStudy(request.resource.data);
+    }
+
+    function profileKeys() {
+      return [
+        'uid',
+        'email',
+        'fullName',
+        'age',
+        'photoURL',
+        'bio',
+        'profileCompleted',
+        'createdAt',
+        'updatedAt'
+      ];
+    }
+
+    function emailOk(data) {
+      return data.email is string
+        && data.email.size() <= 200
+        && (
+          request.auth.token.email == null
+          || data.email == request.auth.token.email
+        );
+    }
+
+    function profileComplete(data) {
+      return data.profileCompleted == true
+        && data.fullName is string
+        && data.fullName.size() >= 2
+        && data.fullName.size() <= 80
+        && data.age is int
+        && data.age >= 1
+        && data.age <= 120
+        && data.photoURL is string
+        && data.photoURL.size() <= 2000
+        && data.bio is string
+        && data.bio.size() > 0
+        && data.bio.size() <= 800;
+    }
+
+    function profileIncomplete(data) {
+      return data.profileCompleted == false
+        && data.fullName is string
+        && data.fullName.size() <= 80
+        && data.age is int
+        && data.age >= 0
+        && data.age <= 120
+        && data.photoURL is string
+        && data.photoURL.size() <= 2000
+        && data.bio is string
+        && data.bio.size() <= 800;
+    }
+
+    function validProfile(uid) {
+      return request.resource.data.keys().hasOnly(profileKeys())
+        && request.resource.data.uid == uid
+        && emailOk(request.resource.data)
+        && request.resource.data.createdAt is string
+        && request.resource.data.createdAt.size() <= 40
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 40
+        && (
+          profileComplete(request.resource.data)
+          || profileIncomplete(request.resource.data)
+        );
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if isOwner(uid) && validProfile(uid);
+      allow update: if isOwner(uid)
+        && validProfile(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isOwner(uid);
+    }
+
+    match /studies/{studyId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.hostId == request.auth.uid
+        && validPublicStudy(request.resource.data)
+        && request.resource.data.pendingUserIds.size() == 0
+        && request.resource.data.approvedUserIds.size() == 0;
+
+      allow update: if (
+          isHost()
+          && hostPreserved()
+          && validPublicStudy(request.resource.data)
+        )
+        || selfRequestsToJoin()
+        || selfCancelsRequest()
+        || selfLeavesGroup();
+
+      allow delete: if isHost();
+
+      match /private/details {
+        allow read: if studyExists(studyId) && canReadPrivate(studyDoc(studyId));
+
+        allow create, update: if studyExists(studyId)
+          && signedIn()
+          && studyDoc(studyId).hostId == request.auth.uid
+          && request.resource.data.keys().hasOnly(['exactAddress', 'entryNotes', 'updatedAt'])
+          && request.resource.data.exactAddress is string
+          && request.resource.data.exactAddress.size() > 0
+          && request.resource.data.exactAddress.size() <= 180
+          && request.resource.data.entryNotes is string
+          && request.resource.data.entryNotes.size() <= 1000
+          && request.resource.data.updatedAt is string;
+
+        allow delete: if studyExists(studyId)
+          && signedIn()
+          && studyDoc(studyId).hostId == request.auth.uid;
+      }
+    }
+  }
+}

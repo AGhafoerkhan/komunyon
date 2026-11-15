@@ -1,0 +1,34 @@
+---
+description: Komunyon architecture — TypeScript, App Router, client-side Firebase, split study privacy
+alwaysApply: true
+---
+
+# Komunyon
+
+Bible studies and communion groups in The Hague only. Next.js App Router, TypeScript, Tailwind, and the Firebase JS SDK. Data access is client-side.
+
+## Stack
+
+- Strict TypeScript. Routes and layouts live in `src/app`.
+- One `'use client'` `AuthProvider` owns Firebase Auth state.
+- Import the modular SDK only: `firebase/app`, `firebase/auth`, `firebase/firestore`, `firebase/storage`.
+- Do not add the Firebase Admin SDK, Next.js route handlers, or server actions for study or profile data.
+
+## Firestore
+
+- `users/{uid}` — a user may write only their own profile.
+- `studies/{studyId}` — readable by signed-in users. Host snapshot, neighbourhood, schedule, capacity, `pendingUserIds`, `approvedUserIds`.
+- `studies/{studyId}/private/details` — `exactAddress` and `entryNotes` only. Readable by `hostId` and uids in `approvedUserIds`. Writable by the host.
+- Never write `exactAddress` or `entryNotes` onto `studies/{studyId}`.
+- Only `hostId` may edit or delete a study, approve or decline requests, or remove an approved member.
+- Anyone else may only add or remove their own uid in `pendingUserIds`, or remove their own uid from `approvedUserIds`.
+
+```ts
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+
+await updateDoc(doc(db, 'studies', studyId), {
+  pendingUserIds: arrayUnion(uid),
+});
+```
+
+A profile photo is the Google account photo URL. Custom uploads belong in Storage at `avatars/{uid}`, and only that user may write the object. Storage needs the Blaze plan, so the app does not require an upload.

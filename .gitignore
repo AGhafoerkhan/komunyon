@@ -1,0 +1,30 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# next
+/.next/
+/out/
+
+# production
+/build
+
+# env
+.env
+.env*.local
+
+# debug
+npm-debug.log*
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log*
+
+# typescript
+*.tsbuildinfo
+
+# editor
+.DS_Store
+.idea
+.vscode
