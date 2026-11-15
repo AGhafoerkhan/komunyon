@@ -36,7 +36,7 @@ export default function DashboardPage() {
       <div className="mb-6">
         <h1 className="font-serif text-4xl">Studies in The Hague</h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-          Neighbourhood, time, and who is hosting. The street address stays hidden until you are approved.
+          Neighbourhood, time, and who is hosting. The street address stays hidden until you are approved to join.
         </p>
       </div>
 
