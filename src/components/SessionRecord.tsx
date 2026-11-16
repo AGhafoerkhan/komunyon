@@ -166,8 +166,12 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
               {recordings.map((file) => (
                 <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col rounded-lg border border-line bg-card p-3">
                   <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
-                  <p className="pr-16 text-sm font-medium break-words text-ink">{file.label || 'Recording'}</p>
-                  <RecordingPlayer src={file.url} />
+                  <p title={fileTitle(file.label)} className="absolute top-3.5 left-3 max-w-[calc(100%-4.75rem)] truncate text-sm font-medium text-ink">
+                    {fileTitle(file.label) || 'Recording'}
+                  </p>
+                  <div className="pt-7">
+                    <RecordingPlayer src={file.url} />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -178,10 +182,12 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
             <h3 className="text-sm font-medium">text file</h3>
             <ul className={cardGrid}>
               {texts.map((file) => (
-                <li key={file.path} className="relative flex min-h-28 min-w-0 items-end rounded-lg border border-line bg-card p-3">
-                  <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
-                  <p className="pr-16 text-sm font-medium break-words text-ink">{file.label || 'Text file'}</p>
-                </li>
+              <li key={file.path} className="relative min-h-28 min-w-0 rounded-lg border border-line bg-card p-3">
+                <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
+                <p title={fileTitle(file.label)} className="absolute top-3.5 left-3 max-w-[calc(100%-4.75rem)] truncate text-sm font-medium text-ink">
+                  {fileTitle(file.label) || 'Text file'}
+                </p>
+              </li>
               ))}
             </ul>
           </section>
@@ -220,7 +226,11 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
   );
 }
 
-function RecordingPlayer({ src }: { src: string }) {
+function fileTitle(label: string): string {
+  const trimmed = label.trim();
+  const dot = trimmed.lastIndexOf('.');
+  return dot > 0 ? trimmed.slice(0, dot) : trimmed;
+}
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
