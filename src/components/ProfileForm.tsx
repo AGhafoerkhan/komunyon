@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Alert, Avatar, Button, Field, Spinner, fieldClass } from '@/components/ui';
+import { HAGUE_AREAS } from '@/lib/hague';
 import { actionError } from '@/lib/errors';
 import { LIMITS } from '@/lib/limits';
+import { COUNTRIES, citiesIn } from '@/lib/places';
 import { validateProfile } from '@/lib/validate';
 
 export function ProfileForm({
@@ -12,18 +14,36 @@ export function ProfileForm({
   initial,
 }: {
   mode: 'onboarding' | 'edit';
-  initial: { fullName: string; age: number; photoURL: string; bio: string };
+  initial: {
+    fullName: string;
+    age: number;
+    photoURL: string;
+    bio: string;
+    country: string;
+    city: string;
+    neighbourhood: string;
+    phone: string;
+  };
 }) {
   const { saveProfile, user } = useAuth();
   const accountPhoto = initial.photoURL || user?.photoURL || '';
+  const startingCountry = initial.country || 'Netherlands';
+  const startingCities = citiesIn(startingCountry);
+  const startingCity = initial.city || (startingCountry === 'Netherlands' ? 'The Hague' : '');
   const [fullName, setFullName] = useState(initial.fullName);
   const [age, setAge] = useState(initial.age > 0 ? String(initial.age) : '');
   const [bio, setBio] = useState(initial.bio);
+  const [country, setCountry] = useState(startingCountry);
+  const [city, setCity] = useState(startingCity);
+  const [otherCity, setOtherCity] = useState(Boolean(startingCities && startingCity && !startingCities.includes(startingCity)));
+  const [neighbourhood, setNeighbourhood] = useState(initial.neighbourhood);
+  const [phone, setPhone] = useState(initial.phone);
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState(accountPhoto);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const listedCities = citiesIn(country);
 
   useEffect(() => {
     if (!photo) return;
@@ -32,12 +52,36 @@ export function ProfileForm({
     return () => URL.revokeObjectURL(url);
   }, [photo]);
 
+  function chooseCountry(next: string) {
+    setCountry(next);
+    setCity(next === 'Netherlands' ? 'The Hague' : '');
+    setOtherCity(false);
+    setNeighbourhood('');
+  }
+
+  function chooseCity(next: string) {
+    if (next === '__other__') {
+      setOtherCity(true);
+      setCity('');
+      setNeighbourhood('');
+      return;
+    }
+    setOtherCity(false);
+    setCity(next);
+    setNeighbourhood('');
+  }
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = validateProfile({
       fullName,
       age,
       bio,
+      country,
+      city,
+      neighbourhood,
+      phone,
+      hasPhoto: preview.length > 0,
     });
     if (message) {
       setError(message);
@@ -48,7 +92,18 @@ export function ProfileForm({
     setError(null);
     setSaved(false);
     try {
-      await saveProfile({ fullName: fullName.trim(), age: Number(age), bio: bio.trim() }, photo);
+      await saveProfile(
+        {
+          fullName: fullName.trim(),
+          age: Number(age),
+          bio: bio.trim(),
+          country,
+          city: city.trim(),
+          neighbourhood: neighbourhood.trim(),
+          phone,
+        },
+        photo,
+      );
       setSaved(true);
     } catch (failure) {
       setError(actionError(failure));
@@ -72,11 +127,7 @@ export function ProfileForm({
       <div className="flex flex-wrap items-center gap-4">
         <Avatar src={preview} name={fullName || 'Profile'} size={72} />
         <div className="text-sm leading-relaxed text-muted">
-          <p>
-            {accountPhoto
-              ? 'Your Google photo is used until you choose a different picture.'
-              : 'Choose a picture, or your initials are shown.'}
-          </p>
+          <p>{preview ? 'A picture is required. This one is used until you choose another.' : 'A picture is required.'}</p>
           <label className="mt-2 inline-block cursor-pointer font-medium text-canal">
             Choose a picture
             <input
@@ -115,15 +166,102 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field
-        label="Pre-requisites / Bio"
-        hint="Church background, languages, or anything a host should know before approving you."
-      >
+      <Field label="Country">
+        <select className={fieldClass} value={country} onChange={(event) => chooseCountry(event.target.value)} required>
+          {COUNTRIES.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="City">
+        {listedCities ? (
+          <select
+            className={fieldClass}
+            value={otherCity ? '__other__' : city}
+            onChange={(event) => chooseCity(event.target.value)}
+            required
+          >
+            {listedCities.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+            <option value="__other__">Another city</option>
+          </select>
+        ) : (
+          <input
+            className={fieldClass}
+            value={city}
+            onChange={(event) => setCity(event.target.value)}
+            autoComplete="address-level2"
+            maxLength={80}
+            required
+          />
+        )}
+      </Field>
+
+      {listedCities && otherCity ? (
+        <Field label="Your city">
+          <input
+            className={fieldClass}
+            value={city}
+            onChange={(event) => setCity(event.target.value)}
+            autoComplete="address-level2"
+            maxLength={80}
+            required
+          />
+        </Field>
+      ) : null}
+
+      {city === 'The Hague' ? (
+        <Field label="Neighbourhood">
+          <select
+            className={fieldClass}
+            value={neighbourhood}
+            onChange={(event) => setNeighbourhood(event.target.value)}
+            required
+          >
+            <option value="">Choose a neighbourhood</option>
+            {HAGUE_AREAS.map((area) => (
+              <option key={area} value={area}>
+                {area}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : (
+        <Field label="Neighbourhood" hint="Add it if you know it.">
+          <input
+            className={fieldClass}
+            value={neighbourhood}
+            onChange={(event) => setNeighbourhood(event.target.value)}
+            autoComplete="address-level3"
+            maxLength={80}
+          />
+        </Field>
+      )}
+
+      <Field label="Bio" hint="Optional. Church background, languages, or anything a host should know.">
         <textarea
           className={`${fieldClass} min-h-32 resize-y`}
           value={bio}
           onChange={(event) => setBio(event.target.value)}
           maxLength={LIMITS.bioMax}
+        />
+      </Field>
+
+      <Field label="Phone number" hint="Include the country code, for example +31 6 1234 5678.">
+        <input
+          className={fieldClass}
+          type="tel"
+          inputMode="tel"
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+          autoComplete="tel"
+          maxLength={20}
           required
         />
       </Field>

@@ -42,6 +42,8 @@ export function MemberList({
                     {request.fullName}
                     {request.profileMissing ? null : <span className="font-normal text-muted"> · {request.age}</span>}
                   </p>
+                  {request.place ? <p className="mt-0.5 text-xs text-muted">{request.place}</p> : null}
+                  {request.phone ? <p className="mt-0.5 text-xs text-muted">{request.phone}</p> : null}
                   {request.profileMissing || request.bio.length === 0 ? null : (
                     <p className="mt-1 line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap text-muted">
                       {request.bio}

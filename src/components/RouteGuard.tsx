@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { useAuth } from '@/components/AuthProvider';
+import { isProfileReady } from '@/lib/validate';
 import { Button, LoadingScreen } from '@/components/ui';
 
 const RETURN_KEY = 'komunyon-return';
@@ -29,7 +30,7 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   const { user, profile, loading, error, configured, signOutUser } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const completed = profile?.profileCompleted === true;
+  const completed = isProfileReady(profile);
 
   useEffect(() => {
     if (!configured) {

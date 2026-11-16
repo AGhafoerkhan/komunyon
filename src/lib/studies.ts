@@ -399,6 +399,8 @@ function toJoinRequest(
       age: 0,
       photoURL: '',
       bio: '',
+      phone: '',
+      place: '',
       status,
       profileMissing: true,
     };
@@ -411,6 +413,8 @@ function toJoinRequest(
     age: profile.age,
     photoURL: profile.photoURL,
     bio: profile.bio,
+    phone: profile.phone,
+    place: [profile.neighbourhood, profile.city, profile.country].filter(Boolean).join(', '),
     status,
     profileMissing: false,
   };

@@ -18,6 +18,10 @@ interface ProfileInput {
   fullName: string;
   age: number;
   bio: string;
+  country: string;
+  city: string;
+  neighbourhood: string;
+  phone: string;
 }
 
 interface AuthContextValue {

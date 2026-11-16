@@ -20,7 +20,7 @@ export default function OnboardingPage() {
         <p className="text-sm font-medium text-canal">The Hague</p>
         <h1 className={`mt-2 ${pageTitleClass}`}>Set up your profile</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Hosts see your name, age, photo, and bio when you request a place. You can change these later.
+          A picture, your name, age, where you live, and a phone number are required. Bio is optional.
         </p>
         <ProfileForm mode="onboarding" initial={profile} />
       </main>

@@ -259,6 +259,10 @@ service cloud.firestore {
         'age',
         'photoURL',
         'bio',
+        'country',
+        'city',
+        'neighbourhood',
+        'phone',
         'profileCompleted',
         'createdAt',
         'updatedAt'
@@ -285,6 +289,28 @@ service cloud.firestore {
         );
     }
 
+    function placeOk(data, required) {
+      return (!data.keys().hasAny(['country']) || (data.country is string && data.country.size() <= 60))
+        && (!data.keys().hasAny(['city']) || (data.city is string && data.city.size() <= 80))
+        && (!data.keys().hasAny(['neighbourhood']) || (data.neighbourhood is string && data.neighbourhood.size() <= 80))
+        && (!data.keys().hasAny(['phone']) || (data.phone is string && data.phone.size() <= 16))
+        && (
+          !required
+          || (
+            data.country is string
+            && data.country.size() >= 2
+            && data.city is string
+            && data.city.size() >= 2
+            && data.neighbourhood is string
+            && (data.city != 'The Hague' || isHagueArea(data.neighbourhood))
+            && data.phone is string
+            && data.phone.matches('^\\+?[0-9]{8,15}$')
+            && data.photoURL is string
+            && data.photoURL.size() > 0
+          )
+        );
+    }
+
     function profileComplete(data) {
       return data.profileCompleted == true
         && data.fullName is string
@@ -295,8 +321,8 @@ service cloud.firestore {
         && data.age <= 120
         && validPhoto(data.photoURL)
         && data.bio is string
-        && data.bio.size() > 0
-        && data.bio.size() <= 800;
+        && data.bio.size() <= 800
+        && placeOk(data, true);
     }
 
     function profileIncomplete(data) {
@@ -308,7 +334,8 @@ service cloud.firestore {
         && data.age <= 120
         && validPhoto(data.photoURL)
         && data.bio is string
-        && data.bio.size() <= 800;
+        && data.bio.size() <= 800
+        && placeOk(data, false);
     }
 
     function validNameTokens(data) {

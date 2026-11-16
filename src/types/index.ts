@@ -12,7 +12,7 @@ export type JoinRequestStatus = 'pending' | 'approved' | 'declined';
 
 /**
  * `users/{uid}`. `photoURL` is a Google account URL or a small JPEG stored on this document.
- * `profileCompleted` stays false until name, age, and bio are saved.
+ * `profileCompleted` stays false until a picture, name, age, place, and phone number are saved.
  */
 export interface UserProfile {
   uid: string;
@@ -21,6 +21,10 @@ export interface UserProfile {
   age: number;
   photoURL: string;
   bio: string;
+  country: string;
+  city: string;
+  neighbourhood: string;
+  phone: string;
   profileCompleted: boolean;
   createdAt: string;
   updatedAt: string;
@@ -84,6 +88,8 @@ export interface JoinRequest {
   age: number;
   photoURL: string;
   bio: string;
+  phone: string;
+  place: string;
   status: JoinRequestStatus;
   profileMissing: boolean;
 }

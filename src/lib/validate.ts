@@ -2,9 +2,36 @@ import { isHagueArea } from '@/lib/hague';
 import { isStudyTag, STUDY_TAGS } from '@/lib/tags';
 import { isIsoDate, normalizeTime } from '@/lib/guards';
 import { LIMITS } from '@/lib/limits';
-import type { StudyDraft } from '@/types';
+import { isCountry } from '@/lib/places';
+import type { StudyDraft, UserProfile } from '@/types';
 
-export function validateProfile(input: { fullName: string; age: string; bio: string }): string | null {
+export function normalizePhone(value: string): string | null {
+  const compact = value.trim().replace(/[\s()-]/g, '');
+  if (!/^\+?[0-9]{8,15}$/.test(compact)) return null;
+  return compact;
+}
+
+export function isProfileReady(profile: UserProfile | null): boolean {
+  if (!profile) return false;
+  if (!profile.photoURL || profile.fullName.trim().length < LIMITS.nameMin) return false;
+  if (profile.age < LIMITS.ageMin || profile.age > LIMITS.ageMax) return false;
+  if (!isCountry(profile.country) || profile.city.trim().length < 2) return false;
+  if (profile.city === 'The Hague' && !isHagueArea(profile.neighbourhood)) return false;
+  if (!normalizePhone(profile.phone)) return false;
+  return true;
+}
+
+export function validateProfile(input: {
+  fullName: string;
+  age: string;
+  bio: string;
+  country: string;
+  city: string;
+  neighbourhood: string;
+  phone: string;
+  hasPhoto: boolean;
+}): string | null {
+  if (!input.hasPhoto) return 'Add a profile picture.';
   const name = input.fullName.trim();
   if (name.length < LIMITS.nameMin || name.length > LIMITS.nameMax) {
     return `Enter your full name (${LIMITS.nameMin}–${LIMITS.nameMax} characters).`;
@@ -14,9 +41,15 @@ export function validateProfile(input: { fullName: string; age: string; bio: str
   if (age < LIMITS.ageMin || age > LIMITS.ageMax) {
     return `Age needs to be between ${LIMITS.ageMin} and ${LIMITS.ageMax}.`;
   }
+  if (!isCountry(input.country)) return 'Choose your country.';
+  const city = input.city.trim();
+  if (city.length < 2 || city.length > 80) return 'Enter your city.';
+  const neighbourhood = input.neighbourhood.trim();
+  if (city === 'The Hague' && !isHagueArea(neighbourhood)) return 'Choose your neighbourhood in The Hague.';
+  if (neighbourhood.length > 80) return 'Neighbourhood needs to be 80 characters or fewer.';
   const bio = input.bio.trim();
-  if (bio.length === 0) return 'Add a short bio or any pre-requisites.';
   if (bio.length > LIMITS.bioMax) return `Bio needs to be ${LIMITS.bioMax} characters or fewer.`;
+  if (!normalizePhone(input.phone)) return 'Enter a phone number, including the country code.';
   return null;
 }
 

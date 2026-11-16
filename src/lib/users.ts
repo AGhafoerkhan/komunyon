@@ -2,6 +2,7 @@ import { type User } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
 import { parseUserProfile } from '@/lib/parse';
+import { normalizePhone } from '@/lib/validate';
 import type { UserProfile } from '@/types';
 
 function nowIso(): string {
@@ -50,6 +51,10 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
     age: 0,
     photoURL: '',
     bio: '',
+    country: '',
+    city: '',
+    neighbourhood: '',
+    phone: '',
     profileCompleted: false,
     createdAt: now,
     updatedAt: now,
@@ -77,11 +82,22 @@ async function syncHostedStudies(profile: UserProfile): Promise<void> {
 
 export async function saveUserProfile(
   user: User,
-  input: { fullName: string; age: number; bio: string; photoURL: string },
+  input: {
+    fullName: string;
+    age: number;
+    bio: string;
+    photoURL: string;
+    country: string;
+    city: string;
+    neighbourhood: string;
+    phone: string;
+  },
   existing: UserProfile | null,
 ): Promise<UserProfile> {
   const { db } = getFirebase();
   const now = nowIso();
+  const phone = normalizePhone(input.phone);
+  if (!phone) throw new Error('Enter a phone number, including the country code.');
   const profile: UserProfile = {
     uid: user.uid,
     email: user.email ?? '',
@@ -89,6 +105,10 @@ export async function saveUserProfile(
     age: input.age,
     photoURL: input.photoURL,
     bio: input.bio.trim(),
+    country: input.country.trim(),
+    city: input.city.trim(),
+    neighbourhood: input.neighbourhood.trim(),
+    phone,
     profileCompleted: true,
     createdAt: existing?.createdAt || now,
     updatedAt: now,
