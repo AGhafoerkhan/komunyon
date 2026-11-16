@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
@@ -244,7 +244,7 @@ export function SessionRecord({
                 {isHost ? <RemoveButton busy={busy} onClick={() => setPendingRemove(file)} /> : null}
                 <div className="min-w-0 pr-6">
                   <p className="text-sm font-medium text-ink">Recording</p>
-                  <audio controls src={file.url} className="mt-2 w-full" preload="none" />
+                  <RecordingPlayer src={file.url} />
                 </div>
                 <FileActions file={file} onDownload={download} />
               </li>
@@ -293,6 +293,62 @@ export function SessionRecord({
         />
       ) : null}
     </section>
+  );
+}
+
+function RecordingPlayer({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  function toggle() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) void audio.play();
+    else audio.pause();
+  }
+
+  return (
+    <div className="mt-2 flex min-w-0 items-center gap-2">
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="none"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          setProgress(0);
+        }}
+        onTimeUpdate={() => {
+          const audio = audioRef.current;
+          if (audio) setProgress(audio.currentTime);
+        }}
+        onLoadedMetadata={() => {
+          const audio = audioRef.current;
+          if (audio && Number.isFinite(audio.duration)) setDuration(audio.duration);
+        }}
+      />
+      <button type="button" onClick={toggle} aria-label={playing ? 'Pause recording' : 'Play recording'} className="shrink-0 text-sm text-canal">
+        {playing ? 'Pause' : 'Play'}
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={duration || 0}
+        step={0.1}
+        value={Math.min(progress, duration || 0)}
+        aria-label="Recording position"
+        className="min-w-0 flex-1 accent-canal"
+        onChange={(event) => {
+          const audio = audioRef.current;
+          const next = Number(event.target.value);
+          if (audio) audio.currentTime = next;
+          setProgress(next);
+        }}
+      />
+    </div>
   );
 }
 
