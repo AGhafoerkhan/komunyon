@@ -1,14 +1,14 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Alert, Button, Field, Spinner, fieldClass } from '@/components/ui';
+import { useState } from 'react';
+import { Button, Field, FormError, Spinner, fieldClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { HAGUE_AREAS } from '@/lib/hague';
 import { isDayOfWeek } from '@/lib/guards';
 import { DAY_FILTERS, dayName } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import { sortTags, STUDY_TAGS, type StudyTag } from '@/lib/tags';
-import { validateStudyDraft } from '@/lib/validate';
+import { CHECK_AGAIN, validateStudyDraft, type StudyField } from '@/lib/validate';
 import type { DayOfWeek, StudyDraft, StudyFormat } from '@/types';
 
 const EMPTY: StudyDraft = {
@@ -38,9 +38,9 @@ export function StudyForm({
   onSubmit: (draft: StudyDraft) => Promise<void>;
 }) {
   const [draft, setDraft] = useState<StudyDraft>(initial ?? EMPTY);
-  const [error, setError] = useState<string | null>(null);
+  const [fields, setFields] = useState<Partial<Record<StudyField, string>>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const errorRef = useRef<HTMLDivElement>(null);
 
   function patch(partial: Partial<StudyDraft>) {
     setDraft((current) => ({ ...current, ...partial }));
@@ -57,37 +57,32 @@ export function StudyForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const message = validateStudyDraft(draft, minCapacity);
-    if (message) {
-      setError(message);
-      requestAnimationFrame(() => errorRef.current?.scrollIntoView({ block: 'center' }));
+    const found = validateStudyDraft(draft, minCapacity);
+    if (Object.keys(found).length > 0) {
+      setFields(found);
+      setFormError(CHECK_AGAIN);
       return;
     }
     setSaving(true);
-    setError(null);
+    setFields({});
+    setFormError(null);
     try {
       await onSubmit(draft);
     } catch (failure) {
-      setError(actionError(failure));
+      setFormError(actionError(failure));
       setSaving(false);
     }
   }
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className="mt-6 flex flex-col gap-8 pb-16" noValidate>
-      {error ? (
-        <div ref={errorRef}>
-          <Alert>{error}</Alert>
-        </div>
-      ) : null}
-
       <section className="flex flex-col gap-4">
         <div>
           <h2 className="font-serif text-xl">The gathering</h2>
           <p className="mt-1 text-sm text-muted">Visible to anyone signed in. Use a neighbourhood, never a street.</p>
         </div>
 
-        <Field label="Title">
+        <Field label="Title" error={fields.title}>
           <input
             className={fieldClass}
             value={draft.title}
@@ -98,7 +93,7 @@ export function StudyForm({
           />
         </Field>
 
-        <Field label="Description">
+        <Field label="Description" error={fields.description}>
           <textarea
             className={`${fieldClass} min-h-28 resize-y`}
             value={draft.description}
@@ -132,6 +127,7 @@ export function StudyForm({
               );
             })}
           </div>
+          {fields.tags ? <p className="mt-1.5 text-sm text-clay">{fields.tags}</p> : null}
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
@@ -151,7 +147,7 @@ export function StudyForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           {draft.format === 'recurring' ? (
-            <Field label="Day of week">
+            <Field label="Day of week" error={fields.day}>
               <select
                 className={fieldClass}
                 value={draft.dayOfWeek === null ? '' : String(draft.dayOfWeek)}
@@ -170,7 +166,7 @@ export function StudyForm({
               </select>
             </Field>
           ) : (
-            <Field label="Date">
+            <Field label="Date" error={fields.date}>
               <input
                 className={fieldClass}
                 type="date"
@@ -180,7 +176,7 @@ export function StudyForm({
               />
             </Field>
           )}
-          <Field label="Time">
+          <Field label="Time" error={fields.time}>
             <input
               className={fieldClass}
               type="time"
@@ -192,7 +188,7 @@ export function StudyForm({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Neighbourhood" hint="Shown on the study card.">
+          <Field label="Neighbourhood" hint="Shown on the study card." error={fields.area}>
             <select
               className={fieldClass}
               value={draft.area}
@@ -210,6 +206,7 @@ export function StudyForm({
           <Field
             label="Max capacity"
             hint={minCapacity > 1 ? `At least ${minCapacity} — people you have already approved.` : 'Including guests, not yourself.'}
+            error={fields.maxCapacity}
           >
             <input
               className={fieldClass}
@@ -252,7 +249,7 @@ export function StudyForm({
             Saved separately and shown only to you and people you approve. It is not on the public study.
           </p>
         </div>
-        <Field label="Exact address">
+        <Field label="Exact address" error={fields.exactAddress}>
           <input
             className={fieldClass}
             value={draft.exactAddress}
@@ -263,7 +260,7 @@ export function StudyForm({
             required
           />
         </Field>
-        <Field label="Entry notes" hint="Buzzer, floor, or where to wait. Optional.">
+        <Field label="Entry notes" hint="Buzzer, floor, or where to wait. Optional." error={fields.entryNotes}>
           <textarea
             className={`${fieldClass} min-h-24 resize-y`}
             value={draft.entryNotes}
@@ -273,7 +270,8 @@ export function StudyForm({
         </Field>
       </section>
 
-      <div>
+      <div className="flex flex-col gap-3">
+        {formError ? <FormError>{formError}</FormError> : null}
         <Button type="submit" disabled={saving}>
           {saving ? <Spinner /> : null}
           {submitLabel}

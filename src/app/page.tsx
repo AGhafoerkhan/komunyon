@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { Alert, Spinner } from '@/components/ui';
+import { Spinner } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { missingFirebaseEnv } from '@/lib/firebase';
 
@@ -233,7 +233,11 @@ function Access({
 
   return (
     <div className="flex w-full flex-col items-center gap-3">
-      {message ? <Alert>{message}</Alert> : null}
+      {message ? (
+        <p role="alert" className="text-center text-sm text-[#ff999c]">
+          {message}
+        </p>
+      ) : null}
       <button
         type="button"
         onPointerDown={onWarm}

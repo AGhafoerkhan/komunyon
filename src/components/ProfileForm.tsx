@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { Alert, Avatar, Button, Field, Spinner, fieldClass } from '@/components/ui';
+import { Avatar, Button, Field, FormError, Spinner, fieldClass } from '@/components/ui';
 import { HAGUE_AREAS } from '@/lib/hague';
 import { actionError } from '@/lib/errors';
 import { LIMITS } from '@/lib/limits';
 import { COUNTRIES, citiesIn } from '@/lib/places';
-import { validateProfile } from '@/lib/validate';
+import { CHECK_AGAIN, validateProfile, type ProfileField } from '@/lib/validate';
 
 export function ProfileForm({
   mode,
@@ -40,7 +40,8 @@ export function ProfileForm({
   const [phone, setPhone] = useState(initial.phone);
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState(accountPhoto);
-  const [error, setError] = useState<string | null>(null);
+  const [fields, setFields] = useState<Partial<Record<ProfileField, string>>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const listedCities = citiesIn(country);
@@ -73,7 +74,7 @@ export function ProfileForm({
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const message = validateProfile({
+    const found = validateProfile({
       fullName,
       age,
       bio,
@@ -83,13 +84,15 @@ export function ProfileForm({
       phone,
       hasPhoto: preview.length > 0,
     });
-    if (message) {
-      setError(message);
+    if (Object.keys(found).length > 0) {
+      setFields(found);
+      setFormError(CHECK_AGAIN);
       setSaved(false);
       return;
     }
     setSaving(true);
-    setError(null);
+    setFields({});
+    setFormError(null);
     setSaved(false);
     try {
       await saveProfile(
@@ -106,7 +109,7 @@ export function ProfileForm({
       );
       setSaved(true);
     } catch (failure) {
-      setError(actionError(failure));
+      setFormError(actionError(failure));
     } finally {
       setSaving(false);
     }
@@ -114,7 +117,6 @@ export function ProfileForm({
 
   return (
     <form onSubmit={(event) => void onSubmit(event)} className="mt-6 flex flex-col gap-5" noValidate>
-      {error ? <Alert>{error}</Alert> : null}
       {saved && mode === 'edit' ? (
         <p className="rounded-md border border-moss/30 bg-moss/5 px-3 py-2 text-sm text-moss">Profile saved.</p>
       ) : null}
@@ -128,6 +130,7 @@ export function ProfileForm({
         <Avatar src={preview} name={fullName || 'Profile'} size={72} />
         <div className="text-sm leading-relaxed text-muted">
           <p>{preview ? 'A picture is required. This one is used until you choose another.' : 'A picture is required.'}</p>
+          {fields.photo ? <p className="mt-1.5 text-sm text-clay">{fields.photo}</p> : null}
           <label className="mt-2 inline-block cursor-pointer font-medium text-canal">
             Choose a picture
             <input
@@ -143,6 +146,7 @@ export function ProfileForm({
       <Field
         label="Full name"
         hint={mode === 'onboarding' ? 'Please use your real name. That is how a host finds you for an invite.' : undefined}
+        error={fields.fullName}
       >
         <input
           className={fieldClass}
@@ -154,7 +158,7 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field label="Age">
+      <Field label="Age" error={fields.age}>
         <input
           className={fieldClass}
           inputMode="numeric"
@@ -166,7 +170,7 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field label="Country">
+      <Field label="Country" error={fields.country}>
         <select className={fieldClass} value={country} onChange={(event) => chooseCountry(event.target.value)} required>
           {COUNTRIES.map((item) => (
             <option key={item} value={item}>
@@ -176,7 +180,7 @@ export function ProfileForm({
         </select>
       </Field>
 
-      <Field label="City">
+      <Field label="City" error={otherCity ? undefined : fields.city}>
         {listedCities ? (
           <select
             className={fieldClass}
@@ -204,7 +208,7 @@ export function ProfileForm({
       </Field>
 
       {listedCities && otherCity ? (
-        <Field label="Your city">
+        <Field label="Your city" error={fields.city}>
           <input
             className={fieldClass}
             value={city}
@@ -217,7 +221,7 @@ export function ProfileForm({
       ) : null}
 
       {city === 'The Hague' ? (
-        <Field label="Neighbourhood">
+        <Field label="Neighbourhood" error={fields.neighbourhood}>
           <select
             className={fieldClass}
             value={neighbourhood}
@@ -233,7 +237,7 @@ export function ProfileForm({
           </select>
         </Field>
       ) : (
-        <Field label="Neighbourhood" hint="Add it if you know it.">
+        <Field label="Neighbourhood" hint="Add it if you know it." error={fields.neighbourhood}>
           <input
             className={fieldClass}
             value={neighbourhood}
@@ -244,7 +248,7 @@ export function ProfileForm({
         </Field>
       )}
 
-      <Field label="Bio" hint="Optional. Church background, languages, or anything a host should know.">
+      <Field label="Bio" hint="Optional. Church background, languages, or anything a host should know." error={fields.bio}>
         <textarea
           className={`${fieldClass} min-h-32 resize-y`}
           value={bio}
@@ -253,7 +257,7 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field label="Phone number" hint="Include the country code, for example +31 6 1234 5678.">
+      <Field label="Phone number" hint="Include the country code, for example +31 6 1234 5678." error={fields.phone}>
         <input
           className={fieldClass}
           type="tel"
@@ -266,7 +270,8 @@ export function ProfileForm({
         />
       </Field>
 
-      <div>
+      <div className="flex flex-col gap-3">
+        {formError ? <FormError>{formError}</FormError> : null}
         <Button type="submit" disabled={saving}>
           {saving ? <Spinner /> : null}
           {mode === 'onboarding' ? 'Continue' : 'Save profile'}

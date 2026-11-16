@@ -21,6 +21,10 @@ export function isProfileReady(profile: UserProfile | null): boolean {
   return true;
 }
 
+export const CHECK_AGAIN = 'An input is incorrect. Check again.';
+
+export type ProfileField = 'photo' | 'fullName' | 'age' | 'country' | 'city' | 'neighbourhood' | 'bio' | 'phone';
+
 export function validateProfile(input: {
   fullName: string;
   age: string;
@@ -30,37 +34,53 @@ export function validateProfile(input: {
   neighbourhood: string;
   phone: string;
   hasPhoto: boolean;
-}): string | null {
-  if (!input.hasPhoto) return 'Add a profile picture.';
+}): Partial<Record<ProfileField, string>> {
+  const errors: Partial<Record<ProfileField, string>> = {};
+  if (!input.hasPhoto) errors.photo = 'Add a profile picture.';
   const name = input.fullName.trim();
   if (name.length < LIMITS.nameMin || name.length > LIMITS.nameMax) {
-    return `Enter your full name (${LIMITS.nameMin}–${LIMITS.nameMax} characters).`;
+    errors.fullName = `Enter your full name (${LIMITS.nameMin}–${LIMITS.nameMax} characters).`;
   }
-  if (!/^\d+$/.test(input.age.trim())) return 'Enter your age as a whole number.';
-  const age = Number(input.age);
-  if (age < LIMITS.ageMin || age > LIMITS.ageMax) {
-    return `Age needs to be between ${LIMITS.ageMin} and ${LIMITS.ageMax}.`;
+  if (!/^\d+$/.test(input.age.trim())) errors.age = 'Enter your age as a whole number.';
+  else {
+    const age = Number(input.age);
+    if (age < LIMITS.ageMin || age > LIMITS.ageMax) {
+      errors.age = `Age needs to be between ${LIMITS.ageMin} and ${LIMITS.ageMax}.`;
+    }
   }
-  if (!isCountry(input.country)) return 'Choose your country.';
+  if (!isCountry(input.country)) errors.country = 'Choose your country.';
   const city = input.city.trim();
-  if (city.length < 2 || city.length > 80) return 'Enter your city.';
+  if (city.length < 2 || city.length > 80) errors.city = 'Enter your city.';
   const neighbourhood = input.neighbourhood.trim();
-  if (city === 'The Hague' && !isHagueArea(neighbourhood)) return 'Choose your neighbourhood in The Hague.';
-  if (neighbourhood.length > 80) return 'Neighbourhood needs to be 80 characters or fewer.';
+  if (city === 'The Hague' && !isHagueArea(neighbourhood)) errors.neighbourhood = 'Choose your neighbourhood in The Hague.';
+  else if (neighbourhood.length > 80) errors.neighbourhood = 'Neighbourhood needs to be 80 characters or fewer.';
   const bio = input.bio.trim();
-  if (bio.length > LIMITS.bioMax) return `Bio needs to be ${LIMITS.bioMax} characters or fewer.`;
-  if (!normalizePhone(input.phone)) return 'Enter a phone number, including the country code.';
-  return null;
+  if (bio.length > LIMITS.bioMax) errors.bio = `Bio needs to be ${LIMITS.bioMax} characters or fewer.`;
+  if (!normalizePhone(input.phone)) errors.phone = 'Enter a phone number, including the country code.';
+  return errors;
 }
 
-export function validateStudyDraft(draft: StudyDraft, minCapacity: number): string | null {
+export type StudyField =
+  | 'title'
+  | 'description'
+  | 'tags'
+  | 'day'
+  | 'date'
+  | 'time'
+  | 'area'
+  | 'maxCapacity'
+  | 'exactAddress'
+  | 'entryNotes';
+
+export function validateStudyDraft(draft: StudyDraft, minCapacity: number): Partial<Record<StudyField, string>> {
+  const errors: Partial<Record<StudyField, string>> = {};
   const title = draft.title.trim();
   if (title.length === 0 || title.length > LIMITS.titleMax) {
-    return `Add a title (up to ${LIMITS.titleMax} characters).`;
+    errors.title = `Add a title (up to ${LIMITS.titleMax} characters).`;
   }
   const description = draft.description.trim();
   if (description.length === 0 || description.length > LIMITS.descriptionMax) {
-    return `Add a description (up to ${LIMITS.descriptionMax} characters).`;
+    errors.description = `Add a description (up to ${LIMITS.descriptionMax} characters).`;
   }
   if (
     draft.tags.length === 0 ||
@@ -68,23 +88,24 @@ export function validateStudyDraft(draft: StudyDraft, minCapacity: number): stri
     new Set(draft.tags).size !== draft.tags.length ||
     draft.tags.some((tag) => !isStudyTag(tag))
   ) {
-    return 'Choose at least one: Bible study, prayer, worship, or communion.';
+    errors.tags = 'Choose at least one: Bible study, prayer, worship, or communion.';
   }
-  if (draft.format === 'recurring' && draft.dayOfWeek === null) return 'Choose the day of the week.';
-  if (draft.format === 'one-off' && (draft.date === null || !isIsoDate(draft.date))) return 'Choose a date.';
-  if (normalizeTime(draft.time) === null) return 'Choose a time.';
-  if (!isHagueArea(draft.area)) return 'Choose a neighbourhood in The Hague.';
+  if (draft.format === 'recurring' && draft.dayOfWeek === null) errors.day = 'Choose the day of the week.';
+  if (draft.format === 'one-off' && (draft.date === null || !isIsoDate(draft.date))) errors.date = 'Choose a date.';
+  if (normalizeTime(draft.time) === null) errors.time = 'Choose a time.';
+  if (!isHagueArea(draft.area)) errors.area = 'Choose a neighbourhood in The Hague.';
   if (!Number.isInteger(draft.maxCapacity) || draft.maxCapacity < minCapacity || draft.maxCapacity > LIMITS.capacityMax) {
-    return minCapacity > 1
-      ? `Capacity must be at least ${minCapacity}, the number of people already approved.`
-      : `Capacity must be between 1 and ${LIMITS.capacityMax}.`;
+    errors.maxCapacity =
+      minCapacity > 1
+        ? `Capacity must be at least ${minCapacity}, the number of people already approved.`
+        : `Capacity must be between 1 and ${LIMITS.capacityMax}.`;
   }
   const address = draft.exactAddress.trim();
   if (address.length === 0 || address.length > LIMITS.addressMax) {
-    return `Add the exact address (up to ${LIMITS.addressMax} characters). It stays private until you approve someone.`;
+    errors.exactAddress = `Add the exact address (up to ${LIMITS.addressMax} characters). It stays private until you approve someone.`;
   }
   if (draft.entryNotes.trim().length > LIMITS.entryNotesMax) {
-    return `Entry notes need to be ${LIMITS.entryNotesMax} characters or fewer.`;
+    errors.entryNotes = `Entry notes need to be ${LIMITS.entryNotesMax} characters or fewer.`;
   }
-  return null;
+  return errors;
 }

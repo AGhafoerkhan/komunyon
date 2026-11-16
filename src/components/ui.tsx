@@ -38,18 +38,29 @@ export const pageTitleClass = 'font-serif text-3xl leading-tight break-words sm:
 export function Field({
   label,
   hint,
+  error,
   children,
 }: {
   label: string;
   hint?: string;
+  error?: string;
   children: ReactNode;
 }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium">{label}</span>
       {children}
+      {error ? <span className="mt-1.5 block text-sm text-clay">{error}</span> : null}
       {hint ? <span className="mt-1.5 block text-xs leading-relaxed text-muted">{hint}</span> : null}
     </label>
+  );
+}
+
+export function FormError({ children }: { children: ReactNode }) {
+  return (
+    <p role="alert" className="text-sm text-clay">
+      {children}
+    </p>
   );
 }
 

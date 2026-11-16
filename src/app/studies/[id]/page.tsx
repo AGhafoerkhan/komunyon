@@ -9,7 +9,7 @@ import { MemberList } from '@/components/MemberList';
 import { useAuth } from '@/components/AuthProvider';
 import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
-import { Alert, Avatar, Button, FormatBadge, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
+import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { formatSchedule, spotsLabel } from '@/lib/format';
 import {
@@ -345,7 +345,7 @@ function GuestStudy({
             </span>
             <span className="text-muted"> · {spotsLabel(study.approvedUserIds.length, study.maxCapacity)}</span>
           </p>
-          {error || signInError ? <Alert>{error || signInError}</Alert> : null}
+          {error || signInError ? <FormError>{error || signInError}</FormError> : null}
           <Button className="w-full" onPointerDown={prepareGoogleSignIn} onClick={() => void signIn()} disabled={busy}>
             {busy ? <Spinner /> : null}
             Sign in now to join
@@ -359,7 +359,7 @@ function GuestStudy({
           {blocked ? (
             <p className="text-sm leading-relaxed text-muted">The host shared a private group. Sign in if they invited you.</p>
           ) : null}
-          {error || signInError ? <Alert>{error || signInError}</Alert> : null}
+          {error || signInError ? <FormError>{error || signInError}</FormError> : null}
           {blocked ? (
             <Button className="w-full" onPointerDown={prepareGoogleSignIn} onClick={() => void signIn()} disabled={busy}>
               {busy ? <Spinner /> : null}
