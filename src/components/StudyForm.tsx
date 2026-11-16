@@ -5,7 +5,7 @@ import { Button, Field, FormError, Spinner, fieldClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { HAGUE_AREAS } from '@/lib/hague';
 import { isDayOfWeek } from '@/lib/guards';
-import { DAY_FILTERS, dayName, formatSessionDate, upcomingSessions } from '@/lib/format';
+import { DAY_FILTERS, dayName, formatDdMmYyyy, upcomingSessions } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import { sortTags, STUDY_TAGS, type StudyTag } from '@/lib/tags';
 import { CHECK_AGAIN, validateStudyDraft, type StudyField } from '@/lib/validate';
@@ -327,7 +327,7 @@ function WeekSkips({
                 className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
               >
                 <span className={canceled ? 'text-sm text-muted line-through' : 'text-sm font-medium'}>
-                  {formatSessionDate(date)}
+                  {formatDdMmYyyy(date)}
                 </span>
                 <span className={`shrink-0 text-sm ${canceled ? 'text-clay' : 'text-canal'}`}>
                   {canceled ? 'Canceled' : 'Meets'}

@@ -23,16 +23,16 @@ export function studyWeekday(study: Pick<BibleStudy, 'format' | 'dayOfWeek' | 'd
   return isDayOfWeek(weekday) ? weekday : null;
 }
 
-export function formatSchedule(study: Pick<BibleStudy, 'format' | 'dayOfWeek' | 'date' | 'time'>): string {
+export function formatSchedule(
+  study: Pick<BibleStudy, 'format' | 'dayOfWeek' | 'date' | 'time' | 'skippedDates'>,
+): string {
   if (study.format === 'recurring' && study.dayOfWeek !== null) {
-    return `Every ${dayName(study.dayOfWeek)} · ${study.time}`;
+    const skipped = new Set(study.skippedDates);
+    const next = upcomingSessions(study.dayOfWeek, study.time, 16).find((date) => !skipped.has(date));
+    return next ? `${formatDdMmYyyy(next)} · ${study.time}` : study.time;
   }
   if (study.date && isIsoDate(study.date)) {
-    const [year, month, day] = study.date.split('-').map(Number);
-    const date = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
-    const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(date);
-    const rest = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
-    return `${weekday} ${rest} · ${study.time}`;
+    return `${formatDdMmYyyy(study.date)} · ${study.time}`;
   }
   return study.time;
 }
@@ -50,6 +50,12 @@ function isoDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function formatDdMmYyyy(iso: string): string {
+  const [year, month, day] = iso.split('-');
+  if (!day || !month || !year) return iso;
+  return `${day}-${month}-${year}`;
 }
 
 function meetingHasPassed(now: Date, time: string): boolean {
@@ -73,13 +79,6 @@ export function upcomingSessions(day: DayOfWeek, time: string, count = UPCOMING_
   return dates;
 }
 
-export function formatSessionDate(iso: string): string {
-  const [year, month, day] = iso.split('-').map(Number);
-  return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(
-    new Date(year ?? 0, (month ?? 1) - 1, day ?? 1),
-  );
-}
-
 /** Shown when the next session of a recurring study will not meet. */
 export function cancellationNote(
   study: Pick<BibleStudy, 'format' | 'dayOfWeek' | 'time' | 'skippedDates'>,
@@ -95,5 +94,5 @@ export function cancellationNote(
   const following = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
   following.setDate(following.getDate() + 7);
   if (resume === isoDate(following)) return 'This week is canceled. Bible study will proceed next week.';
-  return `This week is canceled. Bible study will proceed on ${formatSessionDate(resume)}.`;
+  return `This week is canceled. Bible study will proceed on ${formatDdMmYyyy(resume)}.`;
 }
