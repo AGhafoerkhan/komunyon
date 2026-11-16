@@ -12,7 +12,7 @@ import { deleteSessionFile, downloadSessionFile, listSessionFiles, uploadSession
 import { describeDebugError } from '@/lib/sessionDebug';
 import { loadSessionDescription, saveSessionDescription } from '@/lib/sessions';
 
-const cardGrid = 'mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4';
+const cardGrid = 'mt-4 grid grid-cols-2 gap-3 md:grid-cols-4';
 
 export function SessionRecord({
   studyId,
@@ -220,7 +220,7 @@ export function SessionRecord({
       <div className="mt-8">
         <h2 className="font-serif text-2xl">Files</h2>
         {images.length > 0 ? (
-          <ul className={cardGrid}>
+          <ul className={`${cardGrid} md:max-w-3xl`}>
             {images.map((file) => (
               <li key={file.path} className="rounded-lg border border-line bg-card p-2">
                 <button type="button" onClick={() => setOpen(file)} className="block w-full" aria-label="View session photo">
