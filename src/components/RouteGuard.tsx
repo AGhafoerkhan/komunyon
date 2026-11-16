@@ -1,9 +1,8 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { loginDebugEnabled, subscribeLoginDebug } from '@/lib/loginDebug';
 import { isProfileReady } from '@/lib/validate';
 import { Button, LoadingScreen } from '@/components/ui';
 
@@ -32,11 +31,6 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const completed = isProfileReady(profile);
-  const debugHome = useSyncExternalStore(
-    subscribeLoginDebug,
-    () => pathname === '/' && loginDebugEnabled(),
-    () => false,
-  );
 
   useEffect(() => {
     if (!configured) {
@@ -45,7 +39,6 @@ export function RouteGuard({ children }: { children: ReactNode }) {
     }
     if (loading) return;
     if (error) return;
-    if (pathname === '/' && loginDebugEnabled()) return;
 
     if (!user) {
       if (pathname !== '/' && !isSharedStudy(pathname)) router.replace('/');
@@ -81,8 +74,8 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   }
 
   if (!user && pathname !== '/' && !isSharedStudy(pathname)) return <LoadingScreen label="Redirecting" />;
-  if (!debugHome && user && !completed && pathname !== '/onboarding') return <LoadingScreen label="Redirecting" />;
-  if (!debugHome && user && completed && (pathname === '/' || pathname === '/onboarding')) {
+  if (user && !completed && pathname !== '/onboarding') return <LoadingScreen label="Redirecting" />;
+  if (user && completed && (pathname === '/' || pathname === '/onboarding')) {
     return <LoadingScreen label="Redirecting" />;
   }
 

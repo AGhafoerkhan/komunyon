@@ -1,6 +1,7 @@
 import { getApps, initializeApp } from 'firebase/app';
 import {
   browserLocalPersistence,
+  browserSessionPersistence,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
@@ -23,10 +24,17 @@ export interface FirebaseClient {
   storage: FirebaseStorage;
 }
 
+const PRODUCTION_HOST = 'komunyon.vercel.app';
+
 function readConfig() {
+  const configuredDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '';
+  const authDomain =
+    typeof window !== 'undefined' && window.location.hostname === PRODUCTION_HOST
+      ? PRODUCTION_HOST
+      : configuredDomain;
   return {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '',
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '',
+    authDomain,
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '',
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '',
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '',
@@ -72,41 +80,54 @@ export function loginSignInMode(): 'redirect' | 'popup' {
   return prefersRedirectSignIn() ? 'redirect' : 'popup';
 }
 
+export function currentAuthDomain(): string {
+  return readConfig().authDomain;
+}
+
 export async function completeRedirectSignIn(auth: Auth): Promise<void> {
   if (redirectResultRead) {
     loginLog('redirect result already read on this page load');
     return;
   }
   redirectResultRead = true;
-  loginLog('reading redirect result');
+  loginLog(`reading redirect result on ${window.location.hostname}`);
   try {
     const result = await getRedirectResult(auth);
-    if (!result) loginLog('redirect result: none');
-    else loginLog(`redirect result: logged in, uid ${result.user.uid}`);
+    if (!result) {
+      loginLog('redirect result: none');
+      return;
+    }
+    loginLog(`redirect result: logged in, uid ${result.user.uid}`);
+    await setPersistence(auth, browserLocalPersistence);
+    loginLog('login saved on this phone');
   } catch (error) {
     loginLog(`redirect result failed: ${firebaseErrorCode(error) ?? 'unknown'}`);
     throw error;
   }
 }
 
-/** Popup sign-in never finishes in Firefox, or on a phone, so those use a full-page redirect. */
+/** Firefox and iPhone never finish a Google popup. Chrome, including Chrome on a phone, does. */
 function prefersRedirectSignIn(): boolean {
   const ua = navigator.userAgent;
   if (/Firefox\//.test(ua)) return true;
   if (/iPhone|iPad|iPod/.test(ua)) return true;
   if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true;
-  return /Android/i.test(ua);
+  return false;
+}
+
+async function redirectGoogleSignIn(auth: Auth, provider: GoogleAuthProvider): Promise<void> {
+  loginLog('sign-in method: redirect');
+  await setPersistence(auth, browserSessionPersistence);
+  loginLog('persistence set to this tab');
+  await signInWithRedirect(auth, provider);
+  loginLog('redirect started');
 }
 
 export async function signInWithGoogleAccount(auth: Auth): Promise<void> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   if (prefersRedirectSignIn()) {
-    loginLog('sign-in method: redirect');
-    await setPersistence(auth, browserLocalPersistence);
-    loginLog('persistence set to this browser');
-    await signInWithRedirect(auth, provider);
-    loginLog('redirect started');
+    await redirectGoogleSignIn(auth, provider);
     return;
   }
   warmUpGoogleSignIn(auth);
@@ -119,9 +140,7 @@ export async function signInWithGoogleAccount(auth: Auth): Promise<void> {
     loginLog(`popup failed: ${code}`);
     if (code !== 'auth/popup-blocked') throw error;
     loginLog('popup was blocked, switching to redirect');
-    await setPersistence(auth, browserLocalPersistence);
-    await signInWithRedirect(auth, provider);
-    loginLog('redirect started');
+    await redirectGoogleSignIn(auth, provider);
   }
 }
 

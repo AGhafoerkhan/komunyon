@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { LoginDebug } from '@/components/LoginDebug';
 import { Spinner } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { missingFirebaseEnv } from '@/lib/firebase';
@@ -70,7 +69,6 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-dvh w-full flex-col bg-[#0f1115] text-[#e2e4e9]">
-      <LoginDebug />
       <section className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[#0f1115]">
         <div
           aria-hidden

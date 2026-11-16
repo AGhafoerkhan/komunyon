@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore, useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { loginSignInMode } from '@/lib/firebase';
+import { currentAuthDomain, loginSignInMode } from '@/lib/firebase';
 import {
   captureLoginDebugRequest,
   clearLoginDebug,
@@ -53,6 +53,7 @@ export function LoginDebug() {
     `navigation: ${navigation?.type ?? 'unknown'}`,
     `browser: ${navigator.userAgent}`,
     `sign-in method for this browser: ${loginSignInMode()}`,
+    `auth domain: ${currentAuthDomain()}`,
     `firebase configured: ${configured ? 'yes' : 'no'}`,
     `cookies enabled: ${navigator.cookieEnabled ? 'yes' : 'no'}`,
     `logged in: ${user ? 'yes' : 'no'}`,

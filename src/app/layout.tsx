@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Figtree, Fraunces } from 'next/font/google';
 import { AuthProvider } from '@/components/AuthProvider';
+import { LoginDebug } from '@/components/LoginDebug';
 import { NoticePermission } from '@/components/DeviceNotices';
 import { PwaRegister } from '@/components/PwaRegister';
 import { RouteGuard } from '@/components/RouteGuard';
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans antialiased">
         <AuthProvider>
           <PwaRegister />
+          <LoginDebug />
           <NoticePermission />
           <RouteGuard>{children}</RouteGuard>
         </AuthProvider>
