@@ -214,15 +214,14 @@ export default function StudyPage() {
             You no longer have the address.
           </p>
         </div>
-      ) : blocked || !study ? (
+      ) : blocked ? (
+        <div className="mt-6 max-w-xl">
+          <p className="font-serif text-3xl">The host removed you from this study.</p>
+          <p className="mt-3 text-sm leading-relaxed text-muted">You no longer have the address.</p>
+        </div>
+      ) : !study ? (
         <div className="mt-6">
-          {error ? (
-            <Alert>{error}</Alert>
-          ) : (
-            <p className="font-serif text-3xl">
-              {blocked ? 'This study is not available to you.' : 'This study is no longer listed.'}
-            </p>
-          )}
+          {error ? <Alert>{error}</Alert> : <p className="font-serif text-3xl">This study is no longer listed.</p>}
         </div>
       ) : (
         <StudyBody
