@@ -87,27 +87,28 @@ export function SessionPhotos({ study, isHost }: { study: BibleStudy; isHost: bo
       ) : (
         <>
           <p className="text-sm text-muted">Open a date to load its photos.</p>
-          <div className="mt-4 flex flex-col gap-2">
+          <ul className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {dates.map((item) => (
-              <button
-                key={item}
-                type="button"
-                aria-pressed={item === date}
-                onClick={() => setDate(item)}
-                className={`rounded-lg border px-4 py-3 text-left text-sm ${
-                  item === date ? 'border-canal bg-card text-ink' : 'border-line bg-card text-muted hover:bg-sand'
-                }`}
-              >
-                {formatDdMmYyyy(item)}
-              </button>
+              <li key={item}>
+                <button
+                  type="button"
+                  aria-pressed={item === date}
+                  onClick={() => setDate(item)}
+                  className={`flex h-full min-h-28 w-full items-end rounded-lg border p-4 text-left ${
+                    item === date ? 'border-canal bg-card text-ink' : 'border-line bg-card text-muted hover:bg-sand'
+                  }`}
+                >
+                  <span className="text-sm font-medium">{formatDdMmYyyy(item)}</span>
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
           {date ? (
             <div className="mt-6">
               <h2 className="font-serif text-2xl">{formatDdMmYyyy(date)}</h2>
               {loading ? <p className="mt-3 text-sm text-muted">Loading photos…</p> : null}
               {photos.length > 0 ? (
-                <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <ul className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
                   {photos.map((photo) => (
                     <li key={photo.path} className="rounded-lg border border-line bg-card p-2">
                       <button type="button" onClick={() => setOpen(photo)} className="block w-full" aria-label="View session photo">
