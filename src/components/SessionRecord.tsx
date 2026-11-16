@@ -231,6 +231,8 @@ function fileTitle(label: string): string {
   const dot = trimmed.lastIndexOf('.');
   return dot > 0 ? trimmed.slice(0, dot) : trimmed;
 }
+
+function RecordingPlayer({ src }: { src: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
