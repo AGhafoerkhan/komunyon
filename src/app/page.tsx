@@ -135,23 +135,8 @@ export default function HomePage() {
           <h2 className={`mt-4 ${titleClass}`}>Bring a question, or a specific request.</h2>
           <p className={bodyClass}>
             If you want to know how a study works before you sign in, or you need something the list does not cover, write
-            or call. The contact is just below the button.
+            or call. The contact is just below.
           </p>
-        </Band>
-
-        <Band tone="teal">
-          <h2 className={titleClass}>Start now</h2>
-          <p className={bodyClass}>Sign in, then host a study or request to join one. After that, you get the information.</p>
-          <div className="mt-6">
-            <Access
-              configured={configured}
-              missing={missing}
-              busy={busy}
-              message={message}
-              onWarm={prepareGoogleSignIn}
-              onSignIn={() => void signIn()}
-            />
-          </div>
         </Band>
 
         <Band>
