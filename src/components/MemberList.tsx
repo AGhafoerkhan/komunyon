@@ -10,12 +10,16 @@ export function MemberList({
   empty,
   requests,
   renderActions,
+  onPhoto,
+  showPhone = true,
 }: {
   title: string;
   description?: string;
   empty: string;
   requests: JoinRequest[];
-  renderActions: (request: JoinRequest) => ReactNode;
+  renderActions?: (request: JoinRequest) => ReactNode;
+  onPhoto?: (src: string, name: string) => void;
+  showPhone?: boolean;
 }) {
   return (
     <section className="rounded-lg border border-line bg-card">
@@ -36,14 +40,19 @@ export function MemberList({
               className="flex flex-col gap-3 border-b border-line px-4 py-4 last:border-b-0 sm:flex-row sm:items-start"
             >
               <div className="flex min-w-0 flex-1 gap-3">
-                <Avatar src={request.photoURL} name={request.fullName} size={44} />
+                <Avatar
+                  src={request.photoURL}
+                  name={request.fullName}
+                  size={44}
+                  onOpen={onPhoto ? () => onPhoto(request.photoURL, request.fullName) : undefined}
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-medium break-words">
                     {request.fullName}
                     {request.profileMissing ? null : <span className="font-normal text-muted"> · {request.age}</span>}
                   </p>
                   {request.place ? <p className="mt-0.5 text-xs text-muted">{request.place}</p> : null}
-                  {request.phone ? <p className="mt-0.5 text-xs text-muted">{request.phone}</p> : null}
+                  {showPhone && request.phone ? <p className="mt-0.5 text-xs text-muted">{request.phone}</p> : null}
                   {request.profileMissing || request.bio.length === 0 ? null : (
                     <p className="mt-1 line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap text-muted">
                       {request.bio}
@@ -51,9 +60,11 @@ export function MemberList({
                   )}
                 </div>
               </div>
-              <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end [&>*]:w-full sm:[&>*]:w-auto">
-                {renderActions(request)}
-              </div>
+              {renderActions ? (
+                <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end [&>*]:w-full sm:[&>*]:w-auto">
+                  {renderActions(request)}
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

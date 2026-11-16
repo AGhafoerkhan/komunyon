@@ -96,7 +96,17 @@ function displayPhoto(src: string): string {
   return '';
 }
 
-export function Avatar({ src, name, size = 40 }: { src: string; name: string; size?: number }) {
+export function Avatar({
+  src,
+  name,
+  size = 40,
+  onOpen,
+}: {
+  src: string;
+  name: string;
+  size?: number;
+  onOpen?: () => void;
+}) {
   const [failed, setFailed] = useState(false);
   const photo = displayPhoto(src);
   const initials =
@@ -107,29 +117,39 @@ export function Avatar({ src, name, size = 40 }: { src: string; name: string; si
       .map((part) => part[0]?.toUpperCase() ?? '')
       .join('') || '?';
 
-  if (!photo || failed) {
-    return (
+  const face =
+    !photo || failed ? (
       <span
         style={{ width: size, height: size }}
         className="inline-flex shrink-0 items-center justify-center rounded-full bg-sand text-xs font-medium text-ink"
       >
         {initials}
       </span>
+    ) : (
+      // Profile photos are account URLs or small JPEGs stored on the user document.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={photo}
+        alt=""
+        width={size}
+        height={size}
+        onError={() => setFailed(true)}
+        className="shrink-0 rounded-full bg-sand object-cover"
+        style={{ width: size, height: size }}
+      />
     );
-  }
+
+  if (!onOpen || !photo || failed) return face;
 
   return (
-    // Firebase download URLs are tokenized and are not a fixed remote pattern.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={photo}
-      alt=""
-      width={size}
-      height={size}
-      onError={() => setFailed(true)}
-      className="shrink-0 rounded-full bg-sand object-cover"
-      style={{ width: size, height: size }}
-    />
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`View ${name}'s photo`}
+      className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canal"
+    >
+      {face}
+    </button>
   );
 }
 

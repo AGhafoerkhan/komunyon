@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { InvitePeople } from '@/components/InvitePeople';
 import { MemberList } from '@/components/MemberList';
+import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { useAuth } from '@/components/AuthProvider';
 import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
@@ -22,6 +23,7 @@ import {
   deleteStudy,
   leaveStudy,
   loadJoinRequests,
+  loadPeople,
   removeMember,
   requestToJoin,
   subscribePrivateDetails,
@@ -160,14 +162,25 @@ export default function StudyPage() {
   }, [approvedMember, study]);
 
   useEffect(() => {
-    if (!study || !user || study.hostId !== user.uid) {
+    if (!study || !user) {
+      setPendingRequests([]);
+      setApprovedMembers([]);
+      setRosterReady(false);
+      return;
+    }
+    const host = study.hostId === user.uid;
+    const approved = study.approvedUserIds.includes(user.uid);
+    if (!host && !approved) {
       setPendingRequests([]);
       setApprovedMembers([]);
       setRosterReady(false);
       return;
     }
     let active = true;
-    void loadJoinRequests(study)
+    const task = host
+      ? loadJoinRequests(study)
+      : loadPeople(study.id, study.approvedUserIds).then((people) => ({ pending: [], approved: people }));
+    void task
       .then((result) => {
         if (!active) return;
         setPendingRequests(result.pending);
@@ -327,6 +340,7 @@ function GuestStudy({
   const { signInWithGoogle, prepareGoogleSignIn, signInError } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
 
   async function signIn() {
     setBusy(true);
@@ -348,7 +362,12 @@ function GuestStudy({
         <article className="flex w-full flex-col gap-3 rounded-lg border border-line bg-card p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <Avatar src={study.hostPhotoURL} name={study.hostName} size={40} />
+              <Avatar
+                src={study.hostPhotoURL}
+                name={study.hostName}
+                size={40}
+                onOpen={() => setPhoto({ src: study.hostPhotoURL, name: study.hostName })}
+              />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">
                   {study.hostName}
@@ -391,6 +410,7 @@ function GuestStudy({
           ) : null}
         </article>
       )}
+      {photo ? <PhotoLightbox src={photo.src} name={photo.name} onClose={() => setPhoto(null)} /> : null}
     </main>
   );
 }
@@ -535,6 +555,8 @@ function StudyBody({
   const taken = study.approvedUserIds.length;
   const full = taken >= study.maxCapacity;
   const ratio = study.maxCapacity === 0 ? 0 : Math.min(100, (taken / study.maxCapacity) * 100);
+  const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
+  const openPhoto = (src: string, name: string) => setPhoto({ src, name });
 
   return (
     <div className="mt-4">
@@ -560,7 +582,12 @@ function StudyBody({
             </div>
           ) : null}
           <div className="mt-4 flex items-center gap-3">
-            <Avatar src={study.hostPhotoURL} name={study.hostName} size={44} />
+            <Avatar
+              src={study.hostPhotoURL}
+              name={study.hostName}
+              size={44}
+              onOpen={() => openPhoto(study.hostPhotoURL, study.hostName)}
+            />
             <div>
               <p className="text-sm font-medium">
                 {study.hostName}
@@ -674,6 +701,20 @@ function StudyBody({
         </aside>
       </div>
 
+      {role === 'approved' ? (
+        <div className="mt-8">
+          {!rosterReady ? <p className="mb-4 text-sm text-muted">Loading the group…</p> : null}
+          <MemberList
+            title="People in this study"
+            description="Everyone approved to share this gathering. Open a photo to see it full size."
+            empty="No one else is approved yet."
+            requests={approvedMembers}
+            showPhone={false}
+            onPhoto={openPhoto}
+          />
+        </div>
+      ) : null}
+
       {role === 'host' ? (
         <div className="mt-8 grid gap-4">
           <InvitePeople study={study} />
@@ -688,6 +729,7 @@ function StudyBody({
             description="Photo, name, age, and bio. Approving shares the address and takes a spot."
             empty="No pending requests."
             requests={pendingRequests}
+            onPhoto={openPhoto}
             renderActions={(request) => (
               <>
                 <Button size="sm" onClick={() => onApprove(request)} disabled={full || busy !== null}>
@@ -704,6 +746,7 @@ function StudyBody({
             description="Removing someone hides the address from them and frees a spot."
             empty="No approved members yet."
             requests={approvedMembers}
+            onPhoto={openPhoto}
             renderActions={(request) => (
               <Button size="sm" variant="secondary" onClick={() => onAskRemove(request)} disabled={busy !== null}>
                 Remove from group
@@ -712,6 +755,7 @@ function StudyBody({
           />
         </div>
       ) : null}
+      {photo ? <PhotoLightbox src={photo.src} name={photo.name} onClose={() => setPhoto(null)} /> : null}
     </div>
   );
 }
