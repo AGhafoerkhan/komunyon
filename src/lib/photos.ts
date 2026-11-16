@@ -1,4 +1,4 @@
-import { deleteObject, getDownloadURL, listAll, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, getMetadata, listAll, ref, uploadBytes } from 'firebase/storage';
 import { jpegBlob } from '@/lib/avatar';
 import { firebaseErrorCode } from '@/lib/errors';
 import { getFirebase } from '@/lib/firebase';
@@ -10,6 +10,7 @@ export type SessionFile = {
   path: string;
   url: string;
   name: string;
+  label: string;
   kind: SessionFileKind;
 };
 
@@ -24,6 +25,11 @@ const AUDIO_TYPES: Record<string, string> = {
 function extension(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
+}
+
+function fileLabel(file: File): string {
+  const base = file.name.split(/[/\\]/).pop()?.replace(/[\r\n]/g, ' ').trim() || '';
+  return base.slice(0, 120);
 }
 
 function kindFromName(name: string): SessionFileKind | null {
@@ -53,10 +59,13 @@ export async function listSessionFiles(studyId: string, date: string): Promise<S
       listed.items.map(async (item) => {
         const kind = kindFromName(item.name);
         if (!kind) return null;
+        const meta = await getMetadata(item).catch(() => null);
+        const saved = meta?.customMetadata?.name?.trim() ?? '';
         return {
           path: item.fullPath,
           url: await getDownloadURL(item),
           name: item.name,
+          label: saved.slice(0, 120),
           kind,
         };
       }),
@@ -70,28 +79,32 @@ export async function listSessionFiles(studyId: string, date: string): Promise<S
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic']);
 
-async function uploadSessionObject(path: string, data: Blob, contentType: string): Promise<void> {
+async function uploadSessionObject(path: string, data: Blob, contentType: string, label: string): Promise<void> {
   const fileRef = ref(getFirebase().storage, path);
-  await uploadBytes(fileRef, data, { contentType });
+  await uploadBytes(fileRef, data, {
+    contentType,
+    customMetadata: label ? { name: label } : undefined,
+  });
 }
 
 export async function uploadSessionFile(studyId: string, date: string, uid: string, file: File): Promise<void> {
   const stamp = `${uid}-${Date.now()}`;
   const ext = extension(file.name);
+  const label = fileLabel(file);
   if (file.type.startsWith('image/') || IMAGE_EXTENSIONS.has(ext)) {
     const blob = await jpegBlob(file, 1600);
-    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.jpg`, blob, 'image/jpeg');
+    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.jpg`, blob, 'image/jpeg', label);
     return;
   }
   const audioType = AUDIO_TYPES[ext];
   if (audioType) {
     if (file.size >= LIMITS.sessionAudioBytes) throw new Error('Recordings need to be smaller than 32 MB.');
-    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.${ext}`, file, audioType);
+    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.${ext}`, file, audioType, label);
     return;
   }
   if (ext === 'txt' || file.type === 'text/plain') {
     if (file.size >= LIMITS.sessionTextBytes) throw new Error('Text files need to be smaller than 1 MB.');
-    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.txt`, file, 'text/plain');
+    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.txt`, file, 'text/plain', label);
     return;
   }
   throw new Error('Add a photo, a text file, or a WEBM, M4A, MP3, OGG, or WAV recording.');
@@ -104,7 +117,7 @@ export async function downloadSessionFile(file: SessionFile, date: string): Prom
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `komunyon-${date}.${extension(file.name) || 'bin'}`;
+  link.download = file.label || `komunyon-${date}.${extension(file.name) || 'bin'}`;
   document.body.appendChild(link);
   link.click();
   link.remove();

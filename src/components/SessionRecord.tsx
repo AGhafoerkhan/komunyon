@@ -143,41 +143,48 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
       <div className="mt-8">
         <h2 className="font-serif text-2xl">Files</h2>
         {images.length > 0 ? (
-          <ul className={cardGrid}>
-            {images.map((file) => (
-              <li key={file.path} className="relative min-w-0 rounded-lg border border-line bg-card p-2">
-                <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
-                <button type="button" onClick={() => setOpen(file)} className="block w-full" aria-label="View session photo">
-                  {/* Download URLs are tokenized and are not a fixed remote pattern. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={file.url} alt="" className="aspect-square w-full rounded-md object-cover" />
-                </button>
-              </li>
-            ))}
-          </ul>
+          <section className="mt-6">
+            <h3 className="text-sm font-medium">images</h3>
+            <ul className={cardGrid}>
+              {images.map((file) => (
+                <li key={file.path} className="relative min-w-0 rounded-lg border border-line bg-card p-2">
+                  <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
+                  <button type="button" onClick={() => setOpen(file)} className="block w-full" aria-label="View session photo">
+                    {/* Download URLs are tokenized and are not a fixed remote pattern. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={file.url} alt="" className="aspect-square w-full rounded-md object-cover" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
         {recordings.length > 0 ? (
-          <ul className={cardGrid}>
-            {recordings.map((file) => (
-              <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
-                <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
-                <div className="min-w-0 pr-16">
-                  <p className="text-sm font-medium text-ink">Recording</p>
+          <section className="mt-6">
+            <h3 className="text-sm font-medium">recording</h3>
+            <ul className={cardGrid}>
+              {recordings.map((file) => (
+                <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col rounded-lg border border-line bg-card p-3">
+                  <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
+                  <p className="pr-16 text-sm font-medium break-words text-ink">{file.label || 'Recording'}</p>
                   <RecordingPlayer src={file.url} />
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
         {texts.length > 0 ? (
-          <ul className={cardGrid}>
-            {texts.map((file) => (
-              <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
-                <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
-                <p className="pr-16 text-sm font-medium text-ink">Text file</p>
-              </li>
-            ))}
-          </ul>
+          <section className="mt-6">
+            <h3 className="text-sm font-medium">text file</h3>
+            <ul className={cardGrid}>
+              {texts.map((file) => (
+                <li key={file.path} className="relative flex min-h-28 min-w-0 items-end rounded-lg border border-line bg-card p-3">
+                  <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
+                  <p className="pr-16 text-sm font-medium break-words text-ink">{file.label || 'Text file'}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
         {!loading && files.length === 0 ? <p className="mt-3 text-sm text-muted">No files for this session yet.</p> : null}
         {isHost ? (
