@@ -341,9 +341,17 @@ service cloud.firestore {
           && signedIn()
           && uid == request.auth.uid
           && studyDoc(studyId).hostId != request.auth.uid
-          && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
           && request.resource.data.keys().hasOnly(['type', 'userId', 'createdAt'])
-          && request.resource.data.type == 'left'
+          && (
+            (
+              request.resource.data.type == 'left'
+              && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
+            )
+            || (
+              request.resource.data.type == 'cancelled'
+              && studyDoc(studyId).pendingUserIds.hasAny([request.auth.uid])
+            )
+          )
           && request.resource.data.userId == request.auth.uid
           && request.resource.data.createdAt is string
           && request.resource.data.createdAt.size() <= 40;

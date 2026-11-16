@@ -22,25 +22,18 @@ export function JoinNotices() {
     const unsubscribe = subscribeHostedStudies(
       user.uid,
       (studies) => {
+        if (!active) return;
+        setHosted(studies);
         void loadJoinNotices(studies)
           .then((next) => {
-            if (active) {
-              setHosted(studies);
-              setRequests(next);
-            }
+            if (active) setRequests(next);
           })
           .catch(() => {
-            if (active) {
-              setHosted([]);
-              setRequests([]);
-            }
+            if (active) setRequests([]);
           });
       },
       () => {
-        if (active) {
-          setHosted([]);
-          setRequests([]);
-        }
+        if (active) setRequests([]);
       },
     );
     return () => {
@@ -131,12 +124,16 @@ export function JoinNotices() {
                       <span className="min-w-0">
                         <span className="block text-sm leading-snug break-words">
                           <span className="font-medium">{notice.fullName}</span>{' '}
-                          {notice.kind === 'left' ? 'left' : 'requested to join'}
+                          {notice.kind === 'left'
+                            ? 'left'
+                            : notice.kind === 'cancelled'
+                              ? 'cancelled their request'
+                              : 'requested to join'}
                         </span>
                         <span className="mt-0.5 block truncate text-xs text-muted">{notice.studyTitle}</span>
                       </span>
                     </Link>
-                    {notice.kind === 'left' ? (
+                    {notice.kind === 'request' ? null : (
                       <button
                         type="button"
                         className="shrink-0 text-xs text-muted hover:text-ink"
@@ -144,7 +141,7 @@ export function JoinNotices() {
                       >
                         Dismiss
                       </button>
-                    ) : null}
+                    )}
                   </div>
                 </li>
               ))}

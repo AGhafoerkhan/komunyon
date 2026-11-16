@@ -181,6 +181,8 @@ export async function deleteStudy(studyId: string): Promise<void> {
 }
 
 export async function requestToJoin(studyId: string, uid: string): Promise<void> {
+  const { db } = getFirebase();
+  await deleteDoc(doc(db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
   await updateDoc(studyRef(studyId), {
     pendingUserIds: arrayUnion(uid),
     updatedAt: nowIso(),
@@ -188,29 +190,38 @@ export async function requestToJoin(studyId: string, uid: string): Promise<void>
 }
 
 export async function cancelRequest(studyId: string, uid: string): Promise<void> {
-  await updateDoc(studyRef(studyId), {
-    pendingUserIds: arrayRemove(uid),
-    updatedAt: nowIso(),
-  });
+  await writeMemberNotice(studyId, uid, 'cancelled');
+  try {
+    await updateDoc(studyRef(studyId), {
+      pendingUserIds: arrayRemove(uid),
+      updatedAt: nowIso(),
+    });
+  } catch (error) {
+    await deleteDoc(doc(getFirebase().db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function leaveStudy(studyId: string, uid: string): Promise<void> {
-  const { db } = getFirebase();
-  const noticeRef = doc(db, 'studies', studyId, 'notices', uid);
-  await setDoc(noticeRef, {
-    type: 'left',
-    userId: uid,
-    createdAt: nowIso(),
-  });
+  await writeMemberNotice(studyId, uid, 'left');
   try {
     await updateDoc(studyRef(studyId), {
       approvedUserIds: arrayRemove(uid),
       updatedAt: nowIso(),
     });
   } catch (error) {
-    await deleteDoc(noticeRef).catch(() => undefined);
+    await deleteDoc(doc(getFirebase().db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
     throw error;
   }
+}
+
+async function writeMemberNotice(studyId: string, uid: string, type: 'left' | 'cancelled'): Promise<void> {
+  const { db } = getFirebase();
+  await setDoc(doc(db, 'studies', studyId, 'notices', uid), {
+    type,
+    userId: uid,
+    createdAt: nowIso(),
+  });
 }
 
 export async function approveMember(study: BibleStudy, uid: string): Promise<void> {
@@ -295,7 +306,7 @@ export type HostNotice = {
   userId: string;
   fullName: string;
   photoURL: string;
-  kind: 'request' | 'left';
+  kind: 'request' | 'left' | 'cancelled';
   at: string;
 };
 
@@ -320,7 +331,7 @@ export async function loadJoinNotices(studies: BibleStudy[]): Promise<HostNotice
   });
 }
 
-export type DepartureRecord = { studyId: string; userId: string; createdAt: string };
+export type DepartureRecord = { studyId: string; userId: string; createdAt: string; type: 'left' | 'cancelled' };
 
 export function subscribeDepartures(
   studies: BibleStudy[],
@@ -341,8 +352,9 @@ export function subscribeDepartures(
           study.id,
           snap.docs.flatMap((item) => {
             const data = item.data();
-            if (data.type !== 'left' || data.userId !== item.id || typeof data.createdAt !== 'string') return [];
-            return [{ studyId: study.id, userId: item.id, createdAt: data.createdAt }];
+            const type = data.type === 'left' || data.type === 'cancelled' ? data.type : null;
+            if (!type || data.userId !== item.id || typeof data.createdAt !== 'string') return [];
+            return [{ studyId: study.id, userId: item.id, createdAt: data.createdAt, type }];
           }),
         );
         onData(studies.flatMap((item) => byStudy.get(item.id) ?? []));
@@ -364,13 +376,13 @@ export async function loadDepartureNotices(
   return records.map((record) => {
     const profile = profiles.get(record.userId);
     return {
-      id: `left_${record.studyId}_${record.userId}`,
+      id: `${record.type}_${record.studyId}_${record.userId}`,
       studyId: record.studyId,
       studyTitle: titles.get(record.studyId) ?? 'Your study',
       userId: record.userId,
       fullName: profile?.fullName || 'Someone',
       photoURL: profile?.photoURL ?? '',
-      kind: 'left' as const,
+      kind: record.type,
       at: record.createdAt,
     };
   });
