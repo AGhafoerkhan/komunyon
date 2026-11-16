@@ -23,8 +23,8 @@ const story = [
   },
   {
     label: 'Benefit',
-    title: 'You meet people, then you get the details',
-    body: 'You can see the neighbourhood, the time, and who is hosting before you go. After the host approves you, you receive the address and how to come in.',
+    title: 'You find a study, and people to meet there',
+    body: 'You do not need a friend to invite you. You see who is hosting, the neighbourhood, and the time, and you ask for a seat if one is open. That is how you meet new people and connect. The address comes after the host approves you.',
     tone: 'ink',
     labelClass: 'text-[#ff999c]',
   },
