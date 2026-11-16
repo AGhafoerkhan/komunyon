@@ -12,7 +12,7 @@ import { deleteSessionFile, downloadSessionFile, listSessionFiles, uploadSession
 import { describeDebugError } from '@/lib/sessionDebug';
 import { loadSessionDescription, saveSessionDescription } from '@/lib/sessions';
 
-const cardGrid = 'mt-4 grid grid-cols-2 gap-3 md:max-w-3xl md:grid-cols-4';
+const cardGrid = 'mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4';
 
 export function SessionRecord({
   studyId,
@@ -222,7 +222,7 @@ export function SessionRecord({
         {images.length > 0 ? (
           <ul className={cardGrid}>
             {images.map((file) => (
-              <li key={file.path} className="rounded-lg border border-line bg-card p-2">
+              <li key={file.path} className="min-w-0 rounded-lg border border-line bg-card p-2">
                 <button type="button" onClick={() => setOpen(file)} className="block w-full" aria-label="View session photo">
                   {/* Download URLs are tokenized and are not a fixed remote pattern. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -236,7 +236,7 @@ export function SessionRecord({
         {recordings.length > 0 ? (
           <ul className={cardGrid}>
             {recordings.map((file) => (
-              <li key={file.path} className="flex min-h-28 flex-col justify-between rounded-lg border border-line bg-card p-3">
+              <li key={file.path} className="flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-ink">Recording</p>
                   <audio controls src={file.url} className="mt-2 w-full" preload="none" />
@@ -249,7 +249,7 @@ export function SessionRecord({
         {texts.length > 0 ? (
           <ul className={cardGrid}>
             {texts.map((file) => (
-              <li key={file.path} className="flex min-h-28 flex-col justify-between rounded-lg border border-line bg-card p-3">
+              <li key={file.path} className="flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
                 <p className="text-sm font-medium text-ink">Text file</p>
                 <FileActions file={file} busy={busy} isHost={isHost} onDownload={download} onRemove={removeFile} />
               </li>
