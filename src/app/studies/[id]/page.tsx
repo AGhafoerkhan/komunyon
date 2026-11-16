@@ -469,6 +469,13 @@ function ShareStudy({ study }: { study: BibleStudy }) {
   );
 }
 
+function mapsHref(address: string): string {
+  const line = address.trim().replace(/\s+/g, ' ');
+  const lower = line.toLowerCase();
+  const place = lower.includes('hague') || lower.includes('den haag') ? line : `${line}, The Hague, Netherlands`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place)}`;
+}
+
 function HostPhone({ phone }: { phone: string | null }) {
   if (phone === null) return <p className="text-sm text-muted">Loading the host’s number…</p>;
   const dial = phone ? normalizePhone(phone) : null;
@@ -628,7 +635,12 @@ function StudyBody({
               {detailsState === 'loading' ? <p className="mt-2 text-sm text-muted">Loading the address…</p> : null}
               {detailsState === 'ready' && details ? (
                 <>
-                  <p className="mt-2 text-sm break-words whitespace-pre-wrap">{details.exactAddress}</p>
+                  <a
+                    href={mapsHref(details.exactAddress)}
+                    className="mt-2 block text-sm font-medium break-words whitespace-pre-wrap text-ink hover:text-canal"
+                  >
+                    {details.exactAddress}
+                  </a>
                   <h3 className="mt-4 text-sm font-medium">Entry notes</h3>
                   <p className="mt-2 text-sm whitespace-pre-wrap text-muted">
                     {details.entryNotes.trim() || 'No entry notes.'}
