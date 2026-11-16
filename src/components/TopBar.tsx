@@ -21,10 +21,9 @@ export function TopBar() {
           <Link
             href="/profile"
             aria-label="My profile"
-            className="inline-flex h-10 min-w-0 items-center gap-2 rounded-md px-1.5 text-sm hover:bg-sand sm:px-2"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-sand"
           >
             <Avatar src={profile?.photoURL ?? ''} name={name} size={28} />
-            <span className="hidden truncate sm:inline">My Profile</span>
           </Link>
           <Link href="/studies/new" className={`${buttonClass('primary', 'sm')} shrink-0`}>
             <span className="sm:hidden">Host</span>
