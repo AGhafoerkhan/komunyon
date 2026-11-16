@@ -32,6 +32,7 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const completed = isProfileReady(profile);
   const loggingOut = pathname === '/logout';
+  const atLogin = pathname === '/login';
 
   useEffect(() => {
     if (loggingOut) return;
@@ -43,7 +44,7 @@ export function RouteGuard({ children }: { children: ReactNode }) {
     if (error) return;
 
     if (!user) {
-      if (pathname !== '/' && !isSharedStudy(pathname)) router.replace('/');
+      if (pathname !== '/' && !atLogin && !isSharedStudy(pathname)) router.replace('/');
       return;
     }
     if (!completed && pathname !== '/onboarding') {
@@ -51,11 +52,11 @@ export function RouteGuard({ children }: { children: ReactNode }) {
       router.replace('/onboarding');
       return;
     }
-    if (completed && (pathname === '/' || pathname === '/onboarding')) {
+    if (completed && (pathname === '/' || pathname === '/onboarding' || atLogin)) {
       const next = peekStudyLink();
       router.replace(next ?? '/dashboard');
     }
-  }, [completed, configured, error, loading, loggingOut, pathname, router, user]);
+  }, [atLogin, completed, configured, error, loading, loggingOut, pathname, router, user]);
 
   if (loggingOut) return children;
   if (!configured && pathname !== '/') return <LoadingScreen label="Redirecting" />;
@@ -76,9 +77,9 @@ export function RouteGuard({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user && pathname !== '/' && !isSharedStudy(pathname)) return <LoadingScreen label="Redirecting" />;
+  if (!user && pathname !== '/' && pathname !== '/login' && !isSharedStudy(pathname)) return <LoadingScreen label="Redirecting" />;
   if (user && !completed && pathname !== '/onboarding') return <LoadingScreen label="Redirecting" />;
-  if (user && completed && (pathname === '/' || pathname === '/onboarding')) {
+  if (user && completed && (pathname === '/' || pathname === '/onboarding' || pathname === '/login')) {
     return <LoadingScreen label="Redirecting" />;
   }
 
