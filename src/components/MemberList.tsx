@@ -81,7 +81,7 @@ function PhoneLink({ phone }: { phone: string }) {
   const dial = normalizePhone(phone);
   if (!dial) return <p className="mt-0.5 text-xs text-muted">{phone}</p>;
   return (
-    <a href={`tel:${dial}`} className="mt-0.5 inline-block text-xs font-medium text-ink hover:text-canal">
+    <a href={`tel:${dial}`} className="mt-0.5 inline-block text-xs text-ink underline decoration-1 underline-offset-2 hover:text-canal">
       {phone}
     </a>
   );

@@ -481,7 +481,7 @@ function HostPhone({ phone }: { phone: string | null }) {
   const dial = phone ? normalizePhone(phone) : null;
   if (!dial) return <p className="text-sm text-muted">The host has no phone number saved.</p>;
   return (
-    <a href={`tel:${dial}`} className="text-sm font-medium text-ink hover:text-canal">
+    <a href={`tel:${dial}`} className="text-sm text-ink underline decoration-1 underline-offset-2 hover:text-canal">
       {phone}
     </a>
   );
@@ -637,7 +637,7 @@ function StudyBody({
                 <>
                   <a
                     href={mapsHref(details.exactAddress)}
-                    className="mt-2 block text-sm font-medium break-words whitespace-pre-wrap text-ink hover:text-canal"
+                    className="mt-2 block text-sm break-words whitespace-pre-wrap text-ink underline decoration-1 underline-offset-2 hover:text-canal"
                   >
                     {details.exactAddress}
                   </a>
