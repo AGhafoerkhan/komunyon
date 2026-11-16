@@ -122,6 +122,13 @@ export async function saveUserProfile(
   return profile;
 }
 
+export async function loadProfile(uid: string): Promise<UserProfile | null> {
+  const { db } = getFirebase();
+  const snap = await getDoc(doc(db, 'users', uid));
+  if (!snap.exists()) return null;
+  return parseUserProfile(snap.id, snap.data());
+}
+
 export async function searchProfiles(term: string): Promise<UserProfile[]> {
   const token = term.trim().toLowerCase().replace(/\s+/g, ' ');
   if (token.length < 2 || token.length > 24) return [];

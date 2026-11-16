@@ -12,6 +12,7 @@ import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { formatSchedule, spotsLabel } from '@/lib/format';
+import { loadProfile } from '@/lib/users';
 import {
   acceptInvite,
   approveMember,
@@ -63,6 +64,7 @@ export default function StudyPage() {
   const [heardRemoval, setHeardRemoval] = useState(false);
   const [removalsChecked, setRemovalsChecked] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [hostPhone, setHostPhone] = useState<string | null>(null);
   const seenAsMember = useRef(false);
 
   useEffect(() => {
@@ -136,6 +138,26 @@ export default function StudyPage() {
       },
     );
   }, [canReadPrivate, studyId]);
+
+  const approvedMember = Boolean(user && study && study.hostId !== user.uid && study.approvedUserIds.includes(user.uid));
+
+  useEffect(() => {
+    if (!approvedMember || !study) {
+      setHostPhone(null);
+      return;
+    }
+    let active = true;
+    void loadProfile(study.hostId)
+      .then((profile) => {
+        if (active) setHostPhone(profile?.phone.trim() ?? '');
+      })
+      .catch(() => {
+        if (active) setHostPhone('');
+      });
+    return () => {
+      active = false;
+    };
+  }, [approvedMember, study]);
 
   useEffect(() => {
     if (!study || !user || study.hostId !== user.uid) {
@@ -246,6 +268,7 @@ export default function StudyPage() {
           pendingRequests={pendingRequests}
           approvedMembers={approvedMembers}
           rosterReady={rosterReady}
+          hostPhone={hostPhone}
           onAccept={() => void run('accept', () => acceptInvite(study, user.uid))}
           onDeclineInvite={() =>
             void run('decline-invite', async () => {
@@ -424,6 +447,16 @@ function ShareStudy({ study }: { study: BibleStudy }) {
   );
 }
 
+function HostPhone({ phone }: { phone: string | null }) {
+  if (phone === null) return <p className="text-sm text-muted">Loading the host’s number…</p>;
+  if (!phone) return <p className="text-sm text-muted">The host has no phone number saved.</p>;
+  return (
+    <a href={`tel:${phone}`} className="text-sm font-medium text-ink hover:text-canal">
+      {phone}
+    </a>
+  );
+}
+
 function ShareIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -468,6 +501,7 @@ function StudyBody({
   pendingRequests,
   approvedMembers,
   rosterReady,
+  hostPhone,
   onAccept,
   onDeclineInvite,
   onRequest,
@@ -487,6 +521,7 @@ function StudyBody({
   pendingRequests: JoinRequest[];
   approvedMembers: JoinRequest[];
   rosterReady: boolean;
+  hostPhone: string | null;
   onAccept: () => void;
   onDeclineInvite: () => void;
   onRequest: () => void;
@@ -569,6 +604,14 @@ function StudyBody({
               ) : null}
               {detailsState === 'ready' && !details ? (
                 <p className="mt-2 text-sm text-muted">No private details saved yet.</p>
+              ) : null}
+              {role === 'approved' ? (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium">Host phone</h3>
+                  <div className="mt-2">
+                    <HostPhone phone={hostPhone} />
+                  </div>
+                </div>
               ) : null}
             </div>
           ) : (
