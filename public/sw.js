@@ -34,6 +34,22 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const path = event.notification.data && event.notification.data.href ? event.notification.data.href : '/dashboard';
+  const url = new URL(path, self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (new URL(client.url).origin !== self.location.origin) continue;
+        if ('navigate' in client) return client.navigate(url).then((next) => (next || client).focus());
+        return client.focus();
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});
+
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;

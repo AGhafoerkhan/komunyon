@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Avatar } from '@/components/ui';
+import { showDeviceNotice } from '@/lib/deviceNotices';
 import { loadDepartureNotices, loadJoinNotices, subscribeDepartures, subscribeHostedStudies, dismissDeparture, type HostNotice } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
@@ -13,6 +14,10 @@ export function JoinNotices() {
   const [requests, setRequests] = useState<HostNotice[]>([]);
   const [departures, setDepartures] = useState<HostNotice[]>([]);
   const [hosted, setHosted] = useState<BibleStudy[]>([]);
+  const [requestsReady, setRequestsReady] = useState(false);
+  const [departuresReady, setDeparturesReady] = useState(false);
+  const primed = useRef(false);
+  const seen = useRef<Set<string>>(new Set());
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
 
@@ -26,10 +31,14 @@ export function JoinNotices() {
         setHosted(studies);
         void loadJoinNotices(studies)
           .then((next) => {
-            if (active) setRequests(next);
+            if (!active) return;
+            setRequests(next);
+            setRequestsReady(true);
           })
           .catch(() => {
-            if (active) setRequests([]);
+            if (!active) return;
+            setRequests([]);
+            setRequestsReady(true);
           });
       },
       () => {
@@ -49,10 +58,14 @@ export function JoinNotices() {
       (records) => {
         void loadDepartureNotices(hosted, records)
           .then((next) => {
-            if (active) setDepartures(next);
+            if (!active) return;
+            setDepartures(next);
+            setDeparturesReady(true);
           })
           .catch(() => {
-            if (active) setDepartures([]);
+            if (!active) return;
+            setDepartures([]);
+            setDeparturesReady(true);
           });
       },
       () => {
@@ -82,6 +95,22 @@ export function JoinNotices() {
   }, [open]);
 
   const notices = [...requests, ...departures].sort((a, b) => b.at.localeCompare(a.at));
+
+  useEffect(() => {
+    if (!user || !requestsReady || !departuresReady || primed.current) return;
+    primed.current = true;
+    seen.current = new Set(notices.map((notice) => notice.id));
+  }, [user, requestsReady, departuresReady, notices]);
+
+  useEffect(() => {
+    if (!primed.current) return;
+    for (const notice of notices) {
+      if (seen.current.has(notice.id)) continue;
+      seen.current.add(notice.id);
+      if (document.hidden) void showDeviceNotice(notice);
+    }
+  }, [notices]);
+
   const count = notices.length;
   const label = count === 0 ? 'No notices' : `${count} ${count === 1 ? 'notice' : 'notices'}`;
 
