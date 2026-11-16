@@ -1,8 +1,6 @@
 import { type User } from 'firebase/auth';
 import { doc, getDoc, getDocs, query, setDoc, updateDoc, collection, where } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { getFirebase } from '@/lib/firebase';
-import { LIMITS } from '@/lib/limits';
 import { parseUserProfile } from '@/lib/parse';
 import type { UserProfile } from '@/types';
 
@@ -34,15 +32,6 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
   };
   await setDoc(ref, stub);
   return stub;
-}
-
-export async function uploadAvatar(uid: string, file: File): Promise<string> {
-  if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
-  if (file.size >= LIMITS.avatarBytes) throw new Error('Images need to be smaller than 5 MB.');
-  const { storage } = getFirebase();
-  const storageRef = ref(storage, `avatars/${uid}`);
-  await uploadBytes(storageRef, file, { contentType: file.type });
-  return getDownloadURL(storageRef);
 }
 
 async function syncHostedStudies(profile: UserProfile): Promise<void> {

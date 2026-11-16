@@ -76,8 +76,15 @@ export function LoadingScreen({ label = 'Loading' }: { label?: string }) {
   );
 }
 
+function displayPhoto(src: string): string {
+  if (src.startsWith('https://') || src.startsWith('blob:')) return src;
+  if (src.startsWith('data:image/jpeg;base64,')) return src;
+  return '';
+}
+
 export function Avatar({ src, name, size = 40 }: { src: string; name: string; size?: number }) {
   const [failed, setFailed] = useState(false);
+  const photo = displayPhoto(src);
   const initials =
     name
       .split(' ')
@@ -86,7 +93,7 @@ export function Avatar({ src, name, size = 40 }: { src: string; name: string; si
       .map((part) => part[0]?.toUpperCase() ?? '')
       .join('') || '?';
 
-  if (!src || failed) {
+  if (!photo || failed) {
     return (
       <span
         style={{ width: size, height: size }}
@@ -101,7 +108,7 @@ export function Avatar({ src, name, size = 40 }: { src: string; name: string; si
     // Firebase download URLs are tokenized and are not a fixed remote pattern.
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={photo}
       alt=""
       width={size}
       height={size}

@@ -11,4 +11,6 @@ export const LIMITS = {
   entryNotesMax: 1000,
   capacityMax: 100,
   avatarBytes: 5 * 1024 * 1024,
+  /** Matches `validPhoto` in firestore.rules. */
+  photoUrlMax: 24000,
 } as const;

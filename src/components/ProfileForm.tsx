@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Alert, Avatar, Button, Field, Spinner, fieldClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
@@ -19,9 +19,18 @@ export function ProfileForm({
   const [fullName, setFullName] = useState(initial.fullName);
   const [age, setAge] = useState(initial.age > 0 ? String(initial.age) : '');
   const [bio, setBio] = useState(initial.bio);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [preview, setPreview] = useState(accountPhoto);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!photo) return;
+    const url = URL.createObjectURL(photo);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,7 +48,7 @@ export function ProfileForm({
     setError(null);
     setSaved(false);
     try {
-      await saveProfile({ fullName: fullName.trim(), age: Number(age), bio: bio.trim() }, null);
+      await saveProfile({ fullName: fullName.trim(), age: Number(age), bio: bio.trim() }, photo);
       setSaved(true);
     } catch (failure) {
       setError(actionError(failure));
@@ -61,12 +70,23 @@ export function ProfileForm({
       ) : null}
 
       <div className="flex items-center gap-4">
-        <Avatar src={accountPhoto} name={fullName || 'Profile'} size={72} />
-        <p className="text-sm leading-relaxed text-muted">
-          {accountPhoto
-            ? 'This is the photo from your Google account. Hosts and other members can see it.'
-            : 'This Google account has no photo, so your initials are shown instead.'}
-        </p>
+        <Avatar src={preview} name={fullName || 'Profile'} size={72} />
+        <div className="text-sm leading-relaxed text-muted">
+          <p>
+            {accountPhoto
+              ? 'Your Google photo is used until you choose a different picture.'
+              : 'Choose a picture, or your initials are shown.'}
+          </p>
+          <label className="mt-2 inline-block cursor-pointer font-medium text-canal">
+            Choose a picture
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+            />
+          </label>
+        </div>
       </div>
 
       <Field label="Full name">

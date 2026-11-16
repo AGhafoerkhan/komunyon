@@ -109,8 +109,7 @@ service cloud.firestore {
         && data.hostAge is int
         && data.hostAge >= 1
         && data.hostAge <= 120
-        && data.hostPhotoURL is string
-        && data.hostPhotoURL.size() <= 2000
+        && validPhoto(data.hostPhotoURL)
         && data.title is string
         && data.title.size() > 0
         && data.title.size() <= 120
@@ -208,6 +207,17 @@ service cloud.firestore {
       ];
     }
 
+    function validPhoto(url) {
+      return url is string && (
+        url.size() == 0
+        || (url.size() <= 2000 && url.matches('^https://.+'))
+        || (
+          url.size() <= 24000
+          && url.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
+        )
+      );
+    }
+
     function emailOk(data) {
       return data.email is string
         && data.email.size() <= 200
@@ -225,8 +235,7 @@ service cloud.firestore {
         && data.age is int
         && data.age >= 1
         && data.age <= 120
-        && data.photoURL is string
-        && data.photoURL.size() <= 2000
+        && validPhoto(data.photoURL)
         && data.bio is string
         && data.bio.size() > 0
         && data.bio.size() <= 800;
@@ -239,8 +248,7 @@ service cloud.firestore {
         && data.age is int
         && data.age >= 0
         && data.age <= 120
-        && data.photoURL is string
-        && data.photoURL.size() <= 2000
+        && validPhoto(data.photoURL)
         && data.bio is string
         && data.bio.size() <= 800;
     }

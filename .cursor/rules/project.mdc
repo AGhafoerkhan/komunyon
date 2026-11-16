@@ -31,4 +31,4 @@ await updateDoc(doc(db, 'studies', studyId), {
 });
 ```
 
-A profile photo is the Google account photo URL. Custom uploads belong in Storage at `avatars/{uid}`, and only that user may write the object. Storage needs the Blaze plan, so the app does not require an upload.
+A profile photo is the Google account photo URL, or a small JPEG stored on `users/{uid}`. The app does not use Cloud Storage.

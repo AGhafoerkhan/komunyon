@@ -7,8 +7,8 @@ export type StudyFormat = 'recurring' | 'one-off';
 export type JoinRequestStatus = 'pending' | 'approved' | 'declined';
 
 /**
- * `users/{uid}`. `photoURL` is the download URL for Storage object `avatars/{uid}`.
- * `profileCompleted` stays false until name, age, photo, and bio are saved.
+ * `users/{uid}`. `photoURL` is a Google account URL or a small JPEG stored on this document.
+ * `profileCompleted` stays false until name, age, and bio are saved.
  */
 export interface UserProfile {
   uid: string;

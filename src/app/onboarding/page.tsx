@@ -20,7 +20,7 @@ export default function OnboardingPage() {
         <p className="text-sm font-medium text-canal">The Hague</p>
         <h1 className="mt-2 font-serif text-4xl">Set up your profile</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Hosts see your name, age, Google photo, and bio when you request a place. You can change the written details later.
+          Hosts see your name, age, photo, and bio when you request a place. You can change these later.
         </p>
         <ProfileForm mode="onboarding" initial={profile} />
       </main>
