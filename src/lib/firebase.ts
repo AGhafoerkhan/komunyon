@@ -14,7 +14,6 @@ import {
   type User,
 } from 'firebase/auth';
 import { firebaseErrorCode } from '@/lib/errors';
-import { loginLog, markRedirectStarted, returnTripLines, takeRedirectMarker } from '@/lib/loginDebug';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
@@ -74,37 +73,12 @@ export function warmUpGoogleSignIn(auth: Auth): void {
 
 let redirectResultRead = false;
 
-export function loginSignInMode(): 'redirect' | 'popup' {
-  return prefersRedirectSignIn() ? 'redirect' : 'popup';
-}
-
-export function currentAuthDomain(): string {
-  return readConfig().authDomain;
-}
-
 export async function completeRedirectSignIn(auth: Auth): Promise<void> {
-  if (redirectResultRead) {
-    loginLog('redirect result already read on this page load');
-    return;
-  }
+  if (redirectResultRead) return;
   redirectResultRead = true;
-  const cameBack = takeRedirectMarker();
-  loginLog(cameBack ? 'same tab came back from Google' : 'no redirect marker on this page');
-  for (const line of returnTripLines()) loginLog(line);
-  loginLog(`reading redirect result, auth domain ${readConfig().authDomain}`);
-  try {
-    const result = await getRedirectResult(auth);
-    if (!result) {
-      loginLog(cameBack ? 'redirect result: none, so the dashboard was not opened' : 'redirect result: none');
-      return;
-    }
-    loginLog(`redirect result: logged in, uid ${result.user.uid}`);
-    await setPersistence(auth, browserLocalPersistence);
-    loginLog('login saved on this phone');
-  } catch (error) {
-    loginLog(`redirect result failed: ${firebaseErrorCode(error) ?? 'unknown'}`);
-    throw error;
-  }
+  const result = await getRedirectResult(auth);
+  if (!result) return;
+  await setPersistence(auth, browserLocalPersistence);
 }
 
 /** Firefox and iPhone never finish a Google popup. Chrome, including Chrome on a phone, does. */
@@ -117,12 +91,8 @@ function prefersRedirectSignIn(): boolean {
 }
 
 async function redirectGoogleSignIn(auth: Auth, provider: GoogleAuthProvider): Promise<void> {
-  loginLog('sign-in method: redirect');
   await setPersistence(auth, browserSessionPersistence);
-  loginLog(`persistence set to this tab, auth domain ${readConfig().authDomain}`);
-  markRedirectStarted();
   await signInWithRedirect(auth, provider);
-  loginLog('redirect started');
 }
 
 export async function signInWithGoogleAccount(auth: Auth): Promise<void> {
@@ -133,15 +103,10 @@ export async function signInWithGoogleAccount(auth: Auth): Promise<void> {
     return;
   }
   warmUpGoogleSignIn(auth);
-  loginLog('sign-in method: popup');
   try {
     await signInWithPopup(auth, provider);
-    loginLog('popup finished');
   } catch (error) {
-    const code = firebaseErrorCode(error) ?? 'unknown';
-    loginLog(`popup failed: ${code}`);
-    if (code !== 'auth/popup-blocked') throw error;
-    loginLog('popup was blocked, switching to redirect');
+    if (firebaseErrorCode(error) !== 'auth/popup-blocked') throw error;
     await redirectGoogleSignIn(auth, provider);
   }
 }

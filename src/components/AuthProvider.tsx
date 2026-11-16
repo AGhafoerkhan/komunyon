@@ -10,10 +10,8 @@ import {
   signInWithGoogleAccount,
   warmUpGoogleSignIn,
 } from '@/lib/firebase';
-import { loginLog, captureLoginDebugRequest } from '@/lib/loginDebug';
 import { photoFromFile } from '@/lib/avatar';
 import { loadOrCreateProfile, saveUserProfile } from '@/lib/users';
-import { isProfileReady } from '@/lib/validate';
 import type { UserProfile } from '@/types';
 
 interface ProfileInput {
@@ -51,36 +49,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!configured) return;
-    captureLoginDebugRequest();
     let requestId = 0;
     let unsubscribe = () => {};
     let cancelled = false;
     const { auth } = getFirebase();
-    loginLog(`auth starting, current user ${auth.currentUser ? 'present' : 'none'}`);
     warmUpGoogleSignIn(auth);
     void (async () => {
       try {
         await completeRedirectSignIn(auth);
       } catch (redirectError: unknown) {
-        loginLog(`redirect sign-in error: ${actionError(redirectError)}`);
         if (!cancelled) setSignInError(actionError(redirectError));
       }
       if (cancelled) return;
       unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         const current = ++requestId;
         if (!firebaseUser) {
-          loginLog('auth state: logged out');
           setUser(null);
           setProfile(null);
           setError(null);
           setLoading(false);
           return;
         }
-        loginLog(`auth state: logged in, uid ${firebaseUser.uid}`);
         void loadOrCreateProfile(firebaseUser)
           .then((nextProfile) => {
             if (current !== requestId || cancelled) return;
-            loginLog(`profile ${isProfileReady(nextProfile) ? 'ready' : 'incomplete'}`);
             setUser(firebaseUser);
             setProfile(nextProfile);
             setError(null);
@@ -88,7 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
           .catch((loadError: unknown) => {
             if (current !== requestId || cancelled) return;
-            loginLog(`profile failed: ${actionError(loadError)}`);
             setUser(firebaseUser);
             setProfile(null);
             setError(actionError(loadError));
@@ -117,20 +108,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signInWithGoogle() {
         setSignInError(null);
-        loginLog('sign-in clicked');
         try {
           await signInWithGoogleAccount(getFirebase().auth);
-        } catch (error) {
-        loginLog(`sign-in stopped: ${actionError(error)}`);
-        setSignInError(actionError(error));
-        throw error;
+        } catch (signInFailure) {
+          setSignInError(actionError(signInFailure));
+          throw signInFailure;
         }
       },
       async signOutUser() {
         const { auth } = getFirebase();
-        loginLog('sign out clicked');
         await signOut(auth);
-        loginLog('signed out');
         setUser(null);
         setProfile(null);
       },
