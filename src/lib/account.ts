@@ -2,6 +2,7 @@ import { deleteUser, type User } from 'firebase/auth';
 import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { firebaseErrorCode } from '@/lib/errors';
 import { getFirebase, reauthenticateGoogleAccount } from '@/lib/firebase';
+import { deleteProfilePhoto } from '@/lib/photos';
 import { cancelRequest, declineInvite, deleteStudy, leaveStudy } from '@/lib/studies';
 
 const DELETE_ACCOUNT_KEY = 'komunyon-delete-account';
@@ -48,6 +49,7 @@ async function wipeAccount(user: User): Promise<void> {
   for (const studyId of pending) await cancelRequest(studyId, uid);
 
   await deleteDoc(doc(getFirebase().db, 'users', uid));
+  await deleteProfilePhoto(uid);
   await deleteUser(user);
 }
 

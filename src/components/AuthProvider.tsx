@@ -11,7 +11,7 @@ import {
   signInWithGoogleAccount,
   warmUpGoogleSignIn,
 } from '@/lib/firebase';
-import { photoFromFile } from '@/lib/avatar';
+import { uploadProfilePhoto } from '@/lib/photos';
 import { loadOrCreateProfile, saveUserProfile } from '@/lib/users';
 import type { UserProfile } from '@/types';
 
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async saveProfile(input, photo) {
         if (!user) throw new Error('You need to be signed in.');
-        const photoURL = photo ? await photoFromFile(photo) : profile?.photoURL || user.photoURL || '';
+        const photoURL = photo ? await uploadProfilePhoto(user.uid, photo) : profile?.photoURL || user.photoURL || '';
         const next = await saveUserProfile(user, { ...input, photoURL }, profile);
         setProfile(next);
       },

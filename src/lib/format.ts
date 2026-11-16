@@ -96,3 +96,37 @@ export function cancellationNote(
   if (resume === isoDate(following)) return 'This week is canceled. Bible study will proceed next week.';
   return `This week is canceled. Bible study will proceed on ${formatDdMmYyyy(resume)}.`;
 }
+
+/** Sessions that have already started, newest first. Canceled weeks are left out. */
+export function pastSessions(
+  study: Pick<BibleStudy, 'format' | 'dayOfWeek' | 'date' | 'time' | 'skippedDates'>,
+  count = 8,
+  now = new Date(),
+): string[] {
+  if (study.format === 'one-off') {
+    return study.date && isIsoDate(study.date) && sessionStarted(study.date, study.time, now) ? [study.date] : [];
+  }
+  if (study.format !== 'recurring' || study.dayOfWeek === null) return [];
+  const skipped = new Set(study.skippedDates);
+  const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!(cursor.getDay() === study.dayOfWeek && meetingHasPassed(now, study.time))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  while (cursor.getDay() !== study.dayOfWeek) cursor.setDate(cursor.getDate() - 1);
+  const dates: string[] = [];
+  for (let guard = 0; dates.length < count && guard < 60; guard += 1) {
+    const iso = isoDate(cursor);
+    if (!skipped.has(iso)) dates.push(iso);
+    cursor.setDate(cursor.getDate() - 7);
+  }
+  return dates;
+}
+
+function sessionStarted(iso: string, time: string, now: Date): boolean {
+  const [year, month, day] = iso.split('-').map(Number);
+  const meeting = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (meeting < today) return true;
+  if (meeting > today) return false;
+  return meetingHasPassed(now, time);
+}

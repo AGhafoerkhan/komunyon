@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { InvitePeople } from '@/components/InvitePeople';
 import { MemberList } from '@/components/MemberList';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
+import { SessionPhotos } from '@/components/SessionPhotos';
 import { useAuth } from '@/components/AuthProvider';
 import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
@@ -704,6 +705,12 @@ function StudyBody({
           ) : null}
         </aside>
       </div>
+
+      {role === 'host' || role === 'approved' ? (
+        <div className="mt-8">
+          <SessionPhotos study={study} isHost={role === 'host'} />
+        </div>
+      ) : null}
 
       {role === 'approved' ? (
         <div className="mt-8">

@@ -37,3 +37,28 @@ function renderJpeg(bitmap: ImageBitmap, edge: number, quality: number): string 
   context.drawImage(bitmap, 0, 0, width, height);
   return canvas.toDataURL('image/jpeg', quality);
 }
+
+/** A JPEG file small enough to store, still large enough to look at. */
+export async function jpegBlob(file: File, edge: number): Promise<Blob> {
+  if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
+  if (file.size >= LIMITS.avatarBytes) throw new Error('Images need to be smaller than 5 MB.');
+  const bitmap = await createImageBitmap(file).catch(() => {
+    throw new Error('This picture could not be read. Choose a JPEG or PNG.');
+  });
+  try {
+    const scale = Math.min(1, edge / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('This browser could not prepare the picture.');
+    context.drawImage(bitmap, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+    if (!blob) throw new Error('This picture could not be saved.');
+    return blob;
+  } finally {
+    bitmap.close();
+  }
+}
