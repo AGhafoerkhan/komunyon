@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { Avatar, buttonClass } from '@/components/ui';
 
 export function TopBar() {
-  const { profile, signOutUser } = useAuth();
+  const { profile } = useAuth();
   const name = profile?.fullName || 'My Profile';
 
   return (
@@ -24,9 +24,6 @@ export function TopBar() {
             <Avatar src={profile?.photoURL ?? ''} name={name} size={28} />
             <span className="hidden truncate sm:inline">My Profile</span>
           </Link>
-          <button type="button" onClick={() => void signOutUser()} className={`${buttonClass('ghost', 'sm')} px-2`}>
-            Sign out
-          </button>
           <Link href="/studies/new" className={`${buttonClass('primary', 'sm')} shrink-0`}>
             <span className="sm:hidden">Host</span>
             <span className="hidden sm:inline">Host a study</span>
