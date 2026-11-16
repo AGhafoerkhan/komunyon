@@ -12,6 +12,7 @@ import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
+import { normalizePhone } from '@/lib/validate';
 import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
 import { loadProfile } from '@/lib/users';
 import {
@@ -470,9 +471,10 @@ function ShareStudy({ study }: { study: BibleStudy }) {
 
 function HostPhone({ phone }: { phone: string | null }) {
   if (phone === null) return <p className="text-sm text-muted">Loading the host’s number…</p>;
-  if (!phone) return <p className="text-sm text-muted">The host has no phone number saved.</p>;
+  const dial = phone ? normalizePhone(phone) : null;
+  if (!dial) return <p className="text-sm text-muted">The host has no phone number saved.</p>;
   return (
-    <a href={`tel:${phone}`} className="text-sm font-medium text-ink hover:text-canal">
+    <a href={`tel:${dial}`} className="text-sm font-medium text-ink hover:text-canal">
       {phone}
     </a>
   );

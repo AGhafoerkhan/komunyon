@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { Avatar } from '@/components/ui';
+import { normalizePhone } from '@/lib/validate';
 import type { JoinRequest } from '@/types';
 
 export function MemberList({
@@ -52,7 +53,7 @@ export function MemberList({
                     {request.profileMissing ? null : <span className="font-normal text-muted"> · {request.age}</span>}
                   </p>
                   {request.place ? <p className="mt-0.5 text-xs text-muted">{request.place}</p> : null}
-                  {showPhone && request.phone ? <p className="mt-0.5 text-xs text-muted">{request.phone}</p> : null}
+                  {showPhone && request.phone ? <PhoneLink phone={request.phone} /> : null}
                   {request.profileMissing || request.bio.length === 0 ? null : (
                     <p className="mt-1 line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap text-muted">
                       {request.bio}
@@ -70,5 +71,15 @@ export function MemberList({
         </ul>
       )}
     </section>
+  );
+}
+
+function PhoneLink({ phone }: { phone: string }) {
+  const dial = normalizePhone(phone);
+  if (!dial) return <p className="mt-0.5 text-xs text-muted">{phone}</p>;
+  return (
+    <a href={`tel:${dial}`} className="mt-0.5 inline-block text-xs font-medium text-ink hover:text-canal">
+      {phone}
+    </a>
   );
 }
