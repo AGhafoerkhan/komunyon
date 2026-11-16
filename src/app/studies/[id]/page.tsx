@@ -216,8 +216,12 @@ export default function StudyPage() {
         ← All studies
       </Link>
 
-      {!loaded || (blocked && !removalsChecked && !removed) ? (
+      {!loaded || (blocked && !study && !removalsChecked && !removed) ? (
         <p className="mt-6 text-sm text-muted">Loading study…</p>
+      ) : !study && !blocked ? (
+        <div className="mt-6">
+          <p className="font-serif text-3xl">This study is no longer listed.</p>
+        </div>
       ) : showRemoved ? (
         <div className="mt-6 max-w-xl">
           <p className="font-serif text-3xl">The host removed you from this study.</p>
@@ -231,11 +235,7 @@ export default function StudyPage() {
           <p className="font-serif text-3xl">This study is private.</p>
           <p className="mt-3 text-sm leading-relaxed text-muted">Ask the host for an invite. The address stays hidden until then.</p>
         </div>
-      ) : !study ? (
-        <div className="mt-6">
-          {error ? <Alert>{error}</Alert> : <p className="font-serif text-3xl">This study is no longer listed.</p>}
-        </div>
-      ) : (
+      ) : study ? (
         <StudyBody
           study={study}
           role={roleFor(study, user.uid)}
@@ -261,7 +261,7 @@ export default function StudyPage() {
           onDecline={(request) => void run(`decline:${request.userId}`, () => declineMember(study.id, request.userId))}
           onAskRemove={(request) => ask({ kind: 'remove', userId: request.userId, name: request.fullName })}
         />
-      )}
+      ) : null}
       {dialog && confirm && study ? (
         <ConfirmDialog
           title={dialog.title}

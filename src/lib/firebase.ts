@@ -4,10 +4,13 @@ import {
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
+  reauthenticateWithPopup,
+  reauthenticateWithRedirect,
   setPersistence,
   signInWithPopup,
   signInWithRedirect,
   type Auth,
+  type User,
 } from 'firebase/auth';
 import { firebaseErrorCode } from '@/lib/errors';
 import { getFirestore, type Firestore } from 'firebase/firestore';
@@ -94,6 +97,25 @@ export async function signInWithGoogleAccount(auth: Auth): Promise<void> {
     if (firebaseErrorCode(error) !== 'auth/popup-blocked') throw error;
     await setPersistence(auth, browserLocalPersistence);
     await signInWithRedirect(auth, provider);
+  }
+}
+
+/** Google must be confirmed again before Firebase will delete the account. */
+export async function reauthenticateGoogleAccount(user: User): Promise<'redirect' | 'popup'> {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  if (prefersRedirectSignIn()) {
+    await reauthenticateWithRedirect(user, provider);
+    return 'redirect';
+  }
+  warmUpGoogleSignIn(getFirebase().auth);
+  try {
+    await reauthenticateWithPopup(user, provider);
+    return 'popup';
+  } catch (error) {
+    if (firebaseErrorCode(error) !== 'auth/popup-blocked') throw error;
+    await reauthenticateWithRedirect(user, provider);
+    return 'redirect';
   }
 }
 

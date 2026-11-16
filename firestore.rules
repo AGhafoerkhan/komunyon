@@ -378,6 +378,7 @@ service cloud.firestore {
             resource.data.hostId == request.auth.uid
             || isUidOn(resource.data, 'invitedUserIds')
             || isUidOn(resource.data, 'approvedUserIds')
+            || isUidOn(resource.data, 'pendingUserIds')
           )
         );
 

@@ -14,7 +14,13 @@ export function actionError(error: unknown): string {
         return 'You do not have permission to do that. Deploy firestore.rules and try again.';
       case 'auth/popup-closed-by-user':
       case 'auth/cancelled-popup-request':
+      case 'auth/user-cancelled':
         return 'Sign-in was cancelled.';
+      case 'auth/user-mismatch':
+      case 'auth/credential-already-in-use':
+        return 'Use the same Google account to confirm deletion.';
+      case 'auth/requires-recent-login':
+        return 'Confirm Google again, then the account can be deleted.';
       case 'auth/popup-blocked':
         return 'The browser blocked the Google window. Allow popups for this site and try again.';
       case 'auth/unauthorized-domain':

@@ -16,7 +16,7 @@ Bible studies and communion groups in The Hague only. Next.js App Router, TypeSc
 
 ## Firestore
 
-- `users/{uid}` — a user may write only their own profile. A finished profile needs a picture, name, age, country, city, phone number, and a Hague neighbourhood when the city is The Hague. Bio is optional.
+- `users/{uid}` — a user may write only their own profile, and may delete that profile. A finished profile needs a picture, name, age, country, city, phone number, and a Hague neighbourhood when the city is The Hague. Bio is optional. Deleting the account also deletes every study they host and removes them from studies they joined. An open study then says it is no longer listed.
 - `studies/{studyId}` — a direct link can be read without an account, so the shared page can show the study card. The city list still includes a study only when `isPublic` is true or the field is missing. `isPublic: false` is listed only for a signed-in `hostId`, uids in `invitedUserIds`, and uids in `approvedUserIds`. Host snapshot, neighbourhood, schedule, capacity, tags (`bible-study`, `prayer`, `worship`, `communion`), `pendingUserIds`, `approvedUserIds`, `invitedUserIds`. The street address is never on this document.
 - `studies/{studyId}/private/details` — `exactAddress` and `entryNotes` only. Readable by `hostId` and uids in `approvedUserIds`. Writable by the host.
 - `studies/{studyId}/notices/{uid}` — a member may write only their own notice: “left” while approved, “cancelled” while pending, or “accepted” / “declined” while invited. The host may write a “removed” notice for someone still approved, and may read and delete notices. The member may read and delete their own notice.
