@@ -51,9 +51,11 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-dvh w-full flex-col">
-      <header className="flex w-full items-center justify-between gap-4 border-b border-line px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 lg:px-12">
-        <span className="font-serif text-lg">Komunyon</span>
-        <span className="text-sm text-muted">The Hague</span>
+      <header className="w-full border-b border-line">
+        <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
+          <span className="font-serif text-lg">Komunyon</span>
+          <span className="text-sm text-muted">The Hague</span>
+        </div>
       </header>
 
       <main className="w-full">
@@ -113,13 +115,11 @@ export default function HomePage() {
         </Band>
 
         <Band>
-          <div className="flex w-full flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0 flex-1">
-              <h2 className="font-serif text-2xl leading-snug font-normal sm:text-3xl">Start now</h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
-                Sign in, then host a study or request to join one. After that, you get the information.
-              </p>
-            </div>
+          <h2 className="font-serif text-2xl leading-snug font-normal sm:text-3xl">Start now</h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
+            Sign in, then host a study or request to join one. After that, you get the information.
+          </p>
+          <div className="mt-6">
             <Access
               configured={configured}
               missing={missing}
@@ -158,9 +158,11 @@ export default function HomePage() {
         </Band>
       </main>
 
-      <footer className="w-full border-t border-line px-5 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-sm text-muted sm:px-8 lg:px-12">
-        <p>Komunyon · The Hague</p>
-        <p className="mt-1">Hosts approve each person. You can host, and you can join.</p>
+      <footer className="w-full border-t border-line pb-[max(1.5rem,env(safe-area-inset-bottom))] text-sm text-muted">
+        <div className="mx-auto w-full max-w-2xl px-5 py-6 text-center">
+          <p>Komunyon · The Hague</p>
+          <p className="mt-1">Hosts approve each person. You can host, and you can join.</p>
+        </div>
       </footer>
     </div>
   );
@@ -176,12 +178,12 @@ function Band({
   rule?: boolean;
 }) {
   return (
-    <section className={`flex w-full bg-paper text-ink ${rule ? 'border-t border-line' : ''} ${fill ? 'min-h-dvh' : ''}`}>
-      <div
-        className={`flex w-full flex-col justify-center px-5 sm:px-8 lg:px-12 ${
-          fill ? 'py-12' : 'py-12 sm:py-16'
-        }`}
-      >
+    <section
+      className={`flex w-full items-center justify-center bg-paper text-ink ${rule ? 'border-t border-line' : ''} ${
+        fill ? 'min-h-dvh' : ''
+      }`}
+    >
+      <div className={`mx-auto flex w-full max-w-2xl flex-col items-center justify-center px-5 text-center ${fill ? 'py-12' : 'py-12 sm:py-16'}`}>
         {children}
       </div>
     </section>
@@ -221,7 +223,7 @@ function Access({
   }
 
   return (
-    <div className="flex w-full shrink-0 flex-col items-stretch gap-3 sm:w-auto sm:items-start">
+    <div className="flex w-full flex-col items-center gap-3">
       {message ? <Alert>{message}</Alert> : null}
       <button
         type="button"
