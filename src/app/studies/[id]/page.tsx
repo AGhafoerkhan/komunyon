@@ -216,8 +216,8 @@ export default function StudyPage() {
         </div>
       ) : blocked ? (
         <div className="mt-6 max-w-xl">
-          <p className="font-serif text-3xl">The host removed you from this study.</p>
-          <p className="mt-3 text-sm leading-relaxed text-muted">You no longer have the address.</p>
+          <p className="font-serif text-3xl">This study is private.</p>
+          <p className="mt-3 text-sm leading-relaxed text-muted">Ask the host for an invite. The address stays hidden until then.</p>
         </div>
       ) : !study ? (
         <div className="mt-6">
@@ -275,6 +275,70 @@ export default function StudyPage() {
         />
       ) : null}
     </AppShell>
+  );
+}
+
+function ShareStudy({ study }: { study: BibleStudy }) {
+  const [copied, setCopied] = useState(false);
+
+  async function onShare() {
+    const url = `${window.location.origin}/studies/${study.id}`;
+    const phone = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (phone && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: study.title,
+          text: `${study.title} · ${study.area}`,
+          url,
+        });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const field = document.createElement('textarea');
+      field.value = url;
+      field.setAttribute('readonly', '');
+      document.body.appendChild(field);
+      field.select();
+      document.execCommand('copy');
+      field.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 4000);
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => void onShare()}
+        aria-label="Share study"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-md text-ink hover:bg-sand"
+      >
+        <ShareIcon />
+      </button>
+      {copied ? (
+        <p role="status" className="absolute top-11 right-0 whitespace-nowrap text-xs text-canal">
+          Share link copied
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M8 10.5 14.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 9.5 14.5 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="5.5" cy="10" r="2.25" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="15" cy="5.25" r="2.25" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="15" cy="14.75" r="2.25" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
   );
 }
 
@@ -353,9 +417,12 @@ function StudyBody({
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <article>
-          <div className="flex flex-wrap items-center gap-2">
-            <FormatBadge format={study.format} />
-            <span className="text-sm text-muted">{study.area}</span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <FormatBadge format={study.format} />
+              <span className="text-sm text-muted">{study.area}</span>
+            </div>
+            {study.isPublic || role === 'host' ? <ShareStudy study={study} /> : null}
           </div>
           <h1 className="mt-3 font-serif text-3xl leading-tight break-words sm:text-4xl">{study.title}</h1>
           {study.tags.length > 0 ? (
