@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { InvitePeople } from '@/components/InvitePeople';
 import { MemberList } from '@/components/MemberList';
 import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
@@ -11,8 +12,10 @@ import { Alert, Avatar, Button, FormatBadge, LoadingScreen, TagList, buttonClass
 import { actionError } from '@/lib/errors';
 import { formatSchedule, spotsLabel } from '@/lib/format';
 import {
+  acceptInvite,
   approveMember,
   cancelRequest,
+  declineInvite,
   declineMember,
   deleteStudy,
   leaveStudy,
@@ -24,7 +27,7 @@ import {
 } from '@/lib/studies';
 import type { BibleStudy, JoinRequest, PrivateStudyDetails } from '@/types';
 
-type Role = 'host' | 'approved' | 'pending' | 'visitor';
+type Role = 'host' | 'approved' | 'invited' | 'pending' | 'visitor';
 
 type ConfirmAction =
   | { kind: 'leave' }
@@ -34,6 +37,7 @@ type ConfirmAction =
 function roleFor(study: BibleStudy, uid: string): Role {
   if (study.hostId === uid) return 'host';
   if (study.approvedUserIds.includes(uid)) return 'approved';
+  if (study.invitedUserIds.includes(uid)) return 'invited';
   if (study.pendingUserIds.includes(uid)) return 'pending';
   return 'visitor';
 }
@@ -171,6 +175,13 @@ export default function StudyPage() {
           pendingRequests={pendingRequests}
           approvedMembers={approvedMembers}
           rosterReady={rosterReady}
+          onAccept={() => void run('accept', () => acceptInvite(study, user.uid))}
+          onDeclineInvite={() =>
+            void run('decline-invite', async () => {
+              await declineInvite(study.id, user.uid);
+              router.push('/invites');
+            })
+          }
           onRequest={() => void run('join', () => requestToJoin(study.id, user.uid))}
           onCancel={() => void run('cancel', () => cancelRequest(study.id, user.uid))}
           onAskLeave={() => ask({ kind: 'leave' })}
@@ -240,6 +251,8 @@ function StudyBody({
   pendingRequests,
   approvedMembers,
   rosterReady,
+  onAccept,
+  onDeclineInvite,
   onRequest,
   onCancel,
   onAskLeave,
@@ -257,6 +270,8 @@ function StudyBody({
   pendingRequests: JoinRequest[];
   approvedMembers: JoinRequest[];
   rosterReady: boolean;
+  onAccept: () => void;
+  onDeclineInvite: () => void;
   onRequest: () => void;
   onCancel: () => void;
   onAskLeave: () => void;
@@ -340,10 +355,24 @@ function StudyBody({
             <div className="rounded-lg border border-line bg-card p-4">
               <h2 className="text-sm font-medium">Address</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted">
-                {study.area}. The street address and entry notes unlock after the host approves you.
+                {role === 'invited'
+                  ? `${study.area}. Accept the invite to unlock the street address.`
+                  : `${study.area}. The street address and entry notes unlock after the host approves you.`}
               </p>
             </div>
           )}
+
+          {role === 'invited' ? (
+            <div className="flex flex-col gap-2">
+              <Button className="w-full" onClick={onAccept} disabled={full || busy !== null}>
+                Accept invite
+              </Button>
+              <Button className="w-full" variant="secondary" onClick={onDeclineInvite} disabled={busy !== null}>
+                Decline
+              </Button>
+              {full ? <p className="text-xs text-muted">This study is full.</p> : null}
+            </div>
+          ) : null}
 
           {role === 'visitor' ? (
             <div className="flex flex-col gap-2">
@@ -384,6 +413,7 @@ function StudyBody({
 
       {role === 'host' ? (
         <div className="mt-8 grid gap-4">
+          <InvitePeople study={study} />
           {!rosterReady ? <p className="text-sm text-muted">Loading requests…</p> : null}
           {full ? (
             <p className="text-sm text-muted">

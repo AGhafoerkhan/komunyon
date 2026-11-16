@@ -31,13 +31,18 @@ service cloud.firestore {
       return !study.keys().hasAny(['isPublic']) || study.isPublic == true;
     }
 
+    function isUidOn(study, field) {
+      return study.keys().hasAny([field])
+        && study[field] is list
+        && study[field].hasAny([request.auth.uid]);
+    }
+
     function canReadPrivate(study) {
       return signedIn()
         && (
           study.hostId == request.auth.uid
           || (
-            studyIsListed(study)
-            && study.approvedUserIds is list
+            study.approvedUserIds is list
             && study.approvedUserIds.hasAny([request.auth.uid])
           )
         );
@@ -86,6 +91,7 @@ service cloud.firestore {
         'isPublic',
         'pendingUserIds',
         'approvedUserIds',
+        'invitedUserIds',
         'createdAt',
         'updatedAt'
       ];
@@ -151,6 +157,10 @@ service cloud.firestore {
         && data.pendingUserIds.size() <= 200
         && data.approvedUserIds is list
         && data.approvedUserIds.size() <= data.maxCapacity
+        && (!data.keys().hasAny(['invitedUserIds']) || (
+          data.invitedUserIds is list
+          && data.invitedUserIds.size() <= 40
+        ))
         && data.createdAt is string
         && data.createdAt.size() <= 40
         && data.updatedAt is string
@@ -216,11 +226,37 @@ service cloud.firestore {
         && validPublicStudy(request.resource.data);
     }
 
+    function selfAcceptsInvite() {
+      return signedIn()
+        && request.auth.uid != resource.data.hostId
+        && isUidOn(resource.data, 'invitedUserIds')
+        && resource.data.approvedUserIds.size() < resource.data.maxCapacity
+        && selfRemovedFrom(resource.data.invitedUserIds, request.resource.data.invitedUserIds)
+        && selfAddedTo(resource.data.approvedUserIds, request.resource.data.approvedUserIds)
+        && (
+          onlyTouched(['invitedUserIds', 'approvedUserIds', 'updatedAt'])
+          || (
+            onlyTouched(['invitedUserIds', 'approvedUserIds', 'pendingUserIds', 'updatedAt'])
+            && selfRemovedFrom(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
+          )
+        )
+        && validPublicStudy(request.resource.data);
+    }
+
+    function selfDeclinesInvite() {
+      return signedIn()
+        && isUidOn(resource.data, 'invitedUserIds')
+        && onlyTouched(['invitedUserIds', 'updatedAt'])
+        && selfRemovedFrom(resource.data.invitedUserIds, request.resource.data.invitedUserIds)
+        && validPublicStudy(request.resource.data);
+    }
+
     function profileKeys() {
       return [
         'uid',
         'email',
         'fullName',
+        'nameTokens',
         'age',
         'photoURL',
         'bio',
@@ -276,10 +312,16 @@ service cloud.firestore {
         && data.bio.size() <= 800;
     }
 
+    function validNameTokens(data) {
+      return !data.keys().hasAny(['nameTokens'])
+        || (data.nameTokens is list && data.nameTokens.size() <= 120);
+    }
+
     function validProfile(uid) {
       return request.resource.data.keys().hasOnly(profileKeys())
         && request.resource.data.uid == uid
         && emailOk(request.resource.data)
+        && validNameTokens(request.resource.data)
         && request.resource.data.createdAt is string
         && request.resource.data.createdAt.size() <= 40
         && request.resource.data.updatedAt is string
@@ -302,12 +344,17 @@ service cloud.firestore {
 
     match /studies/{studyId} {
       allow read: if signedIn() && (
-        resource.data.hostId == request.auth.uid || studyIsListed(resource.data)
+        resource.data.hostId == request.auth.uid
+        || studyIsListed(resource.data)
+        || isUidOn(resource.data, 'invitedUserIds')
+        || isUidOn(resource.data, 'approvedUserIds')
       );
 
       allow create: if signedIn()
         && request.resource.data.hostId == request.auth.uid
         && request.resource.data.isPublic is bool
+        && request.resource.data.invitedUserIds is list
+        && request.resource.data.invitedUserIds.size() == 0
         && validPublicStudy(request.resource.data)
         && validTagList(request.resource.data.tags)
         && request.resource.data.pendingUserIds.size() == 0
@@ -321,6 +368,8 @@ service cloud.firestore {
         || selfRequestsToJoin()
         || selfCancelsRequest()
         || selfLeavesGroup()
+        || selfAcceptsInvite()
+        || selfDeclinesInvite()
         || (
           signedIn()
           && !resource.data.keys().hasAny(['isPublic'])

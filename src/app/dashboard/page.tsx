@@ -7,7 +7,12 @@ import { AppShell } from '@/components/TopBar';
 import { useAuth } from '@/components/AuthProvider';
 import { Alert, LoadingScreen, buttonClass, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { markUnlistedStudiesPublic, subscribeHostedStudies, subscribePublicStudies } from '@/lib/studies';
+import {
+  markUnlistedStudiesPublic,
+  subscribeApprovedStudies,
+  subscribeHostedStudies,
+  subscribePublicStudies,
+} from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
 export default function DashboardPage() {
@@ -20,16 +25,19 @@ export default function DashboardPage() {
     if (!user) return;
     let publicStudies: BibleStudy[] = [];
     let hostedStudies: BibleStudy[] = [];
+    let memberStudies: BibleStudy[] = [];
     let publicReady = false;
     let hostedReady = false;
+    let memberReady = false;
 
     const publish = () => {
-      if (!publicReady || !hostedReady) return;
+      if (!publicReady || !hostedReady || !memberReady) return;
       const byId = new Map<string, BibleStudy>();
       for (const study of publicStudies) {
         if (study.isPublic) byId.set(study.id, study);
       }
       for (const study of hostedStudies) byId.set(study.id, study);
+      for (const study of memberStudies) byId.set(study.id, study);
       setStudies([...byId.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
       setLoaded(true);
     };
@@ -59,11 +67,25 @@ export default function DashboardPage() {
         publish();
       },
     );
+    const unsubMember = subscribeApprovedStudies(
+      user.uid,
+      (next) => {
+        memberStudies = next;
+        memberReady = true;
+        publish();
+      },
+      (failure) => {
+        setError(actionError(failure));
+        memberReady = true;
+        publish();
+      },
+    );
     void markUnlistedStudiesPublic().catch(() => undefined);
 
     return () => {
       unsubPublic();
       unsubHosted();
+      unsubMember();
     };
   }, [user]);
 

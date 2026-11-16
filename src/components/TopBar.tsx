@@ -25,9 +25,9 @@ export function TopBar() {
           >
             <Avatar src={profile?.photoURL ?? ''} name={name} size={28} />
           </Link>
-          <button type="button" className={`${buttonClass('secondary', 'sm')} shrink-0`}>
+          <Link href="/invites" className={`${buttonClass('secondary', 'sm')} shrink-0`}>
             Invites
-          </button>
+          </Link>
         </div>
       </div>
     </header>

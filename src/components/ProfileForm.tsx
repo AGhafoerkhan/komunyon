@@ -89,7 +89,10 @@ export function ProfileForm({
         </div>
       </div>
 
-      <Field label="Full name">
+      <Field
+        label="Full name"
+        hint={mode === 'onboarding' ? 'Please use your real name. That is how a host finds you for an invite.' : undefined}
+      >
         <input
           className={fieldClass}
           value={fullName}

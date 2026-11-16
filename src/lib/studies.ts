@@ -116,6 +116,79 @@ export function subscribeHostedStudies(
   );
 }
 
+export function subscribeApprovedStudies(
+  uid: string,
+  onData: (studies: BibleStudy[]) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  const approved = query(collection(db, 'studies'), where('approvedUserIds', 'array-contains', uid));
+  return onSnapshot(
+    approved,
+    (snap) => {
+      const studies: BibleStudy[] = [];
+      snap.docs.forEach((item) => {
+        const study = parseBibleStudy(item.id, item.data());
+        if (study) studies.push(study);
+      });
+      onData(studies);
+    },
+    (error) => onError(error),
+  );
+}
+
+export function subscribeInvitedStudies(
+  uid: string,
+  onData: (studies: BibleStudy[]) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  const invited = query(collection(db, 'studies'), where('invitedUserIds', 'array-contains', uid));
+  return onSnapshot(
+    invited,
+    (snap) => {
+      const studies: BibleStudy[] = [];
+      snap.docs.forEach((item) => {
+        const study = parseBibleStudy(item.id, item.data());
+        if (study) studies.push(study);
+      });
+      studies.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      onData(studies);
+    },
+    (error) => onError(error),
+  );
+}
+
+export async function inviteToStudy(studyId: string, uid: string): Promise<void> {
+  await updateDoc(studyRef(studyId), {
+    invitedUserIds: arrayUnion(uid),
+    updatedAt: nowIso(),
+  });
+}
+
+export async function revokeInvite(studyId: string, uid: string): Promise<void> {
+  await updateDoc(studyRef(studyId), {
+    invitedUserIds: arrayRemove(uid),
+    updatedAt: nowIso(),
+  });
+}
+
+export async function acceptInvite(study: BibleStudy, uid: string): Promise<void> {
+  await updateDoc(studyRef(study.id), {
+    invitedUserIds: arrayRemove(uid),
+    approvedUserIds: arrayUnion(uid),
+    ...(study.pendingUserIds.includes(uid) ? { pendingUserIds: arrayRemove(uid) } : {}),
+    updatedAt: nowIso(),
+  });
+}
+
+export async function declineInvite(studyId: string, uid: string): Promise<void> {
+  await updateDoc(studyRef(studyId), {
+    invitedUserIds: arrayRemove(uid),
+    updatedAt: nowIso(),
+  });
+}
+
 export function subscribeStudy(
   studyId: string,
   onData: (study: BibleStudy | null) => void,
@@ -165,6 +238,7 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
       ...publicFields(host, draft, now, now),
       pendingUserIds: [],
       approvedUserIds: [],
+      invitedUserIds: [],
     });
     await setDoc(privateRef(ref.id), privateFields(draft, now));
   } catch (error) {
@@ -403,6 +477,11 @@ export async function loadDepartureNotices(
 export async function dismissDeparture(studyId: string, uid: string): Promise<void> {
   const { db } = getFirebase();
   await deleteDoc(doc(db, 'studies', studyId, 'notices', uid));
+}
+
+export async function loadPeople(studyId: string, uids: string[]): Promise<JoinRequest[]> {
+  const profiles = await fetchProfiles(uids);
+  return uids.map((uid) => toJoinRequest(studyId, uid, 'pending', profiles.get(uid)));
 }
 
 export async function loadJoinRequests(study: BibleStudy): Promise<{

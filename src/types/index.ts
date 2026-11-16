@@ -27,7 +27,8 @@ export interface UserProfile {
 }
 
 /**
- * `studies/{studyId}` — readable by any signed-in user.
+ * `studies/{studyId}` — listed studies are readable by signed-in users.
+ * A private study is readable by the host, people they invited, and approved members.
  * Street address and entry notes are never fields on this document.
  */
 export interface BibleStudy {
@@ -54,6 +55,8 @@ export interface BibleStudy {
   isPublic: boolean;
   pendingUserIds: string[];
   approvedUserIds: string[];
+  /** People the host invited. They can read the study, not the address, until they accept. */
+  invitedUserIds: string[];
   createdAt: string;
   updatedAt: string;
 }
