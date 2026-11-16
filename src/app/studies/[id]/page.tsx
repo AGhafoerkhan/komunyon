@@ -7,8 +7,9 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { InvitePeople } from '@/components/InvitePeople';
 import { MemberList } from '@/components/MemberList';
 import { useAuth } from '@/components/AuthProvider';
+import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
-import { Alert, Avatar, Button, FormatBadge, LoadingScreen, TagList, buttonClass } from '@/components/ui';
+import { Alert, Avatar, Button, FormatBadge, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { formatSchedule, spotsLabel } from '@/lib/format';
 import {
@@ -191,9 +192,20 @@ export default function StudyPage() {
     }
   }
 
+  useEffect(() => {
+    if (!studyId) return;
+    if (!user) {
+      rememberStudyLink(studyId);
+      return;
+    }
+    clearStudyLink(studyId);
+  }, [studyId, user]);
+
   const dialog = study && confirm ? dialogCopy(confirm, study.title) : null;
 
-  if (!user) return <LoadingScreen />;
+  if (!user) {
+    return <GuestStudy study={study} loaded={loaded} blocked={blocked} missing={!loaded ? false : !study && !blocked} />;
+  }
 
   const memberNow = Boolean(study?.approvedUserIds.includes(user.uid));
   const showRemoved = removed || (heardRemoval && !memberNow);
@@ -275,6 +287,88 @@ export default function StudyPage() {
         />
       ) : null}
     </AppShell>
+  );
+}
+
+function GuestStudy({
+  study,
+  loaded,
+  blocked,
+  missing,
+}: {
+  study: BibleStudy | null;
+  loaded: boolean;
+  blocked: boolean;
+  missing: boolean;
+}) {
+  const { signInWithGoogle, prepareGoogleSignIn, signInError } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function signIn() {
+    setBusy(true);
+    setError(null);
+    try {
+      await signInWithGoogle();
+    } catch (failure) {
+      setError(actionError(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="mx-auto flex min-h-dvh w-full max-w-md items-center px-4 py-10">
+      {!loaded ? (
+        <p className="w-full text-center text-sm text-muted">Loading study…</p>
+      ) : study ? (
+        <article className="flex w-full flex-col gap-3 rounded-lg border border-line bg-card p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Avatar src={study.hostPhotoURL} name={study.hostName} size={40} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {study.hostName}
+                  <span className="font-normal text-muted"> · {study.hostAge}</span>
+                </p>
+                <p className="truncate text-xs text-muted">{study.area}</p>
+              </div>
+            </div>
+            <FormatBadge format={study.format} />
+          </div>
+          <h1 className="font-serif text-xl leading-snug break-words">{study.title}</h1>
+          {study.tags.length > 0 ? <TagList tags={study.tags} /> : null}
+          <p className="text-sm break-words text-muted">{formatSchedule(study)}</p>
+          <p className="text-sm tabular-nums">
+            <span className="font-medium text-ink">
+              {study.approvedUserIds.length} / {study.maxCapacity}
+            </span>
+            <span className="text-muted"> · {spotsLabel(study.approvedUserIds.length, study.maxCapacity)}</span>
+          </p>
+          {error || signInError ? <Alert>{error || signInError}</Alert> : null}
+          <Button className="w-full" onPointerDown={prepareGoogleSignIn} onClick={() => void signIn()} disabled={busy}>
+            {busy ? <Spinner /> : null}
+            Sign in now to join
+          </Button>
+        </article>
+      ) : (
+        <article className="flex w-full flex-col gap-3 rounded-lg border border-line bg-card p-4">
+          <h1 className="font-serif text-xl leading-snug">
+            {blocked ? 'Sign in to open this study.' : missing ? 'This study is no longer listed.' : 'Sign in to open this study.'}
+          </h1>
+          {blocked ? (
+            <p className="text-sm leading-relaxed text-muted">The host shared a private group. Sign in if they invited you.</p>
+          ) : null}
+          {error || signInError ? <Alert>{error || signInError}</Alert> : null}
+          {blocked ? (
+            <Button className="w-full" onPointerDown={prepareGoogleSignIn} onClick={() => void signIn()} disabled={busy}>
+              {busy ? <Spinner /> : null}
+              Sign in now to join
+            </Button>
+          ) : null}
+        </article>
+      )}
+    </main>
   );
 }
 

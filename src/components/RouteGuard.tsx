@@ -5,6 +5,26 @@ import { useEffect, type ReactNode } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Button, LoadingScreen } from '@/components/ui';
 
+const RETURN_KEY = 'komunyon-return';
+
+function isSharedStudy(pathname: string): boolean {
+  return /^\/studies\/[^/]+$/.test(pathname);
+}
+
+export function rememberStudyLink(studyId: string): void {
+  sessionStorage.setItem(RETURN_KEY, `/studies/${studyId}`);
+}
+
+export function clearStudyLink(studyId: string): void {
+  if (sessionStorage.getItem(RETURN_KEY) === `/studies/${studyId}`) sessionStorage.removeItem(RETURN_KEY);
+}
+
+function peekStudyLink(): string | null {
+  const value = sessionStorage.getItem(RETURN_KEY);
+  if (!value || !isSharedStudy(value)) return null;
+  return value;
+}
+
 export function RouteGuard({ children }: { children: ReactNode }) {
   const { user, profile, loading, error, configured, signOutUser } = useAuth();
   const pathname = usePathname();
@@ -20,15 +40,17 @@ export function RouteGuard({ children }: { children: ReactNode }) {
     if (error) return;
 
     if (!user) {
-      if (pathname !== '/') router.replace('/');
+      if (pathname !== '/' && !isSharedStudy(pathname)) router.replace('/');
       return;
     }
     if (!completed && pathname !== '/onboarding') {
+      if (isSharedStudy(pathname)) sessionStorage.setItem(RETURN_KEY, pathname);
       router.replace('/onboarding');
       return;
     }
     if (completed && (pathname === '/' || pathname === '/onboarding')) {
-      router.replace('/dashboard');
+      const next = peekStudyLink();
+      router.replace(next ?? '/dashboard');
     }
   }, [completed, configured, error, loading, pathname, router, user]);
 
@@ -50,7 +72,7 @@ export function RouteGuard({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user && pathname !== '/') return <LoadingScreen label="Redirecting" />;
+  if (!user && pathname !== '/' && !isSharedStudy(pathname)) return <LoadingScreen label="Redirecting" />;
   if (user && !completed && pathname !== '/onboarding') return <LoadingScreen label="Redirecting" />;
   if (user && completed && (pathname === '/' || pathname === '/onboarding')) {
     return <LoadingScreen label="Redirecting" />;

@@ -205,7 +205,6 @@ service cloud.firestore {
         && request.auth.uid != resource.data.hostId
         && !resource.data.approvedUserIds.hasAny([request.auth.uid])
         && resource.data.approvedUserIds.size() < resource.data.maxCapacity
-        && studyIsListed(resource.data)
         && onlyTouched(['pendingUserIds', 'updatedAt'])
         && selfAddedTo(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
         && validPublicStudy(request.resource.data);
@@ -343,12 +342,17 @@ service cloud.firestore {
     }
 
     match /studies/{studyId} {
-      allow read: if signedIn() && (
-        resource.data.hostId == request.auth.uid
-        || studyIsListed(resource.data)
-        || isUidOn(resource.data, 'invitedUserIds')
-        || isUidOn(resource.data, 'approvedUserIds')
-      );
+      allow get: if true;
+
+      allow list: if studyIsListed(resource.data)
+        || (
+          signedIn()
+          && (
+            resource.data.hostId == request.auth.uid
+            || isUidOn(resource.data, 'invitedUserIds')
+            || isUidOn(resource.data, 'approvedUserIds')
+          )
+        );
 
       allow create: if signedIn()
         && request.resource.data.hostId == request.auth.uid
