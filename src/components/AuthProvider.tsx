@@ -1,6 +1,7 @@
 'use client';
 
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { actionError } from '@/lib/errors';
 import {
@@ -46,9 +47,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [signInError, setSignInError] = useState<string | null>(null);
   const configured = isFirebaseConfigured();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!configured) return;
+    if (pathname === '/logout') {
+      setLoading(false);
+      const { auth } = getFirebase();
+      void signOut(auth).catch(() => undefined);
+      return;
+    }
     let requestId = 0;
     let unsubscribe = () => {};
     let cancelled = false;
@@ -92,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestId += 1;
       unsubscribe();
     };
-  }, [configured]);
+  }, [configured, pathname]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

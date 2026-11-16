@@ -1,4 +1,4 @@
-const CACHE = 'komunyon-v3';
+const CACHE = 'komunyon-v4';
 const OFFLINE = '/offline.html';
 
 self.addEventListener('install', (event) => {
@@ -25,6 +25,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
   // Google sign-in must navigate itself. Intercepting it drops the login on the way back.
   if (url.pathname.startsWith('/__/')) return;
+  if (url.pathname === '/logout') return;
 
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).catch(() => caches.match(OFFLINE)));

@@ -28,6 +28,10 @@ const nextConfig: NextConfig = {
           { key: 'Service-Worker-Allowed', value: '/' },
         ],
       },
+      {
+        source: '/logout',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
     ];
   },
 };

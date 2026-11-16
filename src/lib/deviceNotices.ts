@@ -47,10 +47,7 @@ const ENABLED_KEY = 'komunyon-notices';
 
 export function noticesEnabled(): boolean {
   if (typeof window === 'undefined') return false;
-  const stored = localStorage.getItem(ENABLED_KEY);
-  if (stored === 'on') return true;
-  if (stored === 'off') return false;
-  return deviceNoticePermission() === 'granted';
+  return localStorage.getItem(ENABLED_KEY) === 'on';
 }
 
 export async function setNoticesEnabled(on: boolean): Promise<void> {

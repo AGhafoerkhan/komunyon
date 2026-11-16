@@ -31,8 +31,10 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const completed = isProfileReady(profile);
+  const loggingOut = pathname === '/logout';
 
   useEffect(() => {
+    if (loggingOut) return;
     if (!configured) {
       if (pathname !== '/') router.replace('/');
       return;
@@ -53,8 +55,9 @@ export function RouteGuard({ children }: { children: ReactNode }) {
       const next = peekStudyLink();
       router.replace(next ?? '/dashboard');
     }
-  }, [completed, configured, error, loading, pathname, router, user]);
+  }, [completed, configured, error, loading, loggingOut, pathname, router, user]);
 
+  if (loggingOut) return children;
   if (!configured && pathname !== '/') return <LoadingScreen label="Redirecting" />;
   if (!configured) return children;
   if (loading) return <LoadingScreen />;

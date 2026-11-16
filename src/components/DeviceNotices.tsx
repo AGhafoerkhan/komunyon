@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { Button } from '@/components/ui';
 import {
@@ -16,11 +17,13 @@ import {
 
 export function NoticePermission() {
   const { user, loading } = useAuth();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [needsInstall, setNeedsInstall] = useState(false);
   const titleId = useId();
 
   useEffect(() => {
+    if (pathname === '/logout') return;
     if (loading) return;
     if (!user) {
       clearNoticeAsk();
@@ -41,7 +44,7 @@ export function NoticePermission() {
     return () => {
       active = false;
     };
-  }, [loading, user]);
+  }, [loading, pathname, user]);
 
   if (!open) return null;
 
