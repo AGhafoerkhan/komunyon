@@ -5,14 +5,28 @@ import { useAuth } from '@/components/AuthProvider';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { fieldClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
+import { getFirebase } from '@/lib/firebase';
 import { formatDdMmYyyy } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import { deleteSessionFile, downloadSessionFile, listSessionFiles, uploadSessionFile, type SessionFile } from '@/lib/photos';
+import { describeDebugError } from '@/lib/sessionDebug';
 import { loadSessionDescription, saveSessionDescription } from '@/lib/sessions';
 
 const cardGrid = 'mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4';
 
-export function SessionRecord({ studyId, date, isHost }: { studyId: string; date: string; isHost: boolean }) {
+export function SessionRecord({
+  studyId,
+  date,
+  isHost,
+  hostId,
+  onDebug,
+}: {
+  studyId: string;
+  date: string;
+  isHost: boolean;
+  hostId: string;
+  onDebug: (title: string, detail?: unknown) => void;
+}) {
   const { user } = useAuth();
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<SessionFile[]>([]);
@@ -25,14 +39,65 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
     let active = true;
     setLoading(true);
     setError(null);
-    void Promise.all([loadSessionDescription(studyId, date), listSessionFiles(studyId, date)])
-      .then(([text, next]) => {
+    const { auth, storage } = getFirebase();
+    const options = storage.app.options;
+    onDebug('storage client', {
+      projectId: options.projectId ?? '',
+      authDomain: options.authDomain ?? '',
+      storageBucket: options.storageBucket ?? '',
+      appId: options.appId ?? '',
+      reactUid: user?.uid ?? null,
+      authUid: auth.currentUser?.uid ?? null,
+      authEmail: auth.currentUser?.email ?? null,
+      emailVerified: auth.currentUser?.emailVerified ?? null,
+      hostId,
+      isHost,
+      uidMatchesHost: auth.currentUser?.uid === hostId,
+      providers: auth.currentUser?.providerData.map((item) => ({
+        providerId: item.providerId,
+        uid: item.uid,
+      })),
+      folder: `sessions/${studyId}/${date}`,
+    });
+    void auth.currentUser
+      ?.getIdTokenResult()
+      .then((result) => {
         if (!active) return;
-        setDescription(text);
-        setFiles(next);
+        onDebug('auth session', {
+          signInProvider: result.signInProvider,
+          authTime: result.authTime,
+          issuedAtTime: result.issuedAtTime,
+          expirationTime: result.expirationTime,
+          claims: result.claims,
+        });
       })
       .catch((failure: unknown) => {
-        if (active) setError(actionError(failure));
+        if (active) onDebug('auth session failed', describeDebugError(failure));
+      });
+    void loadSessionDescription(studyId, date)
+      .then((text) => {
+        if (!active) return;
+        setDescription(text);
+        onDebug('description loaded', { characters: text.length });
+      })
+      .catch((failure: unknown) => {
+        if (!active) return;
+        setError(actionError(failure));
+        onDebug('description failed', describeDebugError(failure));
+      });
+    void listSessionFiles(studyId, date)
+      .then((next) => {
+        if (!active) return;
+        setFiles(next);
+        onDebug(
+          'files listed',
+          next.map((file) => ({ name: file.name, kind: file.kind, path: file.path })),
+        );
+      })
+      .catch((failure: unknown) => {
+        if (!active) return;
+        setError(actionError(failure));
+        onDebug('files list failed', describeDebugError(failure));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -40,7 +105,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
     return () => {
       active = false;
     };
-  }, [studyId, date]);
+  }, [studyId, date, hostId, isHost, onDebug, user?.uid]);
 
   if (!user) return null;
   const uid = user.uid;
@@ -53,11 +118,14 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
     if (!isHost) return;
     setBusy(true);
     setError(null);
+    onDebug('save description', { characters: description.trim().length });
     try {
       await saveSessionDescription(studyId, date, description);
       setDescription(description.trim());
+      onDebug('description saved', { characters: description.trim().length });
     } catch (failure) {
       setError(actionError(failure));
+      onDebug('description save failed', describeDebugError(failure));
     } finally {
       setBusy(false);
     }
@@ -67,11 +135,25 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
     if (!isHost) return;
     setBusy(true);
     setError(null);
+    onDebug('upload start', {
+      name: file.name,
+      type: file.type || '(empty)',
+      bytes: file.size,
+      lastModified: file.lastModified,
+      folder: `sessions/${studyId}/${date}`,
+      uid,
+    });
     try {
       await uploadSessionFile(studyId, date, uid, file);
-      setFiles(await listSessionFiles(studyId, date));
+      const next = await listSessionFiles(studyId, date);
+      setFiles(next);
+      onDebug(
+        'upload finished',
+        next.map((item) => ({ name: item.name, kind: item.kind, path: item.path })),
+      );
     } catch (failure) {
       setError(actionError(failure));
+      onDebug('upload failed', describeDebugError(failure));
     } finally {
       setBusy(false);
     }
@@ -81,12 +163,15 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
     if (!isHost) return;
     setBusy(true);
     setError(null);
+    onDebug('remove start', { path: file.path, kind: file.kind });
     try {
       await deleteSessionFile(file.path);
       setFiles((current) => current.filter((item) => item.path !== file.path));
       if (open?.path === file.path) setOpen(null);
+      onDebug('remove finished', { path: file.path });
     } catch (failure) {
       setError(actionError(failure));
+      onDebug('remove failed', describeDebugError(failure));
     } finally {
       setBusy(false);
     }

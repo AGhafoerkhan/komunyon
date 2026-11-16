@@ -70,26 +70,35 @@ export async function listSessionFiles(studyId: string, date: string): Promise<S
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic']);
 
+async function uploadSessionObject(path: string, data: Blob, contentType: string): Promise<void> {
+  const fileRef = ref(getFirebase().storage, path);
+  try {
+    await uploadBytes(fileRef, data, { contentType });
+  } catch (error) {
+    if (error instanceof Error) {
+      Object.assign(error, { sessionUpload: { path, contentType, bytes: data.size } });
+    }
+    throw error;
+  }
+}
+
 export async function uploadSessionFile(studyId: string, date: string, uid: string, file: File): Promise<void> {
   const stamp = `${uid}-${Date.now()}`;
   const ext = extension(file.name);
   if (file.type.startsWith('image/') || IMAGE_EXTENSIONS.has(ext)) {
     const blob = await jpegBlob(file, 1600);
-    const fileRef = ref(getFirebase().storage, `sessions/${studyId}/${date}/${stamp}.jpg`);
-    await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' });
+    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.jpg`, blob, 'image/jpeg');
     return;
   }
   const audioType = AUDIO_TYPES[ext];
   if (audioType) {
     if (file.size >= LIMITS.sessionAudioBytes) throw new Error('Recordings need to be smaller than 32 MB.');
-    const fileRef = ref(getFirebase().storage, `sessions/${studyId}/${date}/${stamp}.${ext}`);
-    await uploadBytes(fileRef, file, { contentType: audioType });
+    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.${ext}`, file, audioType);
     return;
   }
   if (ext === 'txt' || file.type === 'text/plain') {
     if (file.size >= LIMITS.sessionTextBytes) throw new Error('Text files need to be smaller than 1 MB.');
-    const fileRef = ref(getFirebase().storage, `sessions/${studyId}/${date}/${stamp}.txt`);
-    await uploadBytes(fileRef, file, { contentType: 'text/plain' });
+    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.txt`, file, 'text/plain');
     return;
   }
   throw new Error('Add a photo, a text file, or a WEBM, M4A, MP3, OGG, or WAV recording.');
