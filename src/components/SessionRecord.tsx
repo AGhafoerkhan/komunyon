@@ -222,13 +222,14 @@ export function SessionRecord({
         {images.length > 0 ? (
           <ul className={cardGrid}>
             {images.map((file) => (
-              <li key={file.path} className="min-w-0 rounded-lg border border-line bg-card p-2">
+              <li key={file.path} className="relative min-w-0 rounded-lg border border-line bg-card p-2">
+                {isHost ? <RemoveButton busy={busy} onClick={() => void removeFile(file)} /> : null}
                 <button type="button" onClick={() => setOpen(file)} className="block w-full" aria-label="View session photo">
                   {/* Download URLs are tokenized and are not a fixed remote pattern. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={file.url} alt="" className="aspect-square w-full rounded-md object-cover" />
                 </button>
-                <FileActions file={file} busy={busy} isHost={isHost} onDownload={download} onRemove={removeFile} />
+                <FileActions file={file} onDownload={download} />
               </li>
             ))}
           </ul>
@@ -236,12 +237,13 @@ export function SessionRecord({
         {recordings.length > 0 ? (
           <ul className={cardGrid}>
             {recordings.map((file) => (
-              <li key={file.path} className="flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
-                <div className="min-w-0">
+              <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
+                {isHost ? <RemoveButton busy={busy} onClick={() => void removeFile(file)} /> : null}
+                <div className="min-w-0 pr-6">
                   <p className="text-sm font-medium text-ink">Recording</p>
                   <audio controls src={file.url} className="mt-2 w-full" preload="none" />
                 </div>
-                <FileActions file={file} busy={busy} isHost={isHost} onDownload={download} onRemove={removeFile} />
+                <FileActions file={file} onDownload={download} />
               </li>
             ))}
           </ul>
@@ -249,9 +251,10 @@ export function SessionRecord({
         {texts.length > 0 ? (
           <ul className={cardGrid}>
             {texts.map((file) => (
-              <li key={file.path} className="flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
-                <p className="text-sm font-medium text-ink">Text file</p>
-                <FileActions file={file} busy={busy} isHost={isHost} onDownload={download} onRemove={removeFile} />
+              <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
+                {isHost ? <RemoveButton busy={busy} onClick={() => void removeFile(file)} /> : null}
+                <p className="pr-6 text-sm font-medium text-ink">Text file</p>
+                <FileActions file={file} onDownload={download} />
               </li>
             ))}
           </ul>
@@ -274,35 +277,26 @@ export function SessionRecord({
   );
 }
 
-function FileActions({
-  file,
-  busy,
-  isHost,
-  onDownload,
-  onRemove,
-}: {
-  file: SessionFile;
-  busy: boolean;
-  isHost: boolean;
-  onDownload: (file: SessionFile) => void;
-  onRemove: (file: SessionFile) => void;
-}) {
+function RemoveButton({ busy, onClick }: { busy: boolean; onClick: () => void }) {
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      aria-label="Remove"
+      className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-card text-sm leading-none text-clay disabled:opacity-50"
+    >
+      X
+    </button>
+  );
+}
+
+function FileActions({ file, onDownload }: { file: SessionFile; onDownload: (file: SessionFile) => void }) {
+  return (
+    <div className="mt-2">
       <button type="button" onClick={() => void onDownload(file)} className="text-sm text-canal">
         Download
       </button>
-      {isHost ? (
-        <button
-          type="button"
-          onClick={() => void onRemove(file)}
-          disabled={busy}
-          aria-label="Remove"
-          className="text-sm text-clay disabled:opacity-50"
-        >
-          X
-        </button>
-      ) : null}
     </div>
   );
 }
