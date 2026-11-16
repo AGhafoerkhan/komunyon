@@ -25,10 +25,9 @@ export function TopBar() {
           >
             <Avatar src={profile?.photoURL ?? ''} name={name} size={28} />
           </Link>
-          <Link href="/studies/new" className={`${buttonClass('primary', 'sm')} shrink-0`}>
-            <span className="sm:hidden">Host</span>
-            <span className="hidden sm:inline">Host a study</span>
-          </Link>
+          <button type="button" className={`${buttonClass('secondary', 'sm')} shrink-0`}>
+            Invites
+          </button>
         </div>
       </div>
     </header>

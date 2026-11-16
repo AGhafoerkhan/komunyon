@@ -34,7 +34,12 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <h1 className={pageTitleClass}>Studies in The Hague</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className={`${pageTitleClass} min-w-0`}>Studies in The Hague</h1>
+          <Link href="/studies/new" className={`${buttonClass('primary', 'sm')} mt-1 shrink-0`}>
+            Host a study
+          </Link>
+        </div>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
           Neighbourhood, time, and who is hosting. The street address stays hidden until you are approved to join.
         </p>
