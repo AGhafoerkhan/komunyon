@@ -58,6 +58,15 @@ export async function setNoticesEnabled(on: boolean): Promise<void> {
   open.forEach((notice) => notice.close());
 }
 
+export function noticeHref(notice: Pick<HostNotice, 'kind' | 'studyId' | 'userId'>): string {
+  const study = `/studies/${notice.studyId}`;
+  if (notice.kind === 'invite') return `${study}#accept`;
+  if (notice.kind === 'request') return `${study}#request-${notice.userId}`;
+  if (notice.kind === 'accepted') return `${study}#member-${notice.userId}`;
+  if (notice.kind === 'removed') return `${study}#removed`;
+  return study;
+}
+
 export function noticeLine(notice: HostNotice): string {
   if (notice.kind === 'left') return `${notice.fullName} left`;
   if (notice.kind === 'cancelled') return `${notice.fullName} cancelled`;
@@ -76,6 +85,6 @@ export async function showDeviceNotice(notice: HostNotice): Promise<void> {
     body: noticeLine(notice),
     icon: '/icons/icon-192.png',
     tag: notice.id,
-    data: { href: `/studies/${notice.studyId}` },
+    data: { href: noticeHref(notice) },
   });
 }

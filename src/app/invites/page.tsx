@@ -71,7 +71,11 @@ export default function InvitesPage() {
           {studies.map((study) => {
             const full = study.approvedUserIds.length >= study.maxCapacity;
             return (
-              <li key={study.id} className="flex flex-col gap-3 border-b border-line py-4 sm:flex-row sm:items-center">
+              <li
+                key={study.id}
+                id={`invite-${study.id}`}
+                className="flex scroll-mt-24 flex-col gap-3 border-b border-line py-4 sm:flex-row sm:items-center"
+              >
                 <Avatar src={study.hostPhotoURL} name={study.hostName} size={40} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{study.title}</p>

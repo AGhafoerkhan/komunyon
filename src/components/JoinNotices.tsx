@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Avatar, Button } from '@/components/ui';
-import { showDeviceNotice } from '@/lib/deviceNotices';
+import { noticeHref, showDeviceNotice } from '@/lib/deviceNotices';
 import { actionError } from '@/lib/errors';
 import {
   acceptInvite,
@@ -234,7 +234,7 @@ export function JoinNotices() {
                   <li key={notice.id} className="border-b border-line last:border-b-0">
                     <div className="flex items-start gap-3 px-3 py-3">
                       <Link
-                        href={notice.kind === 'invite' ? '/invites' : `/studies/${notice.studyId}`}
+                        href={noticeHref(notice)}
                         onClick={() => setOpen(false)}
                         className="flex min-w-0 flex-1 items-start gap-3"
                       >

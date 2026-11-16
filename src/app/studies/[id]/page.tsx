@@ -259,7 +259,7 @@ export default function StudyPage() {
           <p className="font-serif text-3xl">This study is no longer listed.</p>
         </div>
       ) : showRemoved ? (
-        <div className="mt-6 max-w-xl">
+        <div id="removed" className="mt-6 max-w-xl scroll-mt-24">
           <p className="font-serif text-3xl">The host removed you from this study.</p>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             {study ? `${study.title} is no longer yours to open. ` : null}
@@ -677,7 +677,7 @@ function StudyBody({
           ) : null}
 
           {role === 'invited' ? (
-            <div className="flex flex-col gap-2">
+            <div id="accept" className="flex scroll-mt-24 flex-col gap-2">
               <Button className="w-full" onClick={onAccept} disabled={full || busy !== null}>
                 Accept invite
               </Button>
@@ -753,6 +753,7 @@ function StudyBody({
             description="Photo, name, age, and bio. Approving shares the address and takes a spot."
             empty="No pending requests."
             requests={pendingRequests}
+            rowId={(request) => `request-${request.userId}`}
             onPhoto={openPhoto}
             renderActions={(request) => (
               <>
@@ -770,6 +771,7 @@ function StudyBody({
             description="Removing someone hides the address from them and frees a spot."
             empty="No approved members yet."
             requests={approvedMembers}
+            rowId={(request) => `member-${request.userId}`}
             onPhoto={openPhoto}
             renderActions={(request) => (
               <Button size="sm" variant="secondary" onClick={() => onAskRemove(request)} disabled={busy !== null}>

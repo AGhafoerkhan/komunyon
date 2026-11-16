@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 import { JoinNotices } from '@/components/JoinNotices';
+import { SpringHash } from '@/components/SpringHash';
 import { Avatar, buttonClass } from '@/components/ui';
 
 export function TopBar() {
@@ -37,6 +38,7 @@ export function TopBar() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
+      <SpringHash />
       <TopBar />
       <main className="mx-auto w-full max-w-5xl px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8">
         {children}

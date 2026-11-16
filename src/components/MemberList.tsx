@@ -13,6 +13,7 @@ export function MemberList({
   renderActions,
   onPhoto,
   showPhone = true,
+  rowId,
 }: {
   title: string;
   description?: string;
@@ -21,6 +22,7 @@ export function MemberList({
   renderActions?: (request: JoinRequest) => ReactNode;
   onPhoto?: (src: string, name: string) => void;
   showPhone?: boolean;
+  rowId?: (request: JoinRequest) => string;
 }) {
   return (
     <section className="rounded-lg border border-line bg-card">
@@ -38,7 +40,8 @@ export function MemberList({
           {requests.map((request) => (
             <li
               key={request.userId}
-              className="flex flex-col gap-3 border-b border-line px-4 py-4 last:border-b-0 sm:flex-row sm:items-start"
+              id={rowId?.(request)}
+              className="flex scroll-mt-24 flex-col gap-3 border-b border-line px-4 py-4 last:border-b-0 sm:flex-row sm:items-start"
             >
               <div className="flex min-w-0 flex-1 gap-3">
                 <Avatar
