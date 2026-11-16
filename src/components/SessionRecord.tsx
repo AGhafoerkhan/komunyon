@@ -297,9 +297,10 @@ function FileActions({
           type="button"
           onClick={() => void onRemove(file)}
           disabled={busy}
+          aria-label="Remove"
           className="text-sm text-clay disabled:opacity-50"
         >
-          Remove
+          X
         </button>
       ) : null}
     </div>
