@@ -13,6 +13,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { firebaseErrorCode } from '@/lib/errors';
+import { loginLog } from '@/lib/loginDebug';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
@@ -67,10 +68,25 @@ export function warmUpGoogleSignIn(auth: Auth): void {
 
 let redirectResultRead = false;
 
+export function loginSignInMode(): 'redirect' | 'popup' {
+  return prefersRedirectSignIn() ? 'redirect' : 'popup';
+}
+
 export async function completeRedirectSignIn(auth: Auth): Promise<void> {
-  if (redirectResultRead) return;
+  if (redirectResultRead) {
+    loginLog('redirect result already read on this page load');
+    return;
+  }
   redirectResultRead = true;
-  await getRedirectResult(auth);
+  loginLog('reading redirect result');
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) loginLog('redirect result: none');
+    else loginLog(`redirect result: logged in, uid ${result.user.uid}`);
+  } catch (error) {
+    loginLog(`redirect result failed: ${firebaseErrorCode(error) ?? 'unknown'}`);
+    throw error;
+  }
 }
 
 /** Popup sign-in never finishes in Firefox, or on a phone, so those use a full-page redirect. */
@@ -86,17 +102,26 @@ export async function signInWithGoogleAccount(auth: Auth): Promise<void> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   if (prefersRedirectSignIn()) {
+    loginLog('sign-in method: redirect');
     await setPersistence(auth, browserLocalPersistence);
+    loginLog('persistence set to this browser');
     await signInWithRedirect(auth, provider);
+    loginLog('redirect started');
     return;
   }
   warmUpGoogleSignIn(auth);
+  loginLog('sign-in method: popup');
   try {
     await signInWithPopup(auth, provider);
+    loginLog('popup finished');
   } catch (error) {
-    if (firebaseErrorCode(error) !== 'auth/popup-blocked') throw error;
+    const code = firebaseErrorCode(error) ?? 'unknown';
+    loginLog(`popup failed: ${code}`);
+    if (code !== 'auth/popup-blocked') throw error;
+    loginLog('popup was blocked, switching to redirect');
     await setPersistence(auth, browserLocalPersistence);
     await signInWithRedirect(auth, provider);
+    loginLog('redirect started');
   }
 }
 
