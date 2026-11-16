@@ -173,6 +173,9 @@ export async function updateStudy(studyId: string, host: UserProfile, draft: Stu
 }
 
 export async function deleteStudy(studyId: string): Promise<void> {
+  const { db } = getFirebase();
+  const notices = await getDocs(collection(db, 'studies', studyId, 'notices'));
+  await Promise.all(notices.docs.map((item) => deleteDoc(item.ref)));
   await deleteDoc(privateRef(studyId));
   await deleteDoc(studyRef(studyId));
 }
@@ -192,10 +195,22 @@ export async function cancelRequest(studyId: string, uid: string): Promise<void>
 }
 
 export async function leaveStudy(studyId: string, uid: string): Promise<void> {
-  await updateDoc(studyRef(studyId), {
-    approvedUserIds: arrayRemove(uid),
-    updatedAt: nowIso(),
+  const { db } = getFirebase();
+  const noticeRef = doc(db, 'studies', studyId, 'notices', uid);
+  await setDoc(noticeRef, {
+    type: 'left',
+    userId: uid,
+    createdAt: nowIso(),
   });
+  try {
+    await updateDoc(studyRef(studyId), {
+      approvedUserIds: arrayRemove(uid),
+      updatedAt: nowIso(),
+    });
+  } catch (error) {
+    await deleteDoc(noticeRef).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function approveMember(study: BibleStudy, uid: string): Promise<void> {
@@ -273,15 +288,18 @@ function toJoinRequest(
   };
 }
 
-export type JoinNotice = {
+export type HostNotice = {
   id: string;
   studyId: string;
   studyTitle: string;
+  userId: string;
   fullName: string;
   photoURL: string;
+  kind: 'request' | 'left';
+  at: string;
 };
 
-export async function loadJoinNotices(studies: BibleStudy[]): Promise<JoinNotice[]> {
+export async function loadJoinNotices(studies: BibleStudy[]): Promise<HostNotice[]> {
   const pending = studies
     .filter((study) => study.pendingUserIds.length > 0)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -290,13 +308,77 @@ export async function loadJoinNotices(studies: BibleStudy[]): Promise<JoinNotice
   return pending.map(({ study, uid }) => {
     const profile = profiles.get(uid);
     return {
-      id: `${study.id}_${uid}`,
+      id: `request_${study.id}_${uid}`,
       studyId: study.id,
       studyTitle: study.title,
+      userId: uid,
       fullName: profile?.fullName || 'Someone',
       photoURL: profile?.photoURL ?? '',
+      kind: 'request' as const,
+      at: study.updatedAt,
     };
   });
+}
+
+export type DepartureRecord = { studyId: string; userId: string; createdAt: string };
+
+export function subscribeDepartures(
+  studies: BibleStudy[],
+  onData: (records: DepartureRecord[]) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  if (studies.length === 0) {
+    onData([]);
+    return () => undefined;
+  }
+  const byStudy = new Map<string, DepartureRecord[]>();
+  const unsubs = studies.map((study) =>
+    onSnapshot(
+      collection(db, 'studies', study.id, 'notices'),
+      (snap) => {
+        byStudy.set(
+          study.id,
+          snap.docs.flatMap((item) => {
+            const data = item.data();
+            if (data.type !== 'left' || data.userId !== item.id || typeof data.createdAt !== 'string') return [];
+            return [{ studyId: study.id, userId: item.id, createdAt: data.createdAt }];
+          }),
+        );
+        onData(studies.flatMap((item) => byStudy.get(item.id) ?? []));
+      },
+      (error) => onError(error),
+    ),
+  );
+  return () => {
+    unsubs.forEach((unsubscribe) => unsubscribe());
+  };
+}
+
+export async function loadDepartureNotices(
+  studies: BibleStudy[],
+  records: DepartureRecord[],
+): Promise<HostNotice[]> {
+  const titles = new Map(studies.map((study) => [study.id, study.title]));
+  const profiles = await fetchProfiles([...new Set(records.map((record) => record.userId))]);
+  return records.map((record) => {
+    const profile = profiles.get(record.userId);
+    return {
+      id: `left_${record.studyId}_${record.userId}`,
+      studyId: record.studyId,
+      studyTitle: titles.get(record.studyId) ?? 'Your study',
+      userId: record.userId,
+      fullName: profile?.fullName || 'Someone',
+      photoURL: profile?.photoURL ?? '',
+      kind: 'left' as const,
+      at: record.createdAt,
+    };
+  });
+}
+
+export async function dismissDeparture(studyId: string, uid: string): Promise<void> {
+  const { db } = getFirebase();
+  await deleteDoc(doc(db, 'studies', studyId, 'notices', uid));
 }
 
 export async function loadJoinRequests(study: BibleStudy): Promise<{

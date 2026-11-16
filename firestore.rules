@@ -331,6 +331,30 @@ service cloud.firestore {
           && signedIn()
           && studyDoc(studyId).hostId == request.auth.uid;
       }
+
+      match /notices/{uid} {
+        allow read: if studyExists(studyId)
+          && signedIn()
+          && studyDoc(studyId).hostId == request.auth.uid;
+
+        allow create, update: if studyExists(studyId)
+          && signedIn()
+          && uid == request.auth.uid
+          && studyDoc(studyId).hostId != request.auth.uid
+          && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
+          && request.resource.data.keys().hasOnly(['type', 'userId', 'createdAt'])
+          && request.resource.data.type == 'left'
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.createdAt is string
+          && request.resource.data.createdAt.size() <= 40;
+
+        allow delete: if studyExists(studyId)
+          && signedIn()
+          && (
+            studyDoc(studyId).hostId == request.auth.uid
+            || request.auth.uid == uid
+          );
+      }
     }
   }
 }

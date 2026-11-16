@@ -4,12 +4,15 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Avatar } from '@/components/ui';
-import { loadJoinNotices, subscribeHostedStudies, type JoinNotice } from '@/lib/studies';
+import { loadDepartureNotices, loadJoinNotices, subscribeDepartures, subscribeHostedStudies, dismissDeparture, type HostNotice } from '@/lib/studies';
+import type { BibleStudy } from '@/types';
 
 export function JoinNotices() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [notices, setNotices] = useState<JoinNotice[]>([]);
+  const [requests, setRequests] = useState<HostNotice[]>([]);
+  const [departures, setDepartures] = useState<HostNotice[]>([]);
+  const [hosted, setHosted] = useState<BibleStudy[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
 
@@ -21,14 +24,23 @@ export function JoinNotices() {
       (studies) => {
         void loadJoinNotices(studies)
           .then((next) => {
-            if (active) setNotices(next);
+            if (active) {
+              setHosted(studies);
+              setRequests(next);
+            }
           })
           .catch(() => {
-            if (active) setNotices([]);
+            if (active) {
+              setHosted([]);
+              setRequests([]);
+            }
           });
       },
       () => {
-        if (active) setNotices([]);
+        if (active) {
+          setHosted([]);
+          setRequests([]);
+        }
       },
     );
     return () => {
@@ -36,6 +48,29 @@ export function JoinNotices() {
       unsubscribe();
     };
   }, [user]);
+
+  useEffect(() => {
+    let active = true;
+    const unsubscribe = subscribeDepartures(
+      hosted,
+      (records) => {
+        void loadDepartureNotices(hosted, records)
+          .then((next) => {
+            if (active) setDepartures(next);
+          })
+          .catch(() => {
+            if (active) setDepartures([]);
+          });
+      },
+      () => {
+        if (active) setDepartures([]);
+      },
+    );
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [hosted]);
 
   useEffect(() => {
     if (!open) return;
@@ -53,8 +88,9 @@ export function JoinNotices() {
     };
   }, [open]);
 
+  const notices = [...requests, ...departures].sort((a, b) => b.at.localeCompare(a.at));
   const count = notices.length;
-  const label = count === 0 ? 'No join requests' : `${count} join ${count === 1 ? 'request' : 'requests'}`;
+  const label = count === 0 ? 'No notices' : `${count} ${count === 1 ? 'notice' : 'notices'}`;
 
   return (
     <div ref={rootRef} className="relative">
@@ -78,26 +114,38 @@ export function JoinNotices() {
           id={panelId}
           className="fixed right-4 left-4 z-20 mt-2 overflow-hidden rounded-lg border border-line bg-card shadow-lg top-[calc(3.5rem+env(safe-area-inset-top))] sm:top-[calc(4rem+env(safe-area-inset-top))] sm:right-6 sm:left-auto sm:w-80"
         >
-          <p className="border-b border-line px-3 py-2 text-sm font-medium">Join requests</p>
+          <p className="border-b border-line px-3 py-2 text-sm font-medium">Notices</p>
           {notices.length === 0 ? (
-            <p className="px-3 py-6 text-sm text-muted">No one is waiting to join a study you host.</p>
+            <p className="px-3 py-6 text-sm text-muted">No one has requested to join, or left, a study you host.</p>
           ) : (
             <ul className="max-h-80 overflow-y-auto">
               {notices.map((notice) => (
                 <li key={notice.id} className="border-b border-line last:border-b-0">
-                  <Link
-                    href={`/studies/${notice.studyId}`}
-                    onClick={() => setOpen(false)}
-                    className="flex items-start gap-3 px-3 py-3 hover:bg-sand"
-                  >
-                    <Avatar src={notice.photoURL} name={notice.fullName} size={36} />
-                    <span className="min-w-0">
-                      <span className="block text-sm leading-snug break-words">
-                        <span className="font-medium">{notice.fullName}</span> requested to join
+                  <div className="flex items-start gap-3 px-3 py-3">
+                    <Link
+                      href={`/studies/${notice.studyId}`}
+                      onClick={() => setOpen(false)}
+                      className="flex min-w-0 flex-1 items-start gap-3"
+                    >
+                      <Avatar src={notice.photoURL} name={notice.fullName} size={36} />
+                      <span className="min-w-0">
+                        <span className="block text-sm leading-snug break-words">
+                          <span className="font-medium">{notice.fullName}</span>{' '}
+                          {notice.kind === 'left' ? 'left' : 'requested to join'}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-muted">{notice.studyTitle}</span>
                       </span>
-                      <span className="mt-0.5 block truncate text-xs text-muted">{notice.studyTitle}</span>
-                    </span>
-                  </Link>
+                    </Link>
+                    {notice.kind === 'left' ? (
+                      <button
+                        type="button"
+                        className="shrink-0 text-xs text-muted hover:text-ink"
+                        onClick={() => void dismissDeparture(notice.studyId, notice.userId)}
+                      >
+                        Dismiss
+                      </button>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
