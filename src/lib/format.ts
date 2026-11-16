@@ -97,17 +97,39 @@ export function cancellationNote(
   return `This week is canceled. Bible study will proceed on ${formatDdMmYyyy(resume)}.`;
 }
 
-/** Sessions that have already started, newest first. Canceled weeks are left out. */
-export function pastSessions(
-  study: Pick<BibleStudy, 'format' | 'dayOfWeek' | 'date' | 'time' | 'skippedDates'>,
-  count = 8,
-  now = new Date(),
-): string[] {
+type ScheduledStudy = Pick<BibleStudy, 'format' | 'dayOfWeek' | 'date' | 'time' | 'skippedDates' | 'createdAt'>;
+
+function createdOn(createdAt: string): string | null {
+  const parsed = new Date(createdAt);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return isoDate(parsed);
+}
+
+/** The next meeting that is still going to happen. Canceled weeks are skipped. */
+export function upcomingSession(study: ScheduledStudy, now = new Date()): string | null {
+  const skipped = new Set(study.skippedDates);
   if (study.format === 'one-off') {
-    return study.date && isIsoDate(study.date) && sessionStarted(study.date, study.time, now) ? [study.date] : [];
+    if (!study.date || !isIsoDate(study.date) || skipped.has(study.date) || sessionStarted(study.date, study.time, now)) {
+      return null;
+    }
+    return study.date;
+  }
+  if (study.format !== 'recurring' || study.dayOfWeek === null) return null;
+  const next = upcomingSessions(study.dayOfWeek, study.time, 1, now)[0];
+  if (!next || skipped.has(next)) return null;
+  return next;
+}
+
+/** Sessions that have already started, newest first. Canceled weeks and dates before the study existed are left out. */
+export function pastSessions(study: ScheduledStudy, count = 8, now = new Date()): string[] {
+  const skipped = new Set(study.skippedDates);
+  if (study.format === 'one-off') {
+    return study.date && isIsoDate(study.date) && !skipped.has(study.date) && sessionStarted(study.date, study.time, now)
+      ? [study.date]
+      : [];
   }
   if (study.format !== 'recurring' || study.dayOfWeek === null) return [];
-  const skipped = new Set(study.skippedDates);
+  const earliest = createdOn(study.createdAt);
   const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (!(cursor.getDay() === study.dayOfWeek && meetingHasPassed(now, study.time))) {
     cursor.setDate(cursor.getDate() - 1);
@@ -116,24 +138,18 @@ export function pastSessions(
   const dates: string[] = [];
   for (let guard = 0; dates.length < count && guard < 60; guard += 1) {
     const iso = isoDate(cursor);
+    if (earliest && iso < earliest) break;
     if (!skipped.has(iso)) dates.push(iso);
     cursor.setDate(cursor.getDate() - 7);
   }
   return dates;
 }
 
-/** A real meeting date that has already started and was not canceled. */
-export function isPastSession(
-  study: Pick<BibleStudy, 'format' | 'dayOfWeek' | 'date' | 'time' | 'skippedDates'>,
-  date: string,
-  now = new Date(),
-): boolean {
-  if (!isIsoDate(date) || study.skippedDates.includes(date)) return false;
-  if (study.format === 'one-off') return study.date === date && sessionStarted(date, study.time, now);
-  if (study.format !== 'recurring' || study.dayOfWeek === null) return false;
-  const [year, month, day] = date.split('-').map(Number);
-  const weekday = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1).getDay();
-  return weekday === study.dayOfWeek && sessionStarted(date, study.time, now);
+/** The next meeting when it is not canceled, then meetings that already happened. */
+export function historySessions(study: ScheduledStudy, count = 8, now = new Date()): string[] {
+  const past = pastSessions(study, count, now);
+  const next = upcomingSession(study, now);
+  return next ? [next, ...past] : past;
 }
 
 function sessionStarted(iso: string, time: string, now: Date): boolean {

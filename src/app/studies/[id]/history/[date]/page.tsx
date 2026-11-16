@@ -8,7 +8,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
 import { Alert, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { formatDdMmYyyy, isPastSession } from '@/lib/format';
+import { formatDdMmYyyy, historySessions } from '@/lib/format';
 import { isIsoDate } from '@/lib/guards';
 import { subscribeStudy } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
@@ -40,7 +40,7 @@ export default function StudySessionPage() {
   if (!user) return null;
 
   const allowed = Boolean(study && (study.hostId === user.uid || study.approvedUserIds.includes(user.uid)));
-  const known = Boolean(study && isIsoDate(date) && isPastSession(study, date));
+  const known = Boolean(study && historySessions(study).includes(date));
 
   return (
     <AppShell>
