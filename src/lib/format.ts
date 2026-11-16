@@ -43,3 +43,57 @@ export function spotsLabel(approved: number, capacity: number): string {
   if (left === 1) return '1 left';
   return `${left} left`;
 }
+
+const UPCOMING_WEEKS = 8;
+
+function isoDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function meetingHasPassed(now: Date, time: string): boolean {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  if (!match) return false;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return now.getHours() > hours || (now.getHours() === hours && now.getMinutes() > minutes);
+}
+
+/** The next sessions of one weekday, including today when that meeting has not started. */
+export function upcomingSessions(day: DayOfWeek, time: string, count = UPCOMING_WEEKS, now = new Date()): string[] {
+  const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (cursor.getDay() === day && meetingHasPassed(now, time)) cursor.setDate(cursor.getDate() + 1);
+  while (cursor.getDay() !== day) cursor.setDate(cursor.getDate() + 1);
+  const dates: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    dates.push(isoDate(cursor));
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return dates;
+}
+
+export function formatSessionDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(
+    new Date(year ?? 0, (month ?? 1) - 1, day ?? 1),
+  );
+}
+
+/** Shown when the next session of a recurring study will not meet. */
+export function cancellationNote(
+  study: Pick<BibleStudy, 'format' | 'dayOfWeek' | 'time' | 'skippedDates'>,
+): string | null {
+  if (study.format !== 'recurring' || study.dayOfWeek === null) return null;
+  const sessions = upcomingSessions(study.dayOfWeek, study.time);
+  const skipped = new Set(study.skippedDates);
+  const next = sessions[0];
+  if (!next || !skipped.has(next)) return null;
+  const resume = sessions.find((date) => !skipped.has(date));
+  if (!resume) return 'The upcoming sessions are canceled.';
+  const [year, month, day] = next.split('-').map(Number);
+  const following = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+  following.setDate(following.getDate() + 7);
+  if (resume === isoDate(following)) return 'This week is canceled. Bible study will proceed next week.';
+  return `This week is canceled. Bible study will proceed on ${formatSessionDate(resume)}.`;
+}

@@ -92,6 +92,7 @@ service cloud.firestore {
         'pendingUserIds',
         'approvedUserIds',
         'invitedUserIds',
+        'skippedDates',
         'createdAt',
         'updatedAt'
       ];
@@ -124,6 +125,20 @@ service cloud.firestore {
     // Studies created before tags exist may omit the field. New writes must send a real list.
     function validTags(data) {
       return !data.keys().hasAny(['tags']) || validTagList(data.tags);
+    }
+
+    function validSkippedDates(data) {
+      return !data.keys().hasAny(['skippedDates'])
+        || (
+          data.skippedDates is list
+          && data.skippedDates.size() <= 12
+          && data.skippedDates.size() == data.skippedDates.toSet().size()
+          && (
+            data.skippedDates.size() == 0
+            || data.skippedDates.join(',').matches('^\\d{4}-\\d{2}-\\d{2}(,\\d{4}-\\d{2}-\\d{2})*$')
+          )
+          && (data.format != 'one-off' || data.skippedDates.size() == 0)
+        );
     }
 
     function validPublicStudy(data) {
@@ -161,6 +176,7 @@ service cloud.firestore {
           data.invitedUserIds is list
           && data.invitedUserIds.size() <= 40
         ))
+        && validSkippedDates(data)
         && data.createdAt is string
         && data.createdAt.size() <= 40
         && data.updatedAt is string

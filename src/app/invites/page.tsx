@@ -6,7 +6,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, LoadingScreen, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { formatSchedule } from '@/lib/format';
+import { cancellationNote, formatSchedule } from '@/lib/format';
 import { acceptInvite, declineInvite, subscribeInvitedStudies } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
@@ -79,6 +79,9 @@ export default function InvitesPage() {
                     {study.hostName} invited you · {study.area}
                   </p>
                   <p className="mt-0.5 text-xs text-muted">{formatSchedule(study)}</p>
+                  {cancellationNote(study) ? (
+                    <p className="mt-0.5 text-xs leading-relaxed text-clay">{cancellationNote(study)}</p>
+                  ) : null}
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" disabled={full || busy !== null} onClick={() => void respond(study, 'accept')}>

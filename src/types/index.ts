@@ -61,6 +61,8 @@ export interface BibleStudy {
   approvedUserIds: string[];
   /** People the host invited. They can read the study, not the address, until they accept. */
   invitedUserIds: string[];
+  /** `YYYY-MM-DD` sessions of a recurring study that will not meet. */
+  skippedDates: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -106,6 +108,8 @@ export interface StudyDraft {
   maxCapacity: number;
   area: string;
   isPublic: boolean;
+  /** Recurring sessions, as `YYYY-MM-DD`, that will not meet. */
+  skippedDates: string[];
   exactAddress: string;
   entryNotes: string;
 }

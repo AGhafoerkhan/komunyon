@@ -12,7 +12,7 @@ import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { formatSchedule, spotsLabel } from '@/lib/format';
+import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
 import { loadProfile } from '@/lib/users';
 import {
   acceptInvite,
@@ -381,6 +381,7 @@ function GuestStudy({
           <h1 className="font-serif text-xl leading-snug break-words">{study.title}</h1>
           {study.tags.length > 0 ? <TagList tags={study.tags} /> : null}
           <p className="text-sm break-words text-muted">{formatSchedule(study)}</p>
+          {cancellationNote(study) ? <p className="text-sm leading-relaxed text-clay">{cancellationNote(study)}</p> : null}
           <p className="text-sm tabular-nums">
             <span className="font-medium text-ink">
               {study.approvedUserIds.length} / {study.maxCapacity}
@@ -601,6 +602,9 @@ function StudyBody({
             <div>
               <dt className="text-muted">When</dt>
               <dd className="mt-1 font-medium">{formatSchedule(study)}</dd>
+              {cancellationNote(study) ? (
+                <dd className="mt-1 text-sm font-normal leading-relaxed text-clay">{cancellationNote(study)}</dd>
+              ) : null}
             </div>
             <div>
               <dt className="text-muted">Spots</dt>

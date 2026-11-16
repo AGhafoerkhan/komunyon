@@ -5,7 +5,7 @@ import { Button, Field, FormError, Spinner, fieldClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { HAGUE_AREAS } from '@/lib/hague';
 import { isDayOfWeek } from '@/lib/guards';
-import { DAY_FILTERS, dayName } from '@/lib/format';
+import { DAY_FILTERS, dayName, formatSessionDate, upcomingSessions } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import { sortTags, STUDY_TAGS, type StudyTag } from '@/lib/tags';
 import { CHECK_AGAIN, validateStudyDraft, type StudyField } from '@/lib/validate';
@@ -22,6 +22,7 @@ const EMPTY: StudyDraft = {
   maxCapacity: 8,
   area: '',
   isPublic: true,
+  skippedDates: [],
   exactAddress: '',
   entryNotes: '',
 };
@@ -153,7 +154,7 @@ export function StudyForm({
                 value={draft.dayOfWeek === null ? '' : String(draft.dayOfWeek)}
                 onChange={(event) => {
                   const value = Number(event.target.value);
-                  patch({ dayOfWeek: isDayOfWeek(value) ? value : null });
+                  patch({ dayOfWeek: isDayOfWeek(value) ? value : null, skippedDates: [] });
                 }}
                 required
               >
@@ -186,6 +187,21 @@ export function StudyForm({
             />
           </Field>
         </div>
+
+        {draft.format === 'recurring' && draft.dayOfWeek !== null ? (
+          <WeekSkips
+            day={draft.dayOfWeek}
+            time={draft.time}
+            skippedDates={draft.skippedDates}
+            onToggle={(date) =>
+              patch({
+                skippedDates: draft.skippedDates.includes(date)
+                  ? draft.skippedDates.filter((item) => item !== date)
+                  : [...draft.skippedDates, date],
+              })
+            }
+          />
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Neighbourhood" hint="Shown on the study card." error={fields.area}>
@@ -281,6 +297,50 @@ export function StudyForm({
   );
 }
 
+function WeekSkips({
+  day,
+  time,
+  skippedDates,
+  onToggle,
+}: {
+  day: DayOfWeek;
+  time: string;
+  skippedDates: string[];
+  onToggle: (date: string) => void;
+}) {
+  const sessions = upcomingSessions(day, time);
+  return (
+    <section>
+      <h2 className="font-serif text-xl">Upcoming {dayName(day)}s</h2>
+      <p className="mt-1 text-sm leading-relaxed text-muted">
+        These are the next sessions. Turn one off to cancel that week. The study stays on {dayName(day)}.
+      </p>
+      <ul className="mt-3 divide-y divide-line overflow-hidden rounded-lg border border-line bg-card">
+        {sessions.map((date) => {
+          const canceled = skippedDates.includes(date);
+          return (
+            <li key={date}>
+              <button
+                type="button"
+                aria-pressed={!canceled}
+                onClick={() => onToggle(date)}
+                className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+              >
+                <span className={canceled ? 'text-sm text-muted line-through' : 'text-sm font-medium'}>
+                  {formatSessionDate(date)}
+                </span>
+                <span className={`shrink-0 text-sm ${canceled ? 'text-clay' : 'text-canal'}`}>
+                  {canceled ? 'Canceled' : 'Meets'}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 function FormatChoice({
   label,
   detail,
@@ -319,6 +379,7 @@ export function draftFromStudy(
     maxCapacity: number;
     area: string;
     isPublic: boolean;
+    skippedDates: string[];
   },
   details: { exactAddress: string; entryNotes: string } | null,
 ): StudyDraft {
@@ -333,6 +394,7 @@ export function draftFromStudy(
     maxCapacity: study.maxCapacity,
     area: study.area,
     isPublic: study.isPublic,
+    skippedDates: study.skippedDates,
     exactAddress: details?.exactAddress ?? '',
     entryNotes: details?.entryNotes ?? '',
   };

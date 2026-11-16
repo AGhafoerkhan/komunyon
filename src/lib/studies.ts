@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
 import { normalizeTime } from '@/lib/guards';
+import { upcomingSessions } from '@/lib/format';
 import { sortTags } from '@/lib/tags';
 import { parseBibleStudy, parsePrivateDetails, parseUserProfile } from '@/lib/parse';
 import type { BibleStudy, JoinRequest, PrivateStudyDetails, StudyDraft, UserProfile } from '@/types';
@@ -36,6 +37,11 @@ function privateRef(studyId: string) {
 }
 
 function publicFields(host: UserProfile, draft: StudyDraft, createdAt: string, updatedAt: string) {
+  const day = draft.dayOfWeek;
+  const skippedDates =
+    draft.format === 'recurring' && day !== null
+      ? draft.skippedDates.filter((date) => upcomingSessions(day, draft.time).includes(date))
+      : [];
   return {
     hostId: host.uid,
     hostName: host.fullName,
@@ -51,6 +57,7 @@ function publicFields(host: UserProfile, draft: StudyDraft, createdAt: string, u
     maxCapacity: draft.maxCapacity,
     area: draft.area,
     isPublic: draft.isPublic,
+    skippedDates,
     createdAt,
     updatedAt,
   };

@@ -95,9 +95,15 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
     pendingUserIds: data.pendingUserIds,
     approvedUserIds: data.approvedUserIds,
     invitedUserIds: isStringArray(data.invitedUserIds) ? data.invitedUserIds : [],
+    skippedDates: skippedDates(data.skippedDates),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
+}
+
+function skippedDates(value: unknown): string[] {
+  if (!isStringArray(value)) return [];
+  return value.filter((date) => isIsoDate(date)).slice(0, 12);
 }
 
 export function parsePrivateDetails(data: unknown): PrivateStudyDetails | null {
