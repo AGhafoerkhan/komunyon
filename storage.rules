@@ -43,12 +43,11 @@ service firebase.storage {
 
     match /sessions/{studyId}/{date}/{fileName} {
       allow read: if inStudy(studyId);
-      allow create: if inStudy(studyId)
+      allow create: if isHost(studyId)
         && date.matches('^\\d{4}-\\d{2}-\\d{2}$')
         && fileName.matches('^' + request.auth.uid + '-\\d+\\.jpg$')
         && imageFile();
-      allow delete: if isHost(studyId)
-        || (signedIn() && fileName.matches('^' + request.auth.uid + '-\\d+\\.jpg$'));
+      allow delete: if isHost(studyId);
     }
   }
 }

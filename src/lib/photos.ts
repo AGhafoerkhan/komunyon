@@ -49,6 +49,20 @@ export async function uploadSessionPhoto(studyId: string, date: string, uid: str
   await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' });
 }
 
+export async function downloadSessionPhoto(photo: SessionPhoto, date: string): Promise<void> {
+  const response = await fetch(photo.url);
+  if (!response.ok) throw new Error('This photo could not be downloaded.');
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `komunyon-${date}.jpg`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function deleteSessionPhoto(path: string): Promise<void> {
   await deleteObject(ref(getFirebase().storage, path));
 }

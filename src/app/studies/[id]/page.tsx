@@ -7,7 +7,6 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { InvitePeople } from '@/components/InvitePeople';
 import { MemberList } from '@/components/MemberList';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
-import { SessionPhotos } from '@/components/SessionPhotos';
 import { useAuth } from '@/components/AuthProvider';
 import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
@@ -657,6 +656,12 @@ function StudyBody({
             </div>
           )}
 
+          {role === 'host' || role === 'approved' ? (
+            <Link href={`/studies/${study.id}/history`} className={`${buttonClass('secondary')} w-full`}>
+              History
+            </Link>
+          ) : null}
+
           {role === 'invited' ? (
             <div className="flex flex-col gap-2">
               <Button className="w-full" onClick={onAccept} disabled={full || busy !== null}>
@@ -705,12 +710,6 @@ function StudyBody({
           ) : null}
         </aside>
       </div>
-
-      {role === 'host' || role === 'approved' ? (
-        <div className="mt-8">
-          <SessionPhotos study={study} isHost={role === 'host'} />
-        </div>
-      ) : null}
 
       {role === 'approved' ? (
         <div className="mt-8">
