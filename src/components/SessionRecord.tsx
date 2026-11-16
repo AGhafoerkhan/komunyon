@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { fieldClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
@@ -34,6 +35,7 @@ export function SessionRecord({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<SessionFile | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<SessionFile | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -168,6 +170,7 @@ export function SessionRecord({
       await deleteSessionFile(file.path);
       setFiles((current) => current.filter((item) => item.path !== file.path));
       if (open?.path === file.path) setOpen(null);
+      setPendingRemove(null);
       onDebug('remove finished', { path: file.path });
     } catch (failure) {
       setError(actionError(failure));
@@ -223,7 +226,7 @@ export function SessionRecord({
           <ul className={cardGrid}>
             {images.map((file) => (
               <li key={file.path} className="relative min-w-0 rounded-lg border border-line bg-card p-2">
-                {isHost ? <RemoveButton busy={busy} onClick={() => void removeFile(file)} /> : null}
+                {isHost ? <RemoveButton busy={busy} onClick={() => setPendingRemove(file)} /> : null}
                 <button type="button" onClick={() => setOpen(file)} className="block w-full" aria-label="View session photo">
                   {/* Download URLs are tokenized and are not a fixed remote pattern. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -238,7 +241,7 @@ export function SessionRecord({
           <ul className={cardGrid}>
             {recordings.map((file) => (
               <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
-                {isHost ? <RemoveButton busy={busy} onClick={() => void removeFile(file)} /> : null}
+                {isHost ? <RemoveButton busy={busy} onClick={() => setPendingRemove(file)} /> : null}
                 <div className="min-w-0 pr-6">
                   <p className="text-sm font-medium text-ink">Recording</p>
                   <audio controls src={file.url} className="mt-2 w-full" preload="none" />
@@ -252,7 +255,7 @@ export function SessionRecord({
           <ul className={cardGrid}>
             {texts.map((file) => (
               <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
-                {isHost ? <RemoveButton busy={busy} onClick={() => void removeFile(file)} /> : null}
+                {isHost ? <RemoveButton busy={busy} onClick={() => setPendingRemove(file)} /> : null}
                 <p className="pr-6 text-sm font-medium text-ink">Text file</p>
                 <FileActions file={file} onDownload={download} />
               </li>
@@ -273,6 +276,22 @@ export function SessionRecord({
       </div>
       {error ? <p className="mt-3 text-sm text-clay">{error}</p> : null}
       {open ? <PhotoLightbox src={open.url} name={formatDdMmYyyy(date)} onClose={() => setOpen(null)} /> : null}
+      {pendingRemove ? (
+        <ConfirmDialog
+          title="Are you sure?"
+          body="This file will be removed from the session."
+          confirmLabel="Remove"
+          busy={busy}
+          error={error}
+          onConfirm={() => void removeFile(pendingRemove)}
+          onClose={() => {
+            if (!busy) {
+              setPendingRemove(null);
+              setError(null);
+            }
+          }}
+        />
+      ) : null}
     </section>
   );
 }
