@@ -65,6 +65,17 @@ function publicFields(host: UserProfile, draft: StudyDraft, createdAt: string, u
   };
 }
 
+async function syncStorageAccess(studyId: string): Promise<void> {
+  const snap = await getDoc(studyRef(studyId));
+  if (!snap.exists()) return;
+  const data = snap.data();
+  if (typeof data.hostId !== 'string' || !Array.isArray(data.approvedUserIds)) return;
+  await setDoc(doc(getFirebase().db, 'studies', studyId, 'access', 'members'), {
+    hostId: data.hostId,
+    approvedUserIds: data.approvedUserIds.filter((uid) => typeof uid === 'string'),
+  });
+}
+
 function privateFields(draft: StudyDraft, updatedAt: string) {
   return {
     exactAddress: draft.exactAddress.trim(),
@@ -192,6 +203,7 @@ export async function acceptInvite(study: BibleStudy, uid: string): Promise<void
       ...(study.pendingUserIds.includes(uid) ? { pendingUserIds: arrayRemove(uid) } : {}),
       updatedAt: nowIso(),
     });
+    await syncStorageAccess(study.id);
   } catch (error) {
     await deleteDoc(doc(getFirebase().db, 'studies', study.id, 'notices', uid)).catch(() => undefined);
     throw error;
@@ -263,6 +275,7 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
       invitedUserIds: [],
     });
     await setDoc(privateRef(ref.id), privateFields(draft, now));
+    await syncStorageAccess(ref.id);
   } catch (error) {
     await deleteDoc(ref).catch(() => undefined);
     throw error;
@@ -278,6 +291,7 @@ export async function updateStudy(studyId: string, host: UserProfile, draft: Stu
   const now = nowIso();
   await updateDoc(studyRef(studyId), publicFields(host, draft, createdAt, now));
   await setDoc(privateRef(studyId), privateFields(draft, now));
+  await syncStorageAccess(studyId);
 }
 
 export async function deleteStudy(studyId: string): Promise<void> {
@@ -287,6 +301,7 @@ export async function deleteStudy(studyId: string): Promise<void> {
   const notices = await getDocs(collection(db, 'studies', studyId, 'notices'));
   await Promise.all(notices.docs.map((item) => deleteDoc(item.ref)));
   await deleteDoc(privateRef(studyId));
+  await deleteDoc(doc(db, 'studies', studyId, 'access', 'members')).catch(() => undefined);
   await deleteDoc(studyRef(studyId));
 }
 
@@ -319,6 +334,7 @@ export async function leaveStudy(studyId: string, uid: string): Promise<void> {
       approvedUserIds: arrayRemove(uid),
       updatedAt: nowIso(),
     });
+    await syncStorageAccess(studyId);
   } catch (error) {
     await deleteDoc(doc(getFirebase().db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
     throw error;
@@ -350,6 +366,7 @@ export async function approveMember(study: BibleStudy, uid: string): Promise<voi
     approvedUserIds: arrayUnion(uid),
     updatedAt: nowIso(),
   });
+  await syncStorageAccess(study.id);
 }
 
 export async function declineMember(studyId: string, uid: string): Promise<void> {
@@ -374,6 +391,7 @@ export async function removeMember(study: BibleStudy, uid: string): Promise<void
       approvedUserIds: arrayRemove(uid),
       updatedAt: nowIso(),
     });
+    await syncStorageAccess(study.id);
   } catch (error) {
     await deleteDoc(notice).catch(() => undefined);
     throw error;

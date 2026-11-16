@@ -438,6 +438,22 @@ service cloud.firestore {
 
       allow delete: if isHost();
 
+      match /access/members {
+        allow get: if studyExists(studyId) && canReadPrivate(studyDoc(studyId));
+
+        allow create, update: if studyExists(studyId)
+          && signedIn()
+          && request.resource.data.keys().hasOnly(['hostId', 'approvedUserIds'])
+          && request.resource.data.hostId is string
+          && request.resource.data.hostId == studyDoc(studyId).hostId
+          && request.resource.data.approvedUserIds is list
+          && request.resource.data.approvedUserIds == studyDoc(studyId).approvedUserIds;
+
+        allow delete: if studyExists(studyId)
+          && signedIn()
+          && studyDoc(studyId).hostId == request.auth.uid;
+      }
+
       match /sessions/{date} {
         allow get, list: if studyExists(studyId) && canReadPrivate(studyDoc(studyId));
 

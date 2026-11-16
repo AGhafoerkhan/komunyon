@@ -6,26 +6,30 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    function studyData(studyId) {
-      return firestore.get(/databases/(default)/documents/studies/$(studyId)).data;
+    function accessPath(studyId) {
+      return /databases/(default)/documents/studies/$(studyId)/access/members;
+    }
+
+    function accessData(studyId) {
+      return firestore.get(accessPath(studyId)).data;
     }
 
     function inStudy(studyId) {
       return signedIn()
-        && firestore.exists(/databases/(default)/documents/studies/$(studyId))
+        && firestore.exists(accessPath(studyId))
         && (
-          studyData(studyId).hostId == request.auth.uid
+          accessData(studyId).hostId == request.auth.uid
           || (
-            studyData(studyId).approvedUserIds is list
-            && studyData(studyId).approvedUserIds.hasAny([request.auth.uid])
+            accessData(studyId).approvedUserIds is list
+            && accessData(studyId).approvedUserIds.hasAny([request.auth.uid])
           )
         );
     }
 
     function isHost(studyId) {
       return signedIn()
-        && firestore.exists(/databases/(default)/documents/studies/$(studyId))
-        && studyData(studyId).hostId == request.auth.uid;
+        && firestore.exists(accessPath(studyId))
+        && accessData(studyId).hostId == request.auth.uid;
     }
 
     function imageFile() {
