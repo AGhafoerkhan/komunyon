@@ -72,14 +72,7 @@ const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'h
 
 async function uploadSessionObject(path: string, data: Blob, contentType: string): Promise<void> {
   const fileRef = ref(getFirebase().storage, path);
-  try {
-    await uploadBytes(fileRef, data, { contentType });
-  } catch (error) {
-    if (error instanceof Error) {
-      Object.assign(error, { sessionUpload: { path, contentType, bytes: data.size } });
-    }
-    throw error;
-  }
+  await uploadBytes(fileRef, data, { contentType });
 }
 
 export async function uploadSessionFile(studyId: string, date: string, uid: string, file: File): Promise<void> {

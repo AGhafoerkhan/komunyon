@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SessionRecord } from '@/components/SessionRecord';
 import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
@@ -10,7 +10,6 @@ import { Alert, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { formatDdMmYyyy, historySessions } from '@/lib/format';
 import { isIsoDate } from '@/lib/guards';
-import { debugLine } from '@/lib/sessionDebug';
 import { subscribeStudy } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
@@ -22,10 +21,6 @@ export default function StudySessionPage() {
   const [study, setStudy] = useState<BibleStudy | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [debugLines, setDebugLines] = useState<string[]>([]);
-  const onDebug = useCallback((title: string, detail?: unknown) => {
-    setDebugLines((current) => [...current, debugLine(title, detail)].slice(-60));
-  }, []);
 
   useEffect(() => {
     if (!studyId) return;
@@ -42,28 +37,6 @@ export default function StudySessionPage() {
     );
   }, [studyId]);
 
-  useEffect(() => {
-    if (!user || !loaded) return;
-    onDebug('page', {
-      href: window.location.href,
-      online: navigator.onLine,
-      userAgent: navigator.userAgent,
-      studyId,
-      date,
-      validDate: isIsoDate(date),
-      studyFound: Boolean(study),
-      hostId: study?.hostId ?? null,
-      uid: user.uid,
-      email: user.email,
-      isHost: study ? study.hostId === user.uid : false,
-      approved: study ? study.approvedUserIds.includes(user.uid) : false,
-      skippedDates: study?.skippedDates ?? [],
-      shownDates: study ? historySessions(study) : [],
-      allowed: Boolean(study && (study.hostId === user.uid || study.approvedUserIds.includes(user.uid))),
-      known: Boolean(study && historySessions(study).includes(date)),
-    });
-  }, [user, loaded, study, studyId, date, onDebug]);
-
   if (!user) return null;
 
   const allowed = Boolean(study && (study.hostId === user.uid || study.approvedUserIds.includes(user.uid)));
@@ -75,12 +48,6 @@ export default function StudySessionPage() {
         ← History
       </Link>
       <h1 className={`mt-3 ${pageTitleClass}`}>{isIsoDate(date) ? formatDdMmYyyy(date) : 'Session'}</h1>
-      <section className="mt-4">
-        <h2 className="text-sm font-medium text-ink">Debug</h2>
-        <pre className="mt-2 max-h-[32rem] overflow-auto whitespace-pre-wrap break-all rounded-lg bg-ink p-3 text-xs leading-relaxed text-white">
-          {debugLines.length > 0 ? debugLines.join('\n\n') : 'Waiting for the session to report.'}
-        </pre>
-      </section>
       {!loaded ? <p className="mt-6 text-sm text-muted">Loading session…</p> : null}
       {error ? (
         <div className="mt-4">
@@ -95,13 +62,7 @@ export default function StudySessionPage() {
         <p className="mt-6 text-sm text-muted">This date is not a session of this study.</p>
       ) : null}
       {study && allowed && known ? (
-        <SessionRecord
-          studyId={study.id}
-          date={date}
-          hostId={study.hostId}
-          isHost={study.hostId === user.uid}
-          onDebug={onDebug}
-        />
+        <SessionRecord studyId={study.id} date={date} isHost={study.hostId === user.uid} />
       ) : null}
     </AppShell>
   );
