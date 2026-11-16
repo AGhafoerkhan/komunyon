@@ -83,6 +83,27 @@ export function subscribeStudies(
   );
 }
 
+export function subscribeHostedStudies(
+  uid: string,
+  onData: (studies: BibleStudy[]) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  const hosted = query(collection(db, 'studies'), where('hostId', '==', uid));
+  return onSnapshot(
+    hosted,
+    (snap) => {
+      const studies: BibleStudy[] = [];
+      snap.docs.forEach((item) => {
+        const study = parseBibleStudy(item.id, item.data());
+        if (study) studies.push(study);
+      });
+      onData(studies);
+    },
+    (error) => onError(error),
+  );
+}
+
 export function subscribeStudy(
   studyId: string,
   onData: (study: BibleStudy | null) => void,
@@ -250,6 +271,32 @@ function toJoinRequest(
     status,
     profileMissing: false,
   };
+}
+
+export type JoinNotice = {
+  id: string;
+  studyId: string;
+  studyTitle: string;
+  fullName: string;
+  photoURL: string;
+};
+
+export async function loadJoinNotices(studies: BibleStudy[]): Promise<JoinNotice[]> {
+  const pending = studies
+    .filter((study) => study.pendingUserIds.length > 0)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .flatMap((study) => study.pendingUserIds.map((uid) => ({ study, uid })));
+  const profiles = await fetchProfiles([...new Set(pending.map((item) => item.uid))]);
+  return pending.map(({ study, uid }) => {
+    const profile = profiles.get(uid);
+    return {
+      id: `${study.id}_${uid}`,
+      studyId: study.id,
+      studyTitle: study.title,
+      fullName: profile?.fullName || 'Someone',
+      photoURL: profile?.photoURL ?? '',
+    };
+  });
 }
 
 export async function loadJoinRequests(study: BibleStudy): Promise<{

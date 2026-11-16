@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
+import { JoinNotices } from '@/components/JoinNotices';
 import { Avatar, buttonClass } from '@/components/ui';
 
 export function TopBar() {
@@ -16,6 +17,7 @@ export function TopBar() {
         </Link>
         <span className="hidden truncate text-sm text-muted sm:inline">The Hague</span>
         <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-2">
+          <JoinNotices />
           <Link
             href="/profile"
             aria-label="My profile"
