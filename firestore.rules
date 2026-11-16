@@ -400,33 +400,55 @@ service cloud.firestore {
       }
 
       match /notices/{uid} {
+        allow read: if signedIn() && resource.data.userId == request.auth.uid;
+
         allow read: if studyExists(studyId)
           && signedIn()
           && studyDoc(studyId).hostId == request.auth.uid;
 
-        allow create, update: if studyExists(studyId)
-          && signedIn()
-          && uid == request.auth.uid
-          && studyDoc(studyId).hostId != request.auth.uid
-          && request.resource.data.keys().hasOnly(['type', 'userId', 'createdAt'])
-          && (
-            (
-              request.resource.data.type == 'left'
-              && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
+        allow create, update: if (
+            studyExists(studyId)
+            && signedIn()
+            && uid == request.auth.uid
+            && studyDoc(studyId).hostId != request.auth.uid
+            && request.resource.data.keys().hasOnly(['type', 'userId', 'createdAt'])
+            && (
+              (
+                request.resource.data.type == 'left'
+                && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
+              )
+              || (
+                request.resource.data.type == 'cancelled'
+                && studyDoc(studyId).pendingUserIds.hasAny([request.auth.uid])
+              )
+              || (
+                (request.resource.data.type == 'accepted' || request.resource.data.type == 'declined')
+                && studyDoc(studyId).keys().hasAny(['invitedUserIds'])
+                && studyDoc(studyId).invitedUserIds.hasAny([request.auth.uid])
+              )
             )
-            || (
-              request.resource.data.type == 'cancelled'
-              && studyDoc(studyId).pendingUserIds.hasAny([request.auth.uid])
-            )
-            || (
-              (request.resource.data.type == 'accepted' || request.resource.data.type == 'declined')
-              && studyDoc(studyId).keys().hasAny(['invitedUserIds'])
-              && studyDoc(studyId).invitedUserIds.hasAny([request.auth.uid])
-            )
+            && request.resource.data.userId == request.auth.uid
+            && request.resource.data.createdAt is string
+            && request.resource.data.createdAt.size() <= 40
           )
-          && request.resource.data.userId == request.auth.uid
-          && request.resource.data.createdAt is string
-          && request.resource.data.createdAt.size() <= 40;
+          || (
+            studyExists(studyId)
+            && signedIn()
+            && studyDoc(studyId).hostId == request.auth.uid
+            && uid != request.auth.uid
+            && studyDoc(studyId).approvedUserIds.hasAny([uid])
+            && request.resource.data.keys().hasOnly(['type', 'userId', 'createdAt', 'studyTitle', 'hostName'])
+            && request.resource.data.type == 'removed'
+            && request.resource.data.userId == uid
+            && request.resource.data.createdAt is string
+            && request.resource.data.createdAt.size() <= 40
+            && request.resource.data.studyTitle is string
+            && request.resource.data.studyTitle.size() > 0
+            && request.resource.data.studyTitle.size() <= 120
+            && request.resource.data.hostName is string
+            && request.resource.data.hostName.size() > 0
+            && request.resource.data.hostName.size() <= 80
+          );
 
         allow delete: if studyExists(studyId)
           && signedIn()

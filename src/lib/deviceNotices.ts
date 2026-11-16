@@ -67,6 +67,7 @@ export function noticeLine(notice: HostNotice): string {
   if (notice.kind === 'accepted') return `${notice.fullName} accepted`;
   if (notice.kind === 'declined') return `${notice.fullName} declined`;
   if (notice.kind === 'invite') return `${notice.fullName} invited you`;
+  if (notice.kind === 'removed') return `${notice.fullName} removed you`;
   return `${notice.fullName} requested to join`;
 }
 

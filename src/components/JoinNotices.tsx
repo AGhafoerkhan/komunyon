@@ -16,6 +16,7 @@ import {
   subscribeDepartures,
   subscribeHostedStudies,
   subscribeInvitedStudies,
+  subscribeRemovalNotices,
   type HostNotice,
 } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
@@ -27,10 +28,12 @@ export function JoinNotices() {
   const [requests, setRequests] = useState<HostNotice[]>([]);
   const [departures, setDepartures] = useState<HostNotice[]>([]);
   const [invited, setInvited] = useState<BibleStudy[]>([]);
+  const [removals, setRemovals] = useState<HostNotice[]>([]);
   const [hosted, setHosted] = useState<BibleStudy[]>([]);
   const [requestsReady, setRequestsReady] = useState(false);
   const [departuresReady, setDeparturesReady] = useState(false);
   const [invitesReady, setInvitesReady] = useState(false);
+  const [removalsReady, setRemovalsReady] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const primed = useRef(false);
@@ -111,6 +114,21 @@ export function JoinNotices() {
   }, [user]);
 
   useEffect(() => {
+    if (!user) return;
+    return subscribeRemovalNotices(
+      user.uid,
+      (next) => {
+        setRemovals(next);
+        setRemovalsReady(true);
+      },
+      () => {
+        setRemovals([]);
+        setRemovalsReady(true);
+      },
+    );
+  }, [user]);
+
+  useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
       if (event.key === 'Escape') setOpen(false);
@@ -138,13 +156,13 @@ export function JoinNotices() {
         at: study.updatedAt,
       }))
     : [];
-  const notices = [...requests, ...departures, ...invites].sort((a, b) => b.at.localeCompare(a.at));
+  const notices = [...requests, ...departures, ...invites, ...removals].sort((a, b) => b.at.localeCompare(a.at));
 
   useEffect(() => {
-    if (!user || !requestsReady || !departuresReady || !invitesReady || primed.current) return;
+    if (!user || !requestsReady || !departuresReady || !invitesReady || !removalsReady || primed.current) return;
     primed.current = true;
     seen.current = new Set(notices.map((notice) => notice.id));
-  }, [user, requestsReady, departuresReady, invitesReady, notices]);
+  }, [user, requestsReady, departuresReady, invitesReady, removalsReady, notices]);
 
   useEffect(() => {
     if (!primed.current) return;
@@ -274,6 +292,7 @@ function noticeVerb(kind: HostNotice['kind']): string {
   if (kind === 'accepted') return 'accepted';
   if (kind === 'declined') return 'declined';
   if (kind === 'invite') return 'invited you';
+  if (kind === 'removed') return 'removed you';
   return 'requested to join';
 }
 

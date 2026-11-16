@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { InvitePeople } from '@/components/InvitePeople';
 import { MemberList } from '@/components/MemberList';
@@ -23,6 +23,7 @@ import {
   removeMember,
   requestToJoin,
   subscribePrivateDetails,
+  subscribeRemovalNotices,
   subscribeStudy,
 } from '@/lib/studies';
 import type { BibleStudy, JoinRequest, PrivateStudyDetails } from '@/types';
@@ -57,21 +58,57 @@ export default function StudyPage() {
   const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>([]);
   const [approvedMembers, setApprovedMembers] = useState<JoinRequest[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
+  const [removed, setRemoved] = useState(false);
+  const [heardRemoval, setHeardRemoval] = useState(false);
+  const [removalsChecked, setRemovalsChecked] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const seenAsMember = useRef(false);
 
   useEffect(() => {
     if (!studyId) return;
     return subscribeStudy(
       studyId,
       (next) => {
+        const uid = user?.uid;
+        if (next && uid && next.hostId !== uid && next.approvedUserIds.includes(uid)) {
+          seenAsMember.current = true;
+        } else if (next && uid && seenAsMember.current && !next.approvedUserIds.includes(uid)) {
+          setRemoved(true);
+          setError(null);
+        }
         setStudy(next);
         setLoaded(true);
       },
       (failure) => {
+        if (isPermissionDenied(failure) && seenAsMember.current) {
+          setRemoved(true);
+          setError(null);
+          setLoaded(true);
+          return;
+        }
+        if (isPermissionDenied(failure)) {
+          setBlocked(true);
+          setError(null);
+          setLoaded(true);
+          return;
+        }
         setError(actionError(failure));
         setLoaded(true);
       },
     );
-  }, [studyId]);
+  }, [studyId, user?.uid]);
+
+  useEffect(() => {
+    if (!user || !studyId) return;
+    return subscribeRemovalNotices(
+      user.uid,
+      (notices) => {
+        if (notices.some((notice) => notice.studyId === studyId)) setHeardRemoval(true);
+        setRemovalsChecked(true);
+      },
+      () => setRemovalsChecked(true),
+    );
+  }, [studyId, user]);
 
   const canReadPrivate = Boolean(
     user && study && (study.hostId === user.uid || study.approvedUserIds.includes(user.uid)),
@@ -142,6 +179,12 @@ export default function StudyPage() {
       await action();
       setConfirm(null);
     } catch (failure) {
+      if (isPermissionDenied(failure) && seenAsMember.current) {
+        setRemoved(true);
+        setConfirm(null);
+        setError(null);
+        return;
+      }
       setError(actionError(failure));
     } finally {
       setBusy(null);
@@ -152,17 +195,34 @@ export default function StudyPage() {
 
   if (!user) return <LoadingScreen />;
 
+  const memberNow = Boolean(study?.approvedUserIds.includes(user.uid));
+  const showRemoved = removed || (heardRemoval && !memberNow);
+
   return (
     <AppShell>
       <Link href="/dashboard" className="inline-flex text-sm text-muted hover:text-ink">
         ← All studies
       </Link>
 
-      {!loaded ? (
+      {!loaded || (blocked && !removalsChecked && !removed) ? (
         <p className="mt-6 text-sm text-muted">Loading study…</p>
-      ) : !study ? (
+      ) : showRemoved ? (
+        <div className="mt-6 max-w-xl">
+          <p className="font-serif text-3xl">The host removed you from this study.</p>
+          <p className="mt-3 text-sm leading-relaxed text-muted">
+            {study ? `${study.title} is no longer yours to open. ` : null}
+            You no longer have the address.
+          </p>
+        </div>
+      ) : blocked || !study ? (
         <div className="mt-6">
-          {error ? <Alert>{error}</Alert> : <p className="font-serif text-3xl">This study is no longer listed.</p>}
+          {error ? (
+            <Alert>{error}</Alert>
+          ) : (
+            <p className="font-serif text-3xl">
+              {blocked ? 'This study is not available to you.' : 'This study is no longer listed.'}
+            </p>
+          )}
         </div>
       ) : (
         <StudyBody
@@ -211,7 +271,7 @@ export default function StudyPage() {
               });
               return;
             }
-            void run(`remove:${confirm.userId}`, () => removeMember(study.id, confirm.userId));
+            void run(`remove:${confirm.userId}`, () => removeMember(study, confirm.userId));
           }}
         />
       ) : null}

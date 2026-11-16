@@ -2,6 +2,7 @@ import {
   arrayRemove,
   arrayUnion,
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
   getDoc,
@@ -347,11 +348,25 @@ export async function declineMember(studyId: string, uid: string): Promise<void>
   });
 }
 
-export async function removeMember(studyId: string, uid: string): Promise<void> {
-  await updateDoc(studyRef(studyId), {
-    approvedUserIds: arrayRemove(uid),
-    updatedAt: nowIso(),
+export async function removeMember(study: BibleStudy, uid: string): Promise<void> {
+  const { db } = getFirebase();
+  const notice = doc(db, 'studies', study.id, 'notices', uid);
+  await setDoc(notice, {
+    type: 'removed',
+    userId: uid,
+    studyTitle: study.title,
+    hostName: study.hostName,
+    createdAt: nowIso(),
   });
+  try {
+    await updateDoc(studyRef(study.id), {
+      approvedUserIds: arrayRemove(uid),
+      updatedAt: nowIso(),
+    });
+  } catch (error) {
+    await deleteDoc(notice).catch(() => undefined);
+    throw error;
+  }
 }
 
 async function fetchProfiles(uids: string[]): Promise<Map<string, UserProfile>> {
@@ -408,9 +423,43 @@ export type HostNotice = {
   userId: string;
   fullName: string;
   photoURL: string;
-  kind: 'request' | 'left' | 'cancelled' | 'accepted' | 'declined' | 'invite';
+  kind: 'request' | 'left' | 'cancelled' | 'accepted' | 'declined' | 'invite' | 'removed';
   at: string;
 };
+
+export function subscribeRemovalNotices(
+  uid: string,
+  onData: (notices: HostNotice[]) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  const notices = query(collectionGroup(db, 'notices'), where('userId', '==', uid));
+  return onSnapshot(
+    notices,
+    (snap) => {
+      const next: HostNotice[] = [];
+      snap.docs.forEach((item) => {
+        const data = item.data();
+        if (data.type !== 'removed' || data.userId !== uid || typeof data.createdAt !== 'string') return;
+        const studyId = item.ref.parent.parent?.id;
+        if (!studyId) return;
+        next.push({
+          id: `removed_${studyId}_${uid}`,
+          studyId,
+          studyTitle: typeof data.studyTitle === 'string' && data.studyTitle ? data.studyTitle : 'A study',
+          userId: uid,
+          fullName: typeof data.hostName === 'string' && data.hostName ? data.hostName : 'The host',
+          photoURL: '',
+          kind: 'removed',
+          at: data.createdAt,
+        });
+      });
+      next.sort((a, b) => b.at.localeCompare(a.at));
+      onData(next);
+    },
+    (error) => onError(error),
+  );
+}
 
 export async function loadJoinNotices(studies: BibleStudy[]): Promise<HostNotice[]> {
   const pending = studies
