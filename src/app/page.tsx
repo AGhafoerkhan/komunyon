@@ -11,19 +11,16 @@ const story = [
     label: 'Problem',
     title: 'You want to go, and you don’t know where',
     body: 'People want a Bible study almost every day. They don’t know who is hosting, where they could go, or how to host their own. They want to meet new people and really connect.',
-    tone: 'paper',
   },
   {
     label: 'Solution',
     title: 'Every study in the city, on one list',
     body: 'Komunyon is the overview for The Hague. Join a communion any time a seat is left, anywhere in the city, even if you don’t know the people. Or host one yourself.',
-    tone: 'sand',
   },
   {
     label: 'Benefit',
     title: 'You meet people, then you get the details',
     body: 'You can see the neighbourhood, the time, and who is hosting before you go. After the host approves you, you receive the address and how to come in.',
-    tone: 'card',
   },
 ] as const;
 
@@ -54,45 +51,45 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-dvh w-full flex-col">
-      <header className="flex w-full items-center justify-between gap-4 px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 sm:px-8 lg:px-12">
+      <header className="flex w-full items-center justify-between gap-4 border-b border-line px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 lg:px-12">
         <span className="font-serif text-lg">Komunyon</span>
         <span className="text-sm text-muted">The Hague</span>
       </header>
 
       <main className="w-full">
-        <Band>
-          <p className="text-sm font-medium text-canal">Bible studies &amp; communion</p>
-          <h1 className="mt-6 w-full font-serif text-4xl leading-tight break-words sm:text-6xl">
+        <Band rule={false}>
+          <p className="text-xs tracking-wide text-muted">Bible studies &amp; communion</p>
+          <h1 className="mt-4 w-full font-serif text-3xl leading-tight font-normal break-words sm:text-4xl">
             A seat at a Bible study, with people you have yet to meet.
           </h1>
-          <p className="mt-8 w-full text-lg leading-relaxed text-muted">
+          <p className="mt-4 w-full text-base leading-relaxed text-muted">
             Find who is gathering in The Hague, ask for a seat, or host a table of your own.
           </p>
         </Band>
 
         {story.map((item) => (
-          <Band key={item.label} tone={item.tone} fill>
-            <p className="text-sm font-medium text-canal">{item.label}</p>
-            <h2 className="mt-6 w-full font-serif text-3xl leading-tight break-words sm:text-5xl">{item.title}</h2>
-            <p className="mt-6 w-full text-base leading-relaxed text-muted sm:text-lg">{item.body}</p>
+          <Band key={item.label} fill>
+            <p className="text-xs tracking-wide text-muted">{item.label}</p>
+            <h2 className="mt-4 w-full font-serif text-2xl leading-snug font-normal break-words sm:text-3xl">{item.title}</h2>
+            <p className="mt-4 w-full text-sm leading-relaxed text-muted sm:text-base">{item.body}</p>
           </Band>
         ))}
 
         <Band>
-          <h2 className="w-full font-serif text-3xl leading-tight sm:text-5xl">Start now</h2>
-          <p className="mt-6 w-full text-base leading-relaxed text-muted sm:text-lg">
+          <h2 className="w-full font-serif text-2xl leading-snug font-normal sm:text-3xl">Start now</h2>
+          <p className="mt-4 w-full text-sm leading-relaxed text-muted sm:text-base">
             First sign in here. Then host a study, or request to join one. After that, you get the information about it.
           </p>
-          <ol className="mt-12 grid w-full gap-6 sm:grid-cols-3 sm:gap-8">
+          <ol className="mt-8 grid w-full border-t border-line sm:grid-cols-3">
             {steps.map((step) => (
-              <li key={step.n} className="rounded-lg border border-line bg-card p-6 sm:p-8">
-                <span className="font-serif text-3xl text-canal">{step.n}</span>
-                <h3 className="mt-4 font-serif text-2xl leading-tight">{step.title}</h3>
-                <p className="mt-3 text-base leading-relaxed text-muted">{step.body}</p>
+              <li key={step.n} className="border-b border-line py-5 sm:border-b-0 sm:border-l sm:px-6 sm:first:border-l-0 sm:first:pl-0 sm:last:pr-0">
+                <p className="text-xs tracking-wide text-muted">{step.n}</p>
+                <h3 className="mt-2 text-sm font-medium">{step.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted">{step.body}</p>
               </li>
             ))}
           </ol>
-          <div className="mt-12">
+          <div className="mt-8">
             <Access
               configured={configured}
               missing={missing}
@@ -104,23 +101,25 @@ export default function HomePage() {
           </div>
         </Band>
 
-        <Band tone="sand">
-          <p className="text-sm font-medium text-canal">Questions</p>
-          <h2 className="mt-6 w-full font-serif text-3xl leading-tight break-words sm:text-5xl">
+        <Band>
+          <p className="text-xs tracking-wide text-muted">Questions</p>
+          <h2 className="mt-4 w-full font-serif text-2xl leading-snug font-normal break-words sm:text-3xl">
             Bring a question, or a specific request.
           </h2>
-          <p className="mt-6 w-full text-base leading-relaxed text-muted sm:text-lg">
+          <p className="mt-4 w-full text-sm leading-relaxed text-muted sm:text-base">
             If you want to know how a study works before you sign in, or you need something the list does not cover, write
             or call. The contact is just below the button.
           </p>
         </Band>
 
-        <Band tone="canal">
-          <h2 className="w-full font-serif text-3xl leading-tight sm:text-5xl">Start now</h2>
-          <p className="mt-6 w-full text-base leading-relaxed text-white/80 sm:text-lg">
-            Sign in, then host a study or request to join one. After that, you get the information.
-          </p>
-          <div className="mt-12">
+        <Band>
+          <div className="flex w-full flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-serif text-2xl leading-snug font-normal sm:text-3xl">Start now</h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
+                Sign in, then host a study or request to join one. After that, you get the information.
+              </p>
+            </div>
             <Access
               configured={configured}
               missing={missing}
@@ -128,33 +127,29 @@ export default function HomePage() {
               message={message}
               onWarm={prepareGoogleSignIn}
               onSignIn={() => void signIn()}
-              light
             />
           </div>
         </Band>
 
         <Band>
-          <h2 className="w-full font-serif text-3xl leading-tight sm:text-5xl">Inquiries and specific requests</h2>
-          <p className="mt-6 w-full text-base leading-relaxed text-muted sm:text-lg">
-            Angelo Ghafoerkhan answers questions about hosting, joining, and anything the list does not cover.
-          </p>
-          <dl className="mt-12 grid w-full gap-10 sm:grid-cols-3 sm:gap-8">
+          <h2 className="w-full font-serif text-2xl leading-snug font-normal sm:text-3xl">Inquiries and specific requests</h2>
+          <dl className="mt-8 grid w-full gap-6 border-t border-line pt-6 sm:grid-cols-3">
             <div>
-              <dt className="text-sm font-medium text-canal">Name</dt>
-              <dd className="mt-2 font-serif text-2xl leading-tight break-words">Angelo Ghafoerkhan</dd>
+              <dt className="text-xs tracking-wide text-muted">Name</dt>
+              <dd className="mt-1 text-sm break-words">Angelo Ghafoerkhan</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-canal">Phone</dt>
-              <dd className="mt-2 text-lg">
-                <a href="tel:+31681963662" className="text-ink underline-offset-2 hover:underline">
+              <dt className="text-xs tracking-wide text-muted">Phone</dt>
+              <dd className="mt-1 text-sm">
+                <a href="tel:+31681963662" className="underline-offset-2 hover:underline">
                   +31 6 8196 3662
                 </a>
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-canal">Email</dt>
-              <dd className="mt-2 text-lg">
-                <a href="mailto:angeloghafoerkhan@gmail.com" className="break-all text-ink underline-offset-2 hover:underline">
+              <dt className="text-xs tracking-wide text-muted">Email</dt>
+              <dd className="mt-1 text-sm">
+                <a href="mailto:angeloghafoerkhan@gmail.com" className="break-all underline-offset-2 hover:underline">
                   angeloghafoerkhan@gmail.com
                 </a>
               </dd>
@@ -163,9 +158,9 @@ export default function HomePage() {
         </Band>
       </main>
 
-      <footer className="w-full border-t border-line px-5 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] text-sm leading-relaxed text-muted sm:px-8 lg:px-12">
+      <footer className="w-full border-t border-line px-5 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-sm text-muted sm:px-8 lg:px-12">
         <p>Komunyon · The Hague</p>
-        <p className="mt-2">Hosts approve each person. You can host, and you can join.</p>
+        <p className="mt-1">Hosts approve each person. You can host, and you can join.</p>
       </footer>
     </div>
   );
@@ -173,24 +168,18 @@ export default function HomePage() {
 
 function Band({
   children,
-  tone = 'paper',
   fill = false,
+  rule = true,
 }: {
   children: ReactNode;
-  tone?: 'paper' | 'sand' | 'card' | 'canal';
   fill?: boolean;
+  rule?: boolean;
 }) {
-  const tones = {
-    paper: 'bg-paper text-ink',
-    sand: 'bg-sand text-ink',
-    card: 'bg-card text-ink',
-    canal: 'bg-canal text-white',
-  };
   return (
-    <section className={`flex w-full ${fill ? 'min-h-dvh' : ''} ${tones[tone]}`}>
+    <section className={`flex w-full bg-paper text-ink ${rule ? 'border-t border-line' : ''} ${fill ? 'min-h-dvh' : ''}`}>
       <div
         className={`flex w-full flex-col justify-center px-5 sm:px-8 lg:px-12 ${
-          fill ? 'py-16' : 'py-16 sm:py-24 lg:py-28'
+          fill ? 'py-12' : 'py-12 sm:py-16'
         }`}
       >
         {children}
@@ -206,7 +195,6 @@ function Access({
   message,
   onWarm,
   onSignIn,
-  light = false,
 }: {
   configured: boolean;
   missing: string[];
@@ -214,17 +202,16 @@ function Access({
   message: string | null;
   onWarm: () => void;
   onSignIn: () => void;
-  light?: boolean;
 }) {
   if (!configured) {
     return (
-      <div className="w-full rounded-lg border border-line bg-card p-6 text-ink">
+      <div className="w-full border border-line p-4 text-ink">
         <p className="text-sm font-medium">Add your Firebase web config to continue.</p>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           Copy <code className="text-ink">.env.example</code> to <code className="text-ink">.env.local</code>, then deploy{' '}
           <code className="text-ink">firestore.rules</code> and <code className="text-ink">storage.rules</code>.
         </p>
-        <ul className="mt-4 space-y-1 font-mono text-xs text-ink">
+        <ul className="mt-3 space-y-1 font-mono text-xs text-ink">
           {missing.map((key) => (
             <li key={key}>{key}</li>
           ))}
@@ -234,16 +221,14 @@ function Access({
   }
 
   return (
-    <div className="flex w-full flex-col items-stretch gap-4 sm:items-start">
+    <div className="flex w-full shrink-0 flex-col items-stretch gap-3 sm:w-auto sm:items-start">
       {message ? <Alert>{message}</Alert> : null}
       <button
         type="button"
         onPointerDown={onWarm}
         onClick={onSignIn}
         disabled={busy}
-        className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${
-          light ? 'bg-white text-ink hover:bg-sand' : 'border border-line bg-white text-ink hover:bg-sand'
-        }`}
+        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-line bg-paper px-4 text-sm font-medium text-ink transition hover:bg-sand disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
       >
         {busy ? <Spinner /> : <GoogleMark />}
         Sign in with Google
@@ -254,7 +239,7 @@ function Access({
 
 function GoogleMark() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
       <path
         fill="#4285F4"
         d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
