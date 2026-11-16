@@ -50,6 +50,8 @@ export interface BibleStudy {
   maxCapacity: number;
   /** Neighbourhood in The Hague, never a street address. */
   area: string;
+  /** False hides the study from everyone except the host. */
+  isPublic: boolean;
   pendingUserIds: string[];
   approvedUserIds: string[];
   createdAt: string;
@@ -94,6 +96,7 @@ export interface StudyDraft {
   time: string;
   maxCapacity: number;
   area: string;
+  isPublic: boolean;
   exactAddress: string;
   entryNotes: string;
 }

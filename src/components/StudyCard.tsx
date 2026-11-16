@@ -35,6 +35,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
           {taken} / {study.maxCapacity}
         </span>
         <span className="text-muted"> · {spotsLabel(taken, study.maxCapacity)}</span>
+        {hosting && !study.isPublic ? <span className="text-muted"> · Private</span> : null}
         {hosting ? <span className="text-canal"> · Your study</span> : null}
       </p>
     </Link>

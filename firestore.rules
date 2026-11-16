@@ -27,12 +27,17 @@ service cloud.firestore {
       return get(studyPath(studyId)).data;
     }
 
+    function studyIsListed(study) {
+      return !study.keys().hasAny(['isPublic']) || study.isPublic == true;
+    }
+
     function canReadPrivate(study) {
       return signedIn()
         && (
           study.hostId == request.auth.uid
           || (
-            study.approvedUserIds is list
+            studyIsListed(study)
+            && study.approvedUserIds is list
             && study.approvedUserIds.hasAny([request.auth.uid])
           )
         );
@@ -78,6 +83,7 @@ service cloud.firestore {
         'time',
         'maxCapacity',
         'area',
+        'isPublic',
         'pendingUserIds',
         'approvedUserIds',
         'createdAt',
@@ -140,6 +146,7 @@ service cloud.firestore {
         && data.maxCapacity <= 100
         && data.area is string
         && isHagueArea(data.area)
+        && (!data.keys().hasAny(['isPublic']) || data.isPublic is bool)
         && data.pendingUserIds is list
         && data.pendingUserIds.size() <= 200
         && data.approvedUserIds is list
@@ -188,6 +195,7 @@ service cloud.firestore {
         && request.auth.uid != resource.data.hostId
         && !resource.data.approvedUserIds.hasAny([request.auth.uid])
         && resource.data.approvedUserIds.size() < resource.data.maxCapacity
+        && studyIsListed(resource.data)
         && onlyTouched(['pendingUserIds', 'updatedAt'])
         && selfAddedTo(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
         && validPublicStudy(request.resource.data);
@@ -293,10 +301,13 @@ service cloud.firestore {
     }
 
     match /studies/{studyId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (
+        resource.data.hostId == request.auth.uid || studyIsListed(resource.data)
+      );
 
       allow create: if signedIn()
         && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.isPublic is bool
         && validPublicStudy(request.resource.data)
         && validTagList(request.resource.data.tags)
         && request.resource.data.pendingUserIds.size() == 0
@@ -309,7 +320,14 @@ service cloud.firestore {
         )
         || selfRequestsToJoin()
         || selfCancelsRequest()
-        || selfLeavesGroup();
+        || selfLeavesGroup()
+        || (
+          signedIn()
+          && !resource.data.keys().hasAny(['isPublic'])
+          && onlyTouched(['isPublic'])
+          && request.resource.data.isPublic == true
+          && validPublicStudy(request.resource.data)
+        );
 
       allow delete: if isHost();
 

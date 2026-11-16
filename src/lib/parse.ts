@@ -61,6 +61,7 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
   if (typeof data.time !== 'string' || normalizeTime(data.time) === null) return null;
   if (typeof data.maxCapacity !== 'number' || !Number.isInteger(data.maxCapacity)) return null;
   if (typeof data.area !== 'string' || !isHagueArea(data.area)) return null;
+  if (data.isPublic !== undefined && typeof data.isPublic !== 'boolean') return null;
   if (!isStringArray(data.pendingUserIds) || !isStringArray(data.approvedUserIds)) return null;
   if (typeof data.createdAt !== 'string' || typeof data.updatedAt !== 'string') return null;
 
@@ -85,6 +86,7 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
     time: data.time,
     maxCapacity: data.maxCapacity,
     area: data.area,
+    isPublic: data.isPublic !== false,
     pendingUserIds: data.pendingUserIds,
     approvedUserIds: data.approvedUserIds,
     createdAt: data.createdAt,

@@ -7,7 +7,7 @@ import { AppShell } from '@/components/TopBar';
 import { useAuth } from '@/components/AuthProvider';
 import { Alert, LoadingScreen, buttonClass, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { subscribeStudies } from '@/lib/studies';
+import { markUnlistedStudiesPublic, subscribeHostedStudies, subscribePublicStudies } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
 export default function DashboardPage() {
@@ -17,17 +17,55 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    return subscribeStudies(
+    if (!user) return;
+    let publicStudies: BibleStudy[] = [];
+    let hostedStudies: BibleStudy[] = [];
+    let publicReady = false;
+    let hostedReady = false;
+
+    const publish = () => {
+      if (!publicReady || !hostedReady) return;
+      const byId = new Map<string, BibleStudy>();
+      for (const study of publicStudies) {
+        if (study.isPublic) byId.set(study.id, study);
+      }
+      for (const study of hostedStudies) byId.set(study.id, study);
+      setStudies([...byId.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      setLoaded(true);
+    };
+
+    const unsubPublic = subscribePublicStudies(
       (next) => {
-        setStudies(next);
-        setLoaded(true);
+        publicStudies = next;
+        publicReady = true;
+        publish();
       },
       (failure) => {
         setError(actionError(failure));
-        setLoaded(true);
+        publicReady = true;
+        publish();
       },
     );
-  }, []);
+    const unsubHosted = subscribeHostedStudies(
+      user.uid,
+      (next) => {
+        hostedStudies = next;
+        hostedReady = true;
+        publish();
+      },
+      (failure) => {
+        setError(actionError(failure));
+        hostedReady = true;
+        publish();
+      },
+    );
+    void markUnlistedStudiesPublic().catch(() => undefined);
+
+    return () => {
+      unsubPublic();
+      unsubHosted();
+    };
+  }, [user]);
 
   if (!user) return <LoadingScreen />;
 

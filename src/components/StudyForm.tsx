@@ -21,6 +21,7 @@ const EMPTY: StudyDraft = {
   time: '19:00',
   maxCapacity: 8,
   area: '',
+  isPublic: true,
   exactAddress: '',
   entryNotes: '',
 };
@@ -223,6 +224,27 @@ export function StudyForm({
         </div>
       </section>
 
+      <section className="flex items-center justify-between gap-4 rounded-lg border border-line bg-card px-4 py-4">
+        <div className="min-w-0">
+          <h2 className="font-serif text-xl">Public</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted">
+            On, anyone signed in can find this study. Off, only you can see it until you invite someone.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={draft.isPublic}
+          aria-label="Public"
+          onClick={() => patch({ isPublic: !draft.isPublic })}
+          className="inline-flex h-11 w-16 shrink-0 items-center justify-center"
+        >
+          <span className={`relative inline-flex h-8 w-14 items-center rounded-full transition ${draft.isPublic ? 'bg-canal' : 'bg-line'}`}>
+            <span className={`inline-block h-6 w-6 rounded-full bg-white shadow transition ${draft.isPublic ? 'translate-x-7' : 'translate-x-1'}`} />
+          </span>
+        </button>
+      </section>
+
       <section className="flex flex-col gap-4 rounded-lg border border-line bg-sand/50 p-4">
         <div>
           <h2 className="font-serif text-xl">At the door</h2>
@@ -298,6 +320,7 @@ export function draftFromStudy(
     time: string;
     maxCapacity: number;
     area: string;
+    isPublic: boolean;
   },
   details: { exactAddress: string; entryNotes: string } | null,
 ): StudyDraft {
@@ -311,6 +334,7 @@ export function draftFromStudy(
     time: study.time,
     maxCapacity: study.maxCapacity,
     area: study.area,
+    isPublic: study.isPublic,
     exactAddress: details?.exactAddress ?? '',
     entryNotes: details?.entryNotes ?? '',
   };

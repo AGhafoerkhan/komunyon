@@ -7,7 +7,6 @@ import {
   getDoc,
   getDocs,
   onSnapshot,
-  orderBy,
   query,
   setDoc,
   updateDoc,
@@ -50,6 +49,7 @@ function publicFields(host: UserProfile, draft: StudyDraft, createdAt: string, u
     time: normalizeTime(draft.time) ?? draft.time,
     maxCapacity: draft.maxCapacity,
     area: draft.area,
+    isPublic: draft.isPublic,
     createdAt,
     updatedAt,
   };
@@ -63,12 +63,12 @@ function privateFields(draft: StudyDraft, updatedAt: string) {
   };
 }
 
-export function subscribeStudies(
+export function subscribePublicStudies(
   onData: (studies: BibleStudy[]) => void,
   onError: (error: unknown) => void,
 ): Unsubscribe {
   const { db } = getFirebase();
-  const studiesQuery = query(collection(db, 'studies'), orderBy('createdAt', 'desc'));
+  const studiesQuery = query(collection(db, 'studies'), where('isPublic', '==', true));
   return onSnapshot(
     studiesQuery,
     (snap) => {
@@ -77,9 +77,21 @@ export function subscribeStudies(
         const study = parseBibleStudy(item.id, item.data());
         if (study) studies.push(study);
       });
+      studies.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       onData(studies);
     },
     (error) => onError(error),
+  );
+}
+
+export async function markUnlistedStudiesPublic(): Promise<void> {
+  const { db } = getFirebase();
+  const snap = await getDocs(collection(db, 'studies'));
+  await Promise.all(
+    snap.docs.map(async (item) => {
+      if (typeof item.data().isPublic === 'boolean') return;
+      await updateDoc(item.ref, { isPublic: true });
+    }),
   );
 }
 
