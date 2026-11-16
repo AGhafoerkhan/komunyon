@@ -17,7 +17,7 @@ Bible studies and communion groups in The Hague only. Next.js App Router, TypeSc
 ## Firestore
 
 - `users/{uid}` — a user may write only their own profile.
-- `studies/{studyId}` — readable by signed-in users. Host snapshot, neighbourhood, schedule, capacity, `pendingUserIds`, `approvedUserIds`.
+- `studies/{studyId}` — readable by signed-in users. Host snapshot, neighbourhood, schedule, capacity, tags (`bible-study`, `prayer`, `worship`, `communion`), `pendingUserIds`, `approvedUserIds`.
 - `studies/{studyId}/private/details` — `exactAddress` and `entryNotes` only. Readable by `hostId` and uids in `approvedUserIds`. Writable by the host.
 - Never write `exactAddress` or `entryNotes` onto `studies/{studyId}`.
 - Only `hostId` may edit or delete a study, approve or decline requests, or remove an approved member.

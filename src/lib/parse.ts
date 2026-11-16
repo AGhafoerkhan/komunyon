@@ -1,4 +1,5 @@
 import { isHagueArea } from '@/lib/hague';
+import { isStudyTag, sortTags, type StudyTag } from '@/lib/tags';
 import { isDayOfWeek, isIsoDate, normalizeTime } from '@/lib/guards';
 import type { BibleStudy, PrivateStudyDetails, StudyFormat, UserProfile } from '@/types';
 
@@ -12,6 +13,16 @@ function isStringArray(value: unknown): value is string[] {
 
 function isFormat(value: unknown): value is StudyFormat {
   return value === 'recurring' || value === 'one-off';
+}
+
+/** Missing tags stay empty so studies created before tags still load. */
+function parseTags(value: unknown): StudyTag[] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length === 0 || value.length > 4) return null;
+  if (!value.every((item) => isStudyTag(item))) return null;
+  const tags = sortTags(value);
+  if (tags.length !== value.length) return null;
+  return tags;
 }
 
 export function parseUserProfile(id: string, data: unknown): UserProfile | null {
@@ -45,6 +56,8 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
   if (typeof data.hostAge !== 'number' || !Number.isInteger(data.hostAge)) return null;
   if (typeof data.hostPhotoURL !== 'string') return null;
   if (typeof data.title !== 'string' || typeof data.description !== 'string') return null;
+  const tags = parseTags(data.tags);
+  if (!tags) return null;
   if (typeof data.time !== 'string' || normalizeTime(data.time) === null) return null;
   if (typeof data.maxCapacity !== 'number' || !Number.isInteger(data.maxCapacity)) return null;
   if (typeof data.area !== 'string' || !isHagueArea(data.area)) return null;
@@ -65,6 +78,7 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
     hostPhotoURL: data.hostPhotoURL,
     title: data.title,
     description: data.description,
+    tags,
     format: data.format,
     dayOfWeek: data.format === 'recurring' && isDayOfWeek(data.dayOfWeek) ? data.dayOfWeek : null,
     date: data.format === 'one-off' && typeof data.date === 'string' ? data.date : null,

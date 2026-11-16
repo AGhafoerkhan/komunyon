@@ -1,6 +1,7 @@
 'use client';
 
 import { type ButtonHTMLAttributes, type ReactNode, useState } from 'react';
+import { tagLabel, type StudyTag } from '@/lib/tags';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'md' | 'sm';
@@ -116,6 +117,19 @@ export function Avatar({ src, name, size = 40 }: { src: string; name: string; si
       className="shrink-0 rounded-full bg-sand object-cover"
       style={{ width: size, height: size }}
     />
+  );
+}
+
+export function TagList({ tags }: { tags: StudyTag[] }) {
+  if (tags.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap gap-1.5">
+      {tags.map((tag) => (
+        <li key={tag} className="rounded-md bg-sand px-1.5 py-0.5 text-xs text-ink">
+          {tagLabel(tag)}
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -1,4 +1,5 @@
 import { isHagueArea } from '@/lib/hague';
+import { isStudyTag, STUDY_TAGS } from '@/lib/tags';
 import { isIsoDate, normalizeTime } from '@/lib/guards';
 import { LIMITS } from '@/lib/limits';
 import type { StudyDraft } from '@/types';
@@ -27,6 +28,14 @@ export function validateStudyDraft(draft: StudyDraft, minCapacity: number): stri
   const description = draft.description.trim();
   if (description.length === 0 || description.length > LIMITS.descriptionMax) {
     return `Add a description (up to ${LIMITS.descriptionMax} characters).`;
+  }
+  if (
+    draft.tags.length === 0 ||
+    draft.tags.length > STUDY_TAGS.length ||
+    new Set(draft.tags).size !== draft.tags.length ||
+    draft.tags.some((tag) => !isStudyTag(tag))
+  ) {
+    return 'Choose at least one: Bible study, prayer, worship, or communion.';
   }
   if (draft.format === 'recurring' && draft.dayOfWeek === null) return 'Choose the day of the week.';
   if (draft.format === 'one-off' && (draft.date === null || !isIsoDate(draft.date))) return 'Choose a date.';

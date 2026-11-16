@@ -7,12 +7,14 @@ import { HAGUE_AREAS } from '@/lib/hague';
 import { isDayOfWeek } from '@/lib/guards';
 import { DAY_FILTERS, dayName } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
+import { sortTags, STUDY_TAGS, type StudyTag } from '@/lib/tags';
 import { validateStudyDraft } from '@/lib/validate';
 import type { DayOfWeek, StudyDraft, StudyFormat } from '@/types';
 
 const EMPTY: StudyDraft = {
   title: '',
   description: '',
+  tags: [],
   format: 'recurring',
   dayOfWeek: null,
   date: null,
@@ -41,6 +43,15 @@ export function StudyForm({
 
   function patch(partial: Partial<StudyDraft>) {
     setDraft((current) => ({ ...current, ...partial }));
+  }
+
+  function toggleTag(tag: StudyTag) {
+    setDraft((current) => {
+      const tags = current.tags.includes(tag)
+        ? current.tags.filter((item) => item !== tag)
+        : [...current.tags, tag];
+      return { ...current, tags: sortTags(tags) };
+    });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -96,6 +107,31 @@ export function StudyForm({
             required
           />
         </Field>
+
+        <div>
+          <p className="text-sm font-medium">What happens</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            Pick every label that fits. A prayer night with communion can wear both.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {STUDY_TAGS.map((tag) => {
+              const pressed = draft.tags.includes(tag.id);
+              return (
+                <button
+                  key={tag.id}
+                  type="button"
+                  aria-pressed={pressed}
+                  onClick={() => toggleTag(tag.id)}
+                  className={`rounded-md border px-3 py-1.5 text-sm ${
+                    pressed ? 'border-canal bg-canal/5 text-ink' : 'border-line bg-card text-muted hover:bg-sand'
+                  }`}
+                >
+                  {tag.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
           <FormatChoice
@@ -255,6 +291,7 @@ export function draftFromStudy(
   study: {
     title: string;
     description: string;
+    tags: StudyTag[];
     format: StudyFormat;
     dayOfWeek: DayOfWeek | null;
     date: string | null;
@@ -267,6 +304,7 @@ export function draftFromStudy(
   return {
     title: study.title,
     description: study.description,
+    tags: study.tags,
     format: study.format,
     dayOfWeek: study.dayOfWeek,
     date: study.date,

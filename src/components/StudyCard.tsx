@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Avatar, FormatBadge } from '@/components/ui';
+import { Avatar, FormatBadge, TagList } from '@/components/ui';
 import { formatSchedule, spotsLabel } from '@/lib/format';
 import type { BibleStudy } from '@/types';
 
@@ -28,6 +28,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
         <FormatBadge format={study.format} />
       </div>
       <h2 className="font-serif text-xl leading-snug">{study.title}</h2>
+      <TagList tags={study.tags} />
       <p className="text-sm text-muted">{formatSchedule(study)}</p>
       <p className="mt-auto text-sm tabular-nums">
         <span className="font-medium text-ink">

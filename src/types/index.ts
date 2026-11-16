@@ -1,8 +1,12 @@
+import type { StudyTag } from '@/lib/tags';
+
 /** 0 = Sunday … 6 = Saturday. Matches `Date.getDay()`. */
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 /** `recurring` uses `dayOfWeek` + `time`. `one-off` uses `date` + `time`. */
 export type StudyFormat = 'recurring' | 'one-off';
+
+export type { StudyTag };
 
 export type JoinRequestStatus = 'pending' | 'approved' | 'declined';
 
@@ -34,6 +38,8 @@ export interface BibleStudy {
   hostPhotoURL: string;
   title: string;
   description: string;
+  /** What happens at the gathering. A group may carry more than one. */
+  tags: StudyTag[];
   format: StudyFormat;
   /** Set for `recurring`. Null for `one-off`. */
   dayOfWeek: DayOfWeek | null;
@@ -81,6 +87,7 @@ export interface JoinRequest {
 export interface StudyDraft {
   title: string;
   description: string;
+  tags: StudyTag[];
   format: StudyFormat;
   dayOfWeek: DayOfWeek | null;
   date: string | null;

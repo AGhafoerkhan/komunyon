@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
 import { normalizeTime } from '@/lib/guards';
+import { sortTags } from '@/lib/tags';
 import { parseBibleStudy, parsePrivateDetails, parseUserProfile } from '@/lib/parse';
 import type { BibleStudy, JoinRequest, PrivateStudyDetails, StudyDraft, UserProfile } from '@/types';
 
@@ -42,6 +43,7 @@ function publicFields(host: UserProfile, draft: StudyDraft, createdAt: string, u
     hostPhotoURL: host.photoURL,
     title: draft.title.trim(),
     description: draft.description.trim(),
+    tags: sortTags(draft.tags),
     format: draft.format,
     dayOfWeek: draft.format === 'recurring' ? draft.dayOfWeek : null,
     date: draft.format === 'one-off' ? draft.date : null,

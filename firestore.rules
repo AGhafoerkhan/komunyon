@@ -71,6 +71,7 @@ service cloud.firestore {
         'hostPhotoURL',
         'title',
         'description',
+        'tags',
         'format',
         'dayOfWeek',
         'date',
@@ -100,6 +101,19 @@ service cloud.firestore {
         );
     }
 
+    function validTagList(tags) {
+      return tags is list
+        && tags.size() >= 1
+        && tags.size() <= 4
+        && tags.size() == tags.toSet().size()
+        && tags.hasOnly(['bible-study', 'prayer', 'worship', 'communion']);
+    }
+
+    // Studies created before tags exist may omit the field. New writes must send a real list.
+    function validTags(data) {
+      return !data.keys().hasAny(['tags']) || validTagList(data.tags);
+    }
+
     function validPublicStudy(data) {
       return data.keys().hasOnly(publicStudyKeys())
         && data.hostId is string
@@ -116,6 +130,7 @@ service cloud.firestore {
         && data.description is string
         && data.description.size() > 0
         && data.description.size() <= 2000
+        && validTags(data)
         && data.format in ['recurring', 'one-off']
         && validSchedule(data)
         && data.time is string
@@ -283,6 +298,7 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.hostId == request.auth.uid
         && validPublicStudy(request.resource.data)
+        && validTagList(request.resource.data.tags)
         && request.resource.data.pendingUserIds.size() == 0
         && request.resource.data.approvedUserIds.size() == 0;
 

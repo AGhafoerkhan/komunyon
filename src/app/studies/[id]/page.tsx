@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { MemberList } from '@/components/MemberList';
 import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
-import { Alert, Avatar, Button, FormatBadge, LoadingScreen, buttonClass } from '@/components/ui';
+import { Alert, Avatar, Button, FormatBadge, LoadingScreen, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { formatSchedule, spotsLabel } from '@/lib/format';
 import {
@@ -24,6 +25,11 @@ import {
 import type { BibleStudy, JoinRequest, PrivateStudyDetails } from '@/types';
 
 type Role = 'host' | 'approved' | 'pending' | 'visitor';
+
+type ConfirmAction =
+  | { kind: 'leave' }
+  | { kind: 'delete' }
+  | { kind: 'remove'; userId: string; name: string };
 
 function roleFor(study: BibleStudy, uid: string): Role {
   if (study.hostId === uid) return 'host';
@@ -43,9 +49,7 @@ export default function StudyPage() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [confirmLeave, setConfirmLeave] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>([]);
   const [approvedMembers, setApprovedMembers] = useState<JoinRequest[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
@@ -116,17 +120,31 @@ export default function StudyPage() {
     };
   }, [study, user]);
 
+  const closeConfirm = useCallback(() => {
+    if (busy) return;
+    setConfirm(null);
+    setError(null);
+  }, [busy]);
+
+  function ask(next: ConfirmAction) {
+    setError(null);
+    setConfirm(next);
+  }
+
   async function run(key: string, action: () => Promise<void>) {
     setBusy(key);
     setError(null);
     try {
       await action();
+      setConfirm(null);
     } catch (failure) {
       setError(actionError(failure));
     } finally {
       setBusy(null);
     }
   }
+
+  const dialog = study && confirm ? dialogCopy(confirm, study.title) : null;
 
   if (!user) return <LoadingScreen />;
 
@@ -148,43 +166,68 @@ export default function StudyPage() {
           role={roleFor(study, user.uid)}
           details={details}
           detailsState={detailsState}
-          error={error}
+          error={confirm ? null : error}
           busy={busy}
-          confirmLeave={confirmLeave}
-          confirmDelete={confirmDelete}
-          confirmRemoveId={confirmRemoveId}
           pendingRequests={pendingRequests}
           approvedMembers={approvedMembers}
           rosterReady={rosterReady}
           onRequest={() => void run('join', () => requestToJoin(study.id, user.uid))}
           onCancel={() => void run('cancel', () => cancelRequest(study.id, user.uid))}
-          onLeave={() =>
-            void run('leave', async () => {
-              await leaveStudy(study.id, user.uid);
-              setConfirmLeave(false);
-            })
-          }
-          onDelete={() =>
-            void run('delete', async () => {
-              await deleteStudy(study.id);
-              router.push('/dashboard');
-            })
-          }
+          onAskLeave={() => ask({ kind: 'leave' })}
+          onAskDelete={() => ask({ kind: 'delete' })}
           onApprove={(request) => void run(`approve:${request.userId}`, () => approveMember(study, request.userId))}
           onDecline={(request) => void run(`decline:${request.userId}`, () => declineMember(study.id, request.userId))}
-          onRemove={(request) =>
-            void run(`remove:${request.userId}`, async () => {
-              await removeMember(study.id, request.userId);
-              setConfirmRemoveId(null);
-            })
-          }
-          setConfirmLeave={setConfirmLeave}
-          setConfirmDelete={setConfirmDelete}
-          setConfirmRemoveId={setConfirmRemoveId}
+          onAskRemove={(request) => ask({ kind: 'remove', userId: request.userId, name: request.fullName })}
         />
       )}
+      {dialog && confirm && study ? (
+        <ConfirmDialog
+          title={dialog.title}
+          body={dialog.body}
+          confirmLabel={dialog.confirmLabel}
+          busy={busy !== null}
+          error={error}
+          onClose={closeConfirm}
+          onConfirm={() => {
+            if (confirm.kind === 'leave') {
+              void run('leave', () => leaveStudy(study.id, user.uid));
+              return;
+            }
+            if (confirm.kind === 'delete') {
+              void run('delete', async () => {
+                await deleteStudy(study.id);
+                router.push('/dashboard');
+              });
+              return;
+            }
+            void run(`remove:${confirm.userId}`, () => removeMember(study.id, confirm.userId));
+          }}
+        />
+      ) : null}
     </AppShell>
   );
+}
+
+function dialogCopy(action: ConfirmAction, studyTitle: string): { title: string; body: string; confirmLabel: string } {
+  if (action.kind === 'leave') {
+    return {
+      title: 'Leave this group?',
+      body: `You will lose the address for ${studyTitle}, and your spot opens up.`,
+      confirmLabel: 'Leave group',
+    };
+  }
+  if (action.kind === 'delete') {
+    return {
+      title: 'Delete this study?',
+      body: `${studyTitle} will be removed for everyone, including the address.`,
+      confirmLabel: 'Delete study',
+    };
+  }
+  return {
+    title: `Remove ${action.name}?`,
+    body: `${action.name} will lose the address for ${studyTitle}, and their spot opens up.`,
+    confirmLabel: 'Remove from group',
+  };
 }
 
 function StudyBody({
@@ -194,22 +237,16 @@ function StudyBody({
   detailsState,
   error,
   busy,
-  confirmLeave,
-  confirmDelete,
-  confirmRemoveId,
   pendingRequests,
   approvedMembers,
   rosterReady,
   onRequest,
   onCancel,
-  onLeave,
-  onDelete,
+  onAskLeave,
+  onAskDelete,
   onApprove,
   onDecline,
-  onRemove,
-  setConfirmLeave,
-  setConfirmDelete,
-  setConfirmRemoveId,
+  onAskRemove,
 }: {
   study: BibleStudy;
   role: Role;
@@ -217,22 +254,16 @@ function StudyBody({
   detailsState: 'hidden' | 'loading' | 'ready';
   error: string | null;
   busy: string | null;
-  confirmLeave: boolean;
-  confirmDelete: boolean;
-  confirmRemoveId: string | null;
   pendingRequests: JoinRequest[];
   approvedMembers: JoinRequest[];
   rosterReady: boolean;
   onRequest: () => void;
   onCancel: () => void;
-  onLeave: () => void;
-  onDelete: () => void;
+  onAskLeave: () => void;
+  onAskDelete: () => void;
   onApprove: (request: JoinRequest) => void;
   onDecline: (request: JoinRequest) => void;
-  onRemove: (request: JoinRequest) => void;
-  setConfirmLeave: (value: boolean) => void;
-  setConfirmDelete: (value: boolean) => void;
-  setConfirmRemoveId: (value: string | null) => void;
+  onAskRemove: (request: JoinRequest) => void;
 }) {
   const taken = study.approvedUserIds.length;
   const full = taken >= study.maxCapacity;
@@ -253,6 +284,11 @@ function StudyBody({
             <span className="text-sm text-muted">{study.area}</span>
           </div>
           <h1 className="mt-3 font-serif text-4xl leading-tight">{study.title}</h1>
+          {study.tags.length > 0 ? (
+            <div className="mt-3">
+              <TagList tags={study.tags} />
+            </div>
+          ) : null}
           <div className="mt-4 flex items-center gap-3">
             <Avatar src={study.hostPhotoURL} name={study.hostName} size={44} />
             <div>
@@ -328,23 +364,9 @@ function StudyBody({
           ) : null}
 
           {role === 'approved' ? (
-            confirmLeave ? (
-              <div className="flex flex-col gap-2 rounded-lg border border-line bg-card p-3">
-                <p className="text-sm">Leave this group? You will lose the address.</p>
-                <div className="flex gap-2">
-                  <Button variant="danger" size="sm" onClick={onLeave} disabled={busy !== null}>
-                    Leave group
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmLeave(false)} disabled={busy !== null}>
-                    Stay
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button className="w-full" variant="secondary" onClick={() => setConfirmLeave(true)} disabled={busy !== null}>
-                Leave group
-              </Button>
-            )
+            <Button className="w-full" variant="secondary" onClick={onAskLeave} disabled={busy !== null}>
+              Leave group
+            </Button>
           ) : null}
 
           {role === 'host' ? (
@@ -352,23 +374,9 @@ function StudyBody({
               <Link href={`/studies/${study.id}/edit`} className={`${buttonClass('primary')} w-full`}>
                 Edit study
               </Link>
-              {confirmDelete ? (
-                <div className="rounded-lg border border-danger/30 bg-card p-3">
-                  <p className="text-sm">Delete this study for everyone?</p>
-                  <div className="mt-3 flex gap-2">
-                    <Button variant="danger" size="sm" onClick={onDelete} disabled={busy !== null}>
-                      Delete study
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)} disabled={busy !== null}>
-                      Keep
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button className="w-full" variant="danger" onClick={() => setConfirmDelete(true)} disabled={busy !== null}>
-                  Delete study
-                </Button>
-              )}
+              <Button className="w-full" variant="danger" onClick={onAskDelete} disabled={busy !== null}>
+                Delete study
+              </Button>
             </div>
           ) : null}
         </aside>
@@ -403,22 +411,11 @@ function StudyBody({
             description="Removing someone hides the address from them and frees a spot."
             empty="No approved members yet."
             requests={approvedMembers}
-            renderActions={(request) =>
-              confirmRemoveId === request.userId ? (
-                <>
-                  <Button size="sm" variant="danger" onClick={() => onRemove(request)} disabled={busy !== null}>
-                    Remove from group
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmRemoveId(null)} disabled={busy !== null}>
-                    Keep
-                  </Button>
-                </>
-              ) : (
-                <Button size="sm" variant="secondary" onClick={() => setConfirmRemoveId(request.userId)} disabled={busy !== null}>
-                  Remove from group
-                </Button>
-              )
-            }
+            renderActions={(request) => (
+              <Button size="sm" variant="secondary" onClick={() => onAskRemove(request)} disabled={busy !== null}>
+                Remove from group
+              </Button>
+            )}
           />
         </div>
       ) : null}
