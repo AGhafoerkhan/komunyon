@@ -194,11 +194,12 @@ export function StudyForm({
             time={draft.time}
             skippedDates={draft.skippedDates}
             onToggle={(date) =>
-              patch({
-                skippedDates: draft.skippedDates.includes(date)
-                  ? draft.skippedDates.filter((item) => item !== date)
-                  : [...draft.skippedDates, date],
-              })
+              setDraft((current) => ({
+                ...current,
+                skippedDates: current.skippedDates.includes(date)
+                  ? current.skippedDates.filter((item) => item !== date)
+                  : [...current.skippedDates, date],
+              }))
             }
           />
         ) : null}
@@ -309,11 +310,14 @@ function WeekSkips({
   onToggle: (date: string) => void;
 }) {
   const sessions = upcomingSessions(day, time);
+  const next = sessions.find((date) => !skippedDates.includes(date));
   return (
     <section>
       <h2 className="font-serif text-xl">Upcoming {dayName(day)}s</h2>
       <p className="mt-1 text-sm leading-relaxed text-muted">
-        These are the next sessions. Turn one off to cancel that week. The study stays on {dayName(day)}.
+        {next
+          ? `Turn a week off to cancel it. The study then shows ${formatDdMmYyyy(next)}.`
+          : 'The upcoming sessions are canceled. Turn one back on to choose a date.'}
       </p>
       <ul className="mt-3 divide-y divide-line overflow-hidden rounded-lg border border-line bg-card">
         {sessions.map((date) => {

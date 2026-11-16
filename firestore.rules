@@ -127,17 +127,27 @@ service cloud.firestore {
       return !data.keys().hasAny(['tags']) || validTagList(data.tags);
     }
 
+    function isSkippedDate(value) {
+      return value is string
+        && value.size() == 10
+        && value.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
     function validSkippedDates(data) {
       return !data.keys().hasAny(['skippedDates'])
         || (
           data.skippedDates is list
-          && data.skippedDates.size() <= 12
+          && data.skippedDates.size() <= 8
           && data.skippedDates.size() == data.skippedDates.toSet().size()
-          && (
-            data.skippedDates.size() == 0
-            || data.skippedDates.join(',').matches('^\\d{4}-\\d{2}-\\d{2}(,\\d{4}-\\d{2}-\\d{2})*$')
-          )
-          && (data.format != 'one-off' || data.skippedDates.size() == 0)
+          && (data.format == 'recurring' || data.skippedDates.size() == 0)
+          && (data.skippedDates.size() < 1 || isSkippedDate(data.skippedDates[0]))
+          && (data.skippedDates.size() < 2 || isSkippedDate(data.skippedDates[1]))
+          && (data.skippedDates.size() < 3 || isSkippedDate(data.skippedDates[2]))
+          && (data.skippedDates.size() < 4 || isSkippedDate(data.skippedDates[3]))
+          && (data.skippedDates.size() < 5 || isSkippedDate(data.skippedDates[4]))
+          && (data.skippedDates.size() < 6 || isSkippedDate(data.skippedDates[5]))
+          && (data.skippedDates.size() < 7 || isSkippedDate(data.skippedDates[6]))
+          && (data.skippedDates.size() < 8 || isSkippedDate(data.skippedDates[7]))
         );
     }
 
