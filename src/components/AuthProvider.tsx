@@ -50,37 +50,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!configured) return;
     let requestId = 0;
+    let unsubscribe = () => {};
+    let cancelled = false;
     const { auth } = getFirebase();
     warmUpGoogleSignIn(auth);
-    void completeRedirectSignIn(auth).catch((redirectError: unknown) => {
-      setSignInError(actionError(redirectError));
-    });
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      const current = ++requestId;
-      if (!firebaseUser) {
-        setUser(null);
-        setProfile(null);
-        setError(null);
-        setLoading(false);
-        return;
+    void (async () => {
+      try {
+        await completeRedirectSignIn(auth);
+      } catch (redirectError: unknown) {
+        if (!cancelled) setSignInError(actionError(redirectError));
       }
-      void loadOrCreateProfile(firebaseUser)
-        .then((nextProfile) => {
-          if (current !== requestId) return;
-          setUser(firebaseUser);
-          setProfile(nextProfile);
+      if (cancelled) return;
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        const current = ++requestId;
+        if (!firebaseUser) {
+          setUser(null);
+          setProfile(null);
           setError(null);
           setLoading(false);
-        })
-        .catch((loadError: unknown) => {
-          if (current !== requestId) return;
-          setUser(firebaseUser);
-          setProfile(null);
-          setError(actionError(loadError));
-          setLoading(false);
-        });
-    });
+          return;
+        }
+        void loadOrCreateProfile(firebaseUser)
+          .then((nextProfile) => {
+            if (current !== requestId || cancelled) return;
+            setUser(firebaseUser);
+            setProfile(nextProfile);
+            setError(null);
+            setLoading(false);
+          })
+          .catch((loadError: unknown) => {
+            if (current !== requestId || cancelled) return;
+            setUser(firebaseUser);
+            setProfile(null);
+            setError(actionError(loadError));
+            setLoading(false);
+          });
+      });
+    })();
     return () => {
+      cancelled = true;
       requestId += 1;
       unsubscribe();
     };

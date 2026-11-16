@@ -1,8 +1,10 @@
 import { getApps, initializeApp } from 'firebase/app';
 import {
+  browserLocalPersistence,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
+  setPersistence,
   signInWithPopup,
   signInWithRedirect,
   type Auth,
@@ -68,14 +70,29 @@ export async function completeRedirectSignIn(auth: Auth): Promise<void> {
   await getRedirectResult(auth);
 }
 
+/** Popup sign-in never finishes in Firefox, or on a phone, so those use a full-page redirect. */
+function prefersRedirectSignIn(): boolean {
+  const ua = navigator.userAgent;
+  if (/Firefox\//.test(ua)) return true;
+  if (/iPhone|iPad|iPod/.test(ua)) return true;
+  if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true;
+  return /Android/i.test(ua);
+}
+
 export async function signInWithGoogleAccount(auth: Auth): Promise<void> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+  if (prefersRedirectSignIn()) {
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithRedirect(auth, provider);
+    return;
+  }
   warmUpGoogleSignIn(auth);
   try {
     await signInWithPopup(auth, provider);
   } catch (error) {
     if (firebaseErrorCode(error) !== 'auth/popup-blocked') throw error;
+    await setPersistence(auth, browserLocalPersistence);
     await signInWithRedirect(auth, provider);
   }
 }
