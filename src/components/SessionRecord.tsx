@@ -146,16 +146,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
           <ul className={cardGrid}>
             {images.map((file) => (
               <li key={file.path} className="relative min-w-0 rounded-lg border border-line bg-card p-2">
-                <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => void download(file)}
-                    className="h-7 rounded-full bg-card px-2 text-xs text-canal"
-                  >
-                    Download
-                  </button>
-                  {isHost ? <RemoveButton busy={busy} floating={false} onClick={() => setPendingRemove(file)} /> : null}
-                </div>
+                <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
                 <button type="button" onClick={() => setOpen(file)} className="block w-full" aria-label="View session photo">
                   {/* Download URLs are tokenized and are not a fixed remote pattern. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -169,12 +160,11 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
           <ul className={cardGrid}>
             {recordings.map((file) => (
               <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
-                {isHost ? <RemoveButton busy={busy} onClick={() => setPendingRemove(file)} /> : null}
-                <div className="min-w-0 pr-6">
+                <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
+                <div className="min-w-0 pr-16">
                   <p className="text-sm font-medium text-ink">Recording</p>
                   <RecordingPlayer src={file.url} />
                 </div>
-                <FileActions file={file} onDownload={download} />
               </li>
             ))}
           </ul>
@@ -183,9 +173,8 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
           <ul className={cardGrid}>
             {texts.map((file) => (
               <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col justify-between rounded-lg border border-line bg-card p-3">
-                {isHost ? <RemoveButton busy={busy} onClick={() => setPendingRemove(file)} /> : null}
-                <p className="pr-6 text-sm font-medium text-ink">Text file</p>
-                <FileActions file={file} onDownload={download} />
+                <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
+                <p className="pr-16 text-sm font-medium text-ink">Text file</p>
               </li>
             ))}
           </ul>
@@ -280,27 +269,55 @@ function RecordingPlayer({ src }: { src: string }) {
   );
 }
 
-function RemoveButton({ busy, onClick, floating = true }: { busy: boolean; onClick: () => void; floating?: boolean }) {
+function FileTools({
+  file,
+  isHost,
+  busy,
+  onDownload,
+  onRemove,
+}: {
+  file: SessionFile;
+  isHost: boolean;
+  busy: boolean;
+  onDownload: (file: SessionFile) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => void onDownload(file)}
+        aria-label="Download"
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-card text-canal"
+      >
+        <DownloadIcon />
+      </button>
+      {isHost ? <RemoveButton busy={busy} onClick={onRemove} /> : null}
+    </div>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 2.5v7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5.25 7.25 8 10l2.75-2.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.5 13h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function RemoveButton({ busy, onClick }: { busy: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={busy}
       aria-label="Remove"
-      className={`${floating ? 'absolute right-2 top-2 z-10' : ''} flex h-7 w-7 items-center justify-center rounded-full bg-card text-sm leading-none text-clay disabled:opacity-50`}
+      className="flex h-7 w-7 items-center justify-center rounded-full bg-card text-sm leading-none text-clay disabled:opacity-50"
     >
       X
     </button>
-  );
-}
-
-function FileActions({ file, onDownload }: { file: SessionFile; onDownload: (file: SessionFile) => void }) {
-  return (
-    <div className="mt-2">
-      <button type="button" onClick={() => void onDownload(file)} className="text-sm text-canal">
-        Download
-      </button>
-    </div>
   );
 }
 
