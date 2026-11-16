@@ -9,6 +9,8 @@ import {
   clearNoticeAsk,
   deviceNoticePermission,
   installedApp,
+  noticesEnabled,
+  setNoticesEnabled,
   type DeviceNoticePermission,
 } from '@/lib/deviceNotices';
 
@@ -30,7 +32,10 @@ export function NoticePermission() {
     if (!ask) return;
     let active = true;
     void ask.promise.then((result) => {
-      if (!active || result !== 'default') return;
+      if (!active) return;
+      if (result === 'granted') void setNoticesEnabled(true);
+      if (result === 'denied') void setNoticesEnabled(false);
+      if (result !== 'default') return;
       if (performance.now() - ask.started < 500) setOpen(true);
     });
     return () => {
@@ -42,6 +47,12 @@ export function NoticePermission() {
 
   async function allow() {
     const result = await askDeviceNotices();
+    if (result === 'granted') {
+      await setNoticesEnabled(true);
+      setOpen(false);
+      return;
+    }
+    await setNoticesEnabled(false);
     if (result === 'default' && !installedApp()) {
       setNeedsInstall(true);
       return;
@@ -68,7 +79,14 @@ export function NoticePermission() {
           <p className="mt-3 text-sm text-muted">Add Komunyon to your home screen, then allow notices.</p>
         ) : null}
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button variant="secondary" className="w-full sm:w-auto" onClick={() => setOpen(false)}>
+          <Button
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={() => {
+              void setNoticesEnabled(false);
+              setOpen(false);
+            }}
+          >
             Not now
           </Button>
           <Button className="w-full sm:w-auto" onClick={() => void allow()}>
@@ -81,34 +99,72 @@ export function NoticePermission() {
 }
 
 export function DeviceNotices() {
-  const [permission, setPermission] = useState<DeviceNoticePermission>(deviceNoticePermission);
+  const [permission, setPermission] = useState<DeviceNoticePermission>('default');
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
   const [needsInstall, setNeedsInstall] = useState(false);
 
-  if (permission === 'unsupported') return null;
-
-  async function allow() {
-    const next = await askDeviceNotices();
+  useEffect(() => {
+    const next = deviceNoticePermission();
     setPermission(next);
-    setNeedsInstall(next === 'default' && !installedApp());
+    setOn(next === 'unsupported' ? false : noticesEnabled());
+  }, []);
+
+  if (permission === 'unsupported' || on === null) return null;
+
+  async function toggle() {
+    if (busy) return;
+    if (on) {
+      await setNoticesEnabled(false);
+      setOn(false);
+      setNeedsInstall(false);
+      return;
+    }
+    setBusy(true);
+    const result = await askDeviceNotices();
+    setPermission(result);
+    setBusy(false);
+    if (result !== 'granted') {
+      await setNoticesEnabled(false);
+      setOn(false);
+      setNeedsInstall(result === 'default' && !installedApp());
+      return;
+    }
+    await setNoticesEnabled(true);
+    setOn(true);
+    setNeedsInstall(false);
   }
 
   return (
     <section className="mt-10 border-t border-line pt-6">
-      <h2 className="font-serif text-xl">Notices</h2>
-      <p className="mt-1 text-sm leading-relaxed text-muted">
-        A short alert when someone asks to join, cancels, or leaves a study you host.
-      </p>
-      {permission === 'granted' ? <p className="mt-3 text-sm">Allowed for Komunyon.</p> : null}
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="font-serif text-xl">Notices</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted">
+            A short alert when someone asks to join, cancels, or leaves a study you host.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label="Notices"
+          disabled={busy}
+          onClick={() => void toggle()}
+          className="inline-flex h-11 w-16 shrink-0 items-center justify-center disabled:opacity-50"
+        >
+          <span className={`relative inline-flex h-8 w-14 items-center rounded-full transition ${on ? 'bg-canal' : 'bg-line'}`}>
+            <span
+              className={`inline-block h-6 w-6 rounded-full bg-white shadow transition ${on ? 'translate-x-7' : 'translate-x-1'}`}
+            />
+          </span>
+        </button>
+      </div>
       {permission === 'denied' ? (
         <p className="mt-3 text-sm text-muted">Blocked. Allow Komunyon in this phone’s settings.</p>
       ) : null}
-      {permission === 'default' ? (
-        <Button variant="secondary" className="mt-4 w-full sm:w-auto" onClick={() => void allow()}>
-          Allow
-        </Button>
-      ) : null}
       {needsInstall ? (
-        <p className="mt-3 text-sm text-muted">Add Komunyon to your home screen, then allow notices.</p>
+        <p className="mt-3 text-sm text-muted">Add Komunyon to your home screen, then turn notices on.</p>
       ) : null}
     </section>
   );

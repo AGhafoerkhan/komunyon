@@ -43,6 +43,24 @@ export function clearNoticeAsk(): void {
   }
 }
 
+const ENABLED_KEY = 'komunyon-notices';
+
+export function noticesEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  const stored = localStorage.getItem(ENABLED_KEY);
+  if (stored === 'on') return true;
+  if (stored === 'off') return false;
+  return deviceNoticePermission() === 'granted';
+}
+
+export async function setNoticesEnabled(on: boolean): Promise<void> {
+  localStorage.setItem(ENABLED_KEY, on ? 'on' : 'off');
+  if (on || !('serviceWorker' in navigator)) return;
+  const registration = await navigator.serviceWorker.getRegistration();
+  const open = (await registration?.getNotifications()) ?? [];
+  open.forEach((notice) => notice.close());
+}
+
 export function noticeLine(notice: HostNotice): string {
   if (notice.kind === 'left') return `${notice.fullName} left`;
   if (notice.kind === 'cancelled') return `${notice.fullName} cancelled`;
@@ -50,7 +68,7 @@ export function noticeLine(notice: HostNotice): string {
 }
 
 export async function showDeviceNotice(notice: HostNotice): Promise<void> {
-  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (typeof window === 'undefined' || !('Notification' in window) || !noticesEnabled()) return;
   if (Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
   const registration = await navigator.serviceWorker.ready;
   await registration.showNotification(notice.studyTitle, {
