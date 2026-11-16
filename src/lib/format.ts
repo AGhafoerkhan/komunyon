@@ -146,7 +146,7 @@ export function pastSessions(study: ScheduledStudy, count = 8, now = new Date())
 }
 
 /**
- * The next meeting when it is not canceled, then meetings that already happened.
+ * Oldest session on the left, newest on the right. The next meeting is included when it is not canceled.
  * `anchored` dates keep a place after the weekday or the one-off date changes,
  * because that session already has a description or a file.
  */
@@ -160,8 +160,7 @@ export function historySessions(
   const next = upcomingSession(study, now);
   const scheduled = new Set(next ? [next, ...past] : past);
   const extra = anchored.filter((date) => isIsoDate(date) && !scheduled.has(date));
-  const rest = [...new Set([...past, ...extra])].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
-  return next ? [next, ...rest.filter((date) => date !== next)] : rest;
+  return [...scheduled, ...extra].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 function sessionStarted(iso: string, time: string, now: Date): boolean {
