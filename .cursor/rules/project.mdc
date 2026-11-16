@@ -34,4 +34,4 @@ await updateDoc(doc(db, 'studies', studyId), {
 });
 ```
 
-A profile photo is the Google account photo URL, or a JPEG stored in Cloud Storage at `avatars/{uid}`. Session files live at `sessions/{studyId}/{yyyy-mm-dd}/{uid}-{time}.jpg`, `.txt`, or an audio extension (`webm`, `m4a`, `mp3`, `ogg`, `wav`). The original file name is stored as object metadata. The host and approved members can read them. Only the host can add or remove them. Older profile pictures may still be a small JPEG on the user document.
+A profile photo is the Google account photo URL, or a JPEG stored in Cloud Storage at `avatars/{uid}`. Session files live at `sessions/{studyId}/{yyyy-mm-dd}/{uid}-{time}.jpg`, `.txt`, or an audio extension (`webm`, `m4a`, `mp3`, `ogg`, `wav`). The original file name is stored as object metadata. The same file name or the same file contents cannot be added twice. The host and approved members can read them. Only the host can add or remove them. Older profile pictures may still be a small JPEG on the user document.

@@ -11,6 +11,7 @@ export type SessionFile = {
   url: string;
   name: string;
   label: string;
+  hash: string;
   kind: SessionFileKind;
 };
 
@@ -40,6 +41,28 @@ function kindFromName(name: string): SessionFileKind | null {
   return null;
 }
 
+async function fileHash(file: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function sameFile(existing: SessionFile[], label: string, hash: string): boolean {
+  const name = label.toLowerCase();
+  return existing.some((item) => (name !== '' && item.label.toLowerCase() === name) || (hash !== '' && item.hash === hash));
+}
+
+function withoutDuplicates(files: SessionFile[]): SessionFile[] {
+  const seen = new Set<string>();
+  const unique: SessionFile[] = [];
+  for (const file of files) {
+    const keys = [file.hash ? `hash:${file.hash}` : '', file.label ? `name:${file.label.toLowerCase()}` : ''].filter(Boolean);
+    if (keys.some((key) => seen.has(key))) continue;
+    keys.forEach((key) => seen.add(key));
+    unique.push(file);
+  }
+  return unique;
+}
+
 export async function uploadProfilePhoto(uid: string, file: File): Promise<string> {
   const blob = await jpegBlob(file, 512);
   const fileRef = ref(getFirebase().storage, `avatars/${uid}`);
@@ -61,16 +84,18 @@ export async function listSessionFiles(studyId: string, date: string): Promise<S
         if (!kind) return null;
         const meta = await getMetadata(item).catch(() => null);
         const saved = meta?.customMetadata?.name?.trim() ?? '';
+        const hash = meta?.customMetadata?.hash?.trim() ?? '';
         return {
           path: item.fullPath,
           url: await getDownloadURL(item),
           name: item.name,
           label: saved.slice(0, 120),
+          hash,
           kind,
         };
       }),
     );
-    return files.filter((file): file is SessionFile => file !== null);
+    return withoutDuplicates(files.filter((file): file is SessionFile => file !== null));
   } catch (error) {
     if (firebaseErrorCode(error) === 'storage/object-not-found') return [];
     throw error;
@@ -79,11 +104,11 @@ export async function listSessionFiles(studyId: string, date: string): Promise<S
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic']);
 
-async function uploadSessionObject(path: string, data: Blob, contentType: string, label: string): Promise<void> {
+async function uploadSessionObject(path: string, data: Blob, contentType: string, label: string, hash: string): Promise<void> {
   const fileRef = ref(getFirebase().storage, path);
   await uploadBytes(fileRef, data, {
     contentType,
-    customMetadata: label ? { name: label } : undefined,
+    customMetadata: label ? { name: label, hash } : { hash },
   });
 }
 
@@ -91,20 +116,23 @@ export async function uploadSessionFile(studyId: string, date: string, uid: stri
   const stamp = `${uid}-${Date.now()}`;
   const ext = extension(file.name);
   const label = fileLabel(file);
+  const hash = await fileHash(file);
+  const existing = await listSessionFiles(studyId, date);
+  if (sameFile(existing, label, hash)) throw new Error('That file is already in this session.');
   if (file.type.startsWith('image/') || IMAGE_EXTENSIONS.has(ext)) {
     const blob = await jpegBlob(file, 1600);
-    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.jpg`, blob, 'image/jpeg', label);
+    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.jpg`, blob, 'image/jpeg', label, hash);
     return;
   }
   const audioType = AUDIO_TYPES[ext];
   if (audioType) {
     if (file.size >= LIMITS.sessionAudioBytes) throw new Error('Recordings need to be smaller than 32 MB.');
-    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.${ext}`, file, audioType, label);
+    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.${ext}`, file, audioType, label, hash);
     return;
   }
   if (ext === 'txt' || file.type === 'text/plain') {
     if (file.size >= LIMITS.sessionTextBytes) throw new Error('Text files need to be smaller than 1 MB.');
-    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.txt`, file, 'text/plain', label);
+    await uploadSessionObject(`sessions/${studyId}/${date}/${stamp}.txt`, file, 'text/plain', label, hash);
     return;
   }
   throw new Error('Add a photo, a text file, or a WEBM, M4A, MP3, OGG, or WAV recording.');
