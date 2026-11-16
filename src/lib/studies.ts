@@ -16,6 +16,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { deleteStudyPhotos } from '@/lib/photos';
+import { deleteSessionNotes } from '@/lib/sessions';
 import { getFirebase } from '@/lib/firebase';
 import { normalizeTime } from '@/lib/guards';
 import { upcomingSessions } from '@/lib/format';
@@ -282,6 +283,7 @@ export async function updateStudy(studyId: string, host: UserProfile, draft: Stu
 export async function deleteStudy(studyId: string): Promise<void> {
   const { db } = getFirebase();
   await deleteStudyPhotos(studyId);
+  await deleteSessionNotes(studyId);
   const notices = await getDocs(collection(db, 'studies', studyId, 'notices'));
   await Promise.all(notices.docs.map((item) => deleteDoc(item.ref)));
   await deleteDoc(privateRef(studyId));

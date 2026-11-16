@@ -7,10 +7,13 @@ export const LIMITS = {
   bioMax: 800,
   titleMax: 120,
   descriptionMax: 2000,
+  sessionDescriptionMax: 4000,
   addressMax: 180,
   entryNotesMax: 1000,
   capacityMax: 100,
   avatarBytes: 5 * 1024 * 1024,
+  sessionTextBytes: 1024 * 1024,
+  sessionAudioBytes: 32 * 1024 * 1024,
   /** Matches `validPhoto` in firestore.rules. */
   photoUrlMax: 24000,
 } as const;

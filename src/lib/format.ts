@@ -122,6 +122,20 @@ export function pastSessions(
   return dates;
 }
 
+/** A real meeting date that has already started and was not canceled. */
+export function isPastSession(
+  study: Pick<BibleStudy, 'format' | 'dayOfWeek' | 'date' | 'time' | 'skippedDates'>,
+  date: string,
+  now = new Date(),
+): boolean {
+  if (!isIsoDate(date) || study.skippedDates.includes(date)) return false;
+  if (study.format === 'one-off') return study.date === date && sessionStarted(date, study.time, now);
+  if (study.format !== 'recurring' || study.dayOfWeek === null) return false;
+  const [year, month, day] = date.split('-').map(Number);
+  const weekday = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1).getDay();
+  return weekday === study.dayOfWeek && sessionStarted(date, study.time, now);
+}
+
 function sessionStarted(iso: string, time: string, now: Date): boolean {
   const [year, month, day] = iso.split('-').map(Number);
   const meeting = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);

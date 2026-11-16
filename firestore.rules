@@ -438,6 +438,24 @@ service cloud.firestore {
 
       allow delete: if isHost();
 
+      match /sessions/{date} {
+        allow get, list: if studyExists(studyId) && canReadPrivate(studyDoc(studyId));
+
+        allow create, update: if studyExists(studyId)
+          && signedIn()
+          && studyDoc(studyId).hostId == request.auth.uid
+          && date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+          && request.resource.data.keys().hasOnly(['description', 'updatedAt'])
+          && request.resource.data.description is string
+          && request.resource.data.description.size() <= 4000
+          && request.resource.data.updatedAt is string
+          && request.resource.data.updatedAt.size() <= 40;
+
+        allow delete: if studyExists(studyId)
+          && signedIn()
+          && studyDoc(studyId).hostId == request.auth.uid;
+      }
+
       match /private/details {
         allow read: if studyExists(studyId) && canReadPrivate(studyDoc(studyId));
 

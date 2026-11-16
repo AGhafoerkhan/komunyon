@@ -55,8 +55,8 @@ export default function StudyHistoryPage() {
         <p className="mt-6 text-sm text-muted">The host and approved members can open this history.</p>
       ) : null}
       {study && allowed ? (
-        <div className="mt-6 max-w-3xl">
-          <SessionPhotos study={study} isHost={study.hostId === user.uid} />
+        <div className="mt-6">
+          <SessionPhotos study={study} />
         </div>
       ) : null}
     </AppShell>

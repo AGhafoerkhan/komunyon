@@ -33,9 +33,9 @@ export function actionError(error: unknown): string {
       case 'auth/network-request-failed':
         return 'Network error. Check your connection and try again.';
       case 'storage/unauthorized':
-        return 'Photo upload was denied. Deploy storage.rules and try again.';
+        return 'That file was denied. Deploy storage.rules and try again.';
       case 'storage/unauthenticated':
-        return 'Sign in again before uploading a photo.';
+        return 'Sign in again before uploading a file.';
       case 'storage/unknown':
       case 'storage/retry-limit-exceeded':
       case 'storage/bucket-not-found':

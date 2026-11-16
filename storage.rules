@@ -41,12 +41,29 @@ service firebase.storage {
       allow delete: if signedIn() && request.auth.uid == uid;
     }
 
+    function sessionImage(fileName) {
+      return fileName.matches('^' + request.auth.uid + '-\\d+\\.jpg$')
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType == 'image/jpeg';
+    }
+
+    function sessionText(fileName) {
+      return fileName.matches('^' + request.auth.uid + '-\\d+\\.txt$')
+        && request.resource.size < 1024 * 1024
+        && request.resource.contentType == 'text/plain';
+    }
+
+    function sessionAudio(fileName) {
+      return fileName.matches('^' + request.auth.uid + '-\\d+\\.(webm|m4a|mp3|ogg|wav)$')
+        && request.resource.size < 32 * 1024 * 1024
+        && request.resource.contentType.matches('audio/.*');
+    }
+
     match /sessions/{studyId}/{date}/{fileName} {
       allow read: if inStudy(studyId);
       allow create: if isHost(studyId)
         && date.matches('^\\d{4}-\\d{2}-\\d{2}$')
-        && fileName.matches('^' + request.auth.uid + '-\\d+\\.jpg$')
-        && imageFile();
+        && (sessionImage(fileName) || sessionText(fileName) || sessionAudio(fileName));
       allow delete: if isHost(studyId);
     }
   }
