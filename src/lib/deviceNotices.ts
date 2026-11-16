@@ -64,6 +64,9 @@ export async function setNoticesEnabled(on: boolean): Promise<void> {
 export function noticeLine(notice: HostNotice): string {
   if (notice.kind === 'left') return `${notice.fullName} left`;
   if (notice.kind === 'cancelled') return `${notice.fullName} cancelled`;
+  if (notice.kind === 'accepted') return `${notice.fullName} accepted`;
+  if (notice.kind === 'declined') return `${notice.fullName} declined`;
+  if (notice.kind === 'invite') return `${notice.fullName} invited you`;
   return `${notice.fullName} requested to join`;
 }
 

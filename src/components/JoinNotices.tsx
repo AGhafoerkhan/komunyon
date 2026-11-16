@@ -1,21 +1,38 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { Avatar } from '@/components/ui';
+import { Avatar, Button } from '@/components/ui';
 import { showDeviceNotice } from '@/lib/deviceNotices';
-import { loadDepartureNotices, loadJoinNotices, subscribeDepartures, subscribeHostedStudies, dismissDeparture, type HostNotice } from '@/lib/studies';
+import { actionError } from '@/lib/errors';
+import {
+  acceptInvite,
+  declineInvite,
+  dismissDeparture,
+  loadDepartureNotices,
+  loadJoinNotices,
+  subscribeDepartures,
+  subscribeHostedStudies,
+  subscribeInvitedStudies,
+  type HostNotice,
+} from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
 export function JoinNotices() {
   const { user } = useAuth();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [requests, setRequests] = useState<HostNotice[]>([]);
   const [departures, setDepartures] = useState<HostNotice[]>([]);
+  const [invited, setInvited] = useState<BibleStudy[]>([]);
   const [hosted, setHosted] = useState<BibleStudy[]>([]);
   const [requestsReady, setRequestsReady] = useState(false);
   const [departuresReady, setDeparturesReady] = useState(false);
+  const [invitesReady, setInvitesReady] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const primed = useRef(false);
   const seen = useRef<Set<string>>(new Set());
   const rootRef = useRef<HTMLDivElement>(null);
@@ -79,6 +96,21 @@ export function JoinNotices() {
   }, [hosted]);
 
   useEffect(() => {
+    if (!user) return;
+    return subscribeInvitedStudies(
+      user.uid,
+      (studies) => {
+        setInvited(studies);
+        setInvitesReady(true);
+      },
+      () => {
+        setInvited([]);
+        setInvitesReady(true);
+      },
+    );
+  }, [user]);
+
+  useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
       if (event.key === 'Escape') setOpen(false);
@@ -94,22 +126,57 @@ export function JoinNotices() {
     };
   }, [open]);
 
-  const notices = [...requests, ...departures].sort((a, b) => b.at.localeCompare(a.at));
+  const invites: HostNotice[] = user
+    ? invited.map((study) => ({
+        id: `invite_${study.id}_${user.uid}`,
+        studyId: study.id,
+        studyTitle: study.title,
+        userId: user.uid,
+        fullName: study.hostName,
+        photoURL: study.hostPhotoURL,
+        kind: 'invite',
+        at: study.updatedAt,
+      }))
+    : [];
+  const notices = [...requests, ...departures, ...invites].sort((a, b) => b.at.localeCompare(a.at));
 
   useEffect(() => {
-    if (!user || !requestsReady || !departuresReady || primed.current) return;
+    if (!user || !requestsReady || !departuresReady || !invitesReady || primed.current) return;
     primed.current = true;
     seen.current = new Set(notices.map((notice) => notice.id));
-  }, [user, requestsReady, departuresReady, notices]);
+  }, [user, requestsReady, departuresReady, invitesReady, notices]);
 
   useEffect(() => {
     if (!primed.current) return;
+    const current = new Set(notices.map((notice) => notice.id));
+    for (const id of seen.current) {
+      if (!current.has(id) && id.startsWith('invite_')) seen.current.delete(id);
+    }
     for (const notice of notices) {
       if (seen.current.has(notice.id)) continue;
       seen.current.add(notice.id);
       if (document.hidden) void showDeviceNotice(notice);
     }
   }, [notices]);
+
+  async function respond(study: BibleStudy, kind: 'accept' | 'decline') {
+    if (!user) return;
+    setBusy(`${kind}:${study.id}`);
+    setError(null);
+    try {
+      if (kind === 'accept') {
+        await acceptInvite(study, user.uid);
+        setOpen(false);
+        router.push(`/studies/${study.id}`);
+        return;
+      }
+      await declineInvite(study.id, user.uid);
+    } catch (failure) {
+      setError(actionError(failure));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   const count = notices.length;
   const label = count === 0 ? 'No notices' : `${count} ${count === 1 ? 'notice' : 'notices'}`;
@@ -137,49 +204,77 @@ export function JoinNotices() {
           className="fixed right-4 left-4 z-20 mt-2 overflow-hidden rounded-lg border border-line bg-card shadow-lg top-[calc(3.5rem+env(safe-area-inset-top))] sm:top-[calc(4rem+env(safe-area-inset-top))] sm:right-6 sm:left-auto sm:w-80"
         >
           <p className="border-b border-line px-3 py-2 text-sm font-medium">Notices</p>
+          {error ? <p className="border-b border-line px-3 py-2 text-sm text-clay">{error}</p> : null}
           {notices.length === 0 ? (
-            <p className="px-3 py-6 text-sm text-muted">No one has requested to join, or left, a study you host.</p>
+            <p className="px-3 py-6 text-sm text-muted">No notices.</p>
           ) : (
             <ul className="max-h-80 overflow-y-auto">
-              {notices.map((notice) => (
-                <li key={notice.id} className="border-b border-line last:border-b-0">
-                  <div className="flex items-start gap-3 px-3 py-3">
-                    <Link
-                      href={`/studies/${notice.studyId}`}
-                      onClick={() => setOpen(false)}
-                      className="flex min-w-0 flex-1 items-start gap-3"
-                    >
-                      <Avatar src={notice.photoURL} name={notice.fullName} size={36} />
-                      <span className="min-w-0">
-                        <span className="block text-sm leading-snug break-words">
-                          <span className="font-medium">{notice.fullName}</span>{' '}
-                          {notice.kind === 'left'
-                            ? 'left'
-                            : notice.kind === 'cancelled'
-                              ? 'cancelled their request'
-                              : 'requested to join'}
-                        </span>
-                        <span className="mt-0.5 block truncate text-xs text-muted">{notice.studyTitle}</span>
-                      </span>
-                    </Link>
-                    {notice.kind === 'request' ? null : (
-                      <button
-                        type="button"
-                        className="shrink-0 text-xs text-muted hover:text-ink"
-                        onClick={() => void dismissDeparture(notice.studyId, notice.userId)}
+              {notices.map((notice) => {
+                const study = invited.find((item) => item.id === notice.studyId);
+                const full = study ? study.approvedUserIds.length >= study.maxCapacity : false;
+                return (
+                  <li key={notice.id} className="border-b border-line last:border-b-0">
+                    <div className="flex items-start gap-3 px-3 py-3">
+                      <Link
+                        href={notice.kind === 'invite' ? '/invites' : `/studies/${notice.studyId}`}
+                        onClick={() => setOpen(false)}
+                        className="flex min-w-0 flex-1 items-start gap-3"
                       >
-                        Dismiss
-                      </button>
-                    )}
-                  </div>
-                </li>
-              ))}
+                        <Avatar src={notice.photoURL} name={notice.fullName} size={36} />
+                        <span className="min-w-0">
+                          <span className="block text-sm leading-snug break-words">
+                            <span className="font-medium">{notice.fullName}</span> {noticeVerb(notice.kind)}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-muted">{notice.studyTitle}</span>
+                        </span>
+                      </Link>
+                      {notice.kind === 'request' || notice.kind === 'invite' ? null : (
+                        <button
+                          type="button"
+                          className="shrink-0 text-xs text-muted hover:text-ink"
+                          onClick={() => void dismissDeparture(notice.studyId, notice.userId)}
+                        >
+                          Dismiss
+                        </button>
+                      )}
+                    </div>
+                    {notice.kind === 'invite' && study ? (
+                      <div className="flex gap-2 px-3 pb-3">
+                        <Button
+                          size="sm"
+                          disabled={full || busy !== null}
+                          onClick={() => void respond(study, 'accept')}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={busy !== null}
+                          onClick={() => void respond(study, 'decline')}
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
       ) : null}
     </div>
   );
+}
+
+function noticeVerb(kind: HostNotice['kind']): string {
+  if (kind === 'left') return 'left';
+  if (kind === 'cancelled') return 'cancelled their request';
+  if (kind === 'accepted') return 'accepted';
+  if (kind === 'declined') return 'declined';
+  if (kind === 'invite') return 'invited you';
+  return 'requested to join';
 }
 
 function BellIcon() {

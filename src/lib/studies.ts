@@ -174,19 +174,31 @@ export async function revokeInvite(studyId: string, uid: string): Promise<void> 
 }
 
 export async function acceptInvite(study: BibleStudy, uid: string): Promise<void> {
-  await updateDoc(studyRef(study.id), {
-    invitedUserIds: arrayRemove(uid),
-    approvedUserIds: arrayUnion(uid),
-    ...(study.pendingUserIds.includes(uid) ? { pendingUserIds: arrayRemove(uid) } : {}),
-    updatedAt: nowIso(),
-  });
+  await writeMemberNotice(study.id, uid, 'accepted');
+  try {
+    await updateDoc(studyRef(study.id), {
+      invitedUserIds: arrayRemove(uid),
+      approvedUserIds: arrayUnion(uid),
+      ...(study.pendingUserIds.includes(uid) ? { pendingUserIds: arrayRemove(uid) } : {}),
+      updatedAt: nowIso(),
+    });
+  } catch (error) {
+    await deleteDoc(doc(getFirebase().db, 'studies', study.id, 'notices', uid)).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function declineInvite(studyId: string, uid: string): Promise<void> {
-  await updateDoc(studyRef(studyId), {
-    invitedUserIds: arrayRemove(uid),
-    updatedAt: nowIso(),
-  });
+  await writeMemberNotice(studyId, uid, 'declined');
+  try {
+    await updateDoc(studyRef(studyId), {
+      invitedUserIds: arrayRemove(uid),
+      updatedAt: nowIso(),
+    });
+  } catch (error) {
+    await deleteDoc(doc(getFirebase().db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
+    throw error;
+  }
 }
 
 export function subscribeStudy(
@@ -301,7 +313,11 @@ export async function leaveStudy(studyId: string, uid: string): Promise<void> {
   }
 }
 
-async function writeMemberNotice(studyId: string, uid: string, type: 'left' | 'cancelled'): Promise<void> {
+async function writeMemberNotice(
+  studyId: string,
+  uid: string,
+  type: 'left' | 'cancelled' | 'accepted' | 'declined',
+): Promise<void> {
   const { db } = getFirebase();
   await setDoc(doc(db, 'studies', studyId, 'notices', uid), {
     type,
@@ -392,7 +408,7 @@ export type HostNotice = {
   userId: string;
   fullName: string;
   photoURL: string;
-  kind: 'request' | 'left' | 'cancelled';
+  kind: 'request' | 'left' | 'cancelled' | 'accepted' | 'declined' | 'invite';
   at: string;
 };
 
@@ -417,7 +433,12 @@ export async function loadJoinNotices(studies: BibleStudy[]): Promise<HostNotice
   });
 }
 
-export type DepartureRecord = { studyId: string; userId: string; createdAt: string; type: 'left' | 'cancelled' };
+export type DepartureRecord = {
+  studyId: string;
+  userId: string;
+  createdAt: string;
+  type: 'left' | 'cancelled' | 'accepted' | 'declined';
+};
 
 export function subscribeDepartures(
   studies: BibleStudy[],
@@ -438,7 +459,10 @@ export function subscribeDepartures(
           study.id,
           snap.docs.flatMap((item) => {
             const data = item.data();
-            const type = data.type === 'left' || data.type === 'cancelled' ? data.type : null;
+            const type =
+              data.type === 'left' || data.type === 'cancelled' || data.type === 'accepted' || data.type === 'declined'
+                ? data.type
+                : null;
             if (!type || data.userId !== item.id || typeof data.createdAt !== 'string') return [];
             return [{ studyId: study.id, userId: item.id, createdAt: data.createdAt, type }];
           }),

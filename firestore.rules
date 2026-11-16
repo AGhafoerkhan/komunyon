@@ -418,6 +418,11 @@ service cloud.firestore {
               request.resource.data.type == 'cancelled'
               && studyDoc(studyId).pendingUserIds.hasAny([request.auth.uid])
             )
+            || (
+              (request.resource.data.type == 'accepted' || request.resource.data.type == 'declined')
+              && studyDoc(studyId).keys().hasAny(['invitedUserIds'])
+              && studyDoc(studyId).invitedUserIds.hasAny([request.auth.uid])
+            )
           )
           && request.resource.data.userId == request.auth.uid
           && request.resource.data.createdAt is string

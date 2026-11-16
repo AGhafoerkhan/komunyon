@@ -19,7 +19,7 @@ Bible studies and communion groups in The Hague only. Next.js App Router, TypeSc
 - `users/{uid}` — a user may write only their own profile.
 - `studies/{studyId}` — readable by signed-in users when `isPublic` is true or the field is missing. `isPublic: false` is readable by `hostId`, uids in `invitedUserIds`, and uids in `approvedUserIds`. Host snapshot, neighbourhood, schedule, capacity, tags (`bible-study`, `prayer`, `worship`, `communion`), `pendingUserIds`, `approvedUserIds`, `invitedUserIds`.
 - `studies/{studyId}/private/details` — `exactAddress` and `entryNotes` only. Readable by `hostId` and uids in `approvedUserIds`. Writable by the host.
-- `studies/{studyId}/notices/{uid}` — while approved, a member may write only their own “left” notice. The host may read and delete it.
+- `studies/{studyId}/notices/{uid}` — a member may write only their own notice: “left” while approved, “cancelled” while pending, or “accepted” / “declined” while invited. The host may read and delete it.
 - Never write `exactAddress` or `entryNotes` onto `studies/{studyId}`.
 - Only `hostId` may edit or delete a study, approve or decline requests, or remove an approved member.
 - Anyone else may only add or remove their own uid in `pendingUserIds` on a public study, remove their own uid from `approvedUserIds`, or accept or decline their own uid on `invitedUserIds`. Accepting an invite also adds that uid to `approvedUserIds`.
