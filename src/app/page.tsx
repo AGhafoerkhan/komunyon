@@ -51,15 +51,14 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-dvh w-full flex-col">
-      <header className="w-full border-b border-line">
-        <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
-          <span className="font-serif text-lg">Komunyon</span>
-          <span className="text-sm text-muted">The Hague</span>
-        </div>
-      </header>
-
-      <main className="w-full">
-        <Band rule={false}>
+      <section className="flex min-h-dvh w-full flex-col bg-paper">
+        <header className="w-full border-b border-line">
+          <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
+            <span className="font-serif text-lg">Komunyon</span>
+            <span className="text-sm text-muted">The Hague</span>
+          </div>
+        </header>
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-5 py-12 text-center">
           <p className="text-xs tracking-wide text-muted">Bible studies &amp; communion</p>
           <h1 className="mt-4 w-full font-serif text-3xl leading-tight font-normal break-words sm:text-4xl">
             A seat at a Bible study, with people you have yet to meet.
@@ -67,8 +66,10 @@ export default function HomePage() {
           <p className="mt-4 w-full text-base leading-relaxed text-muted">
             Find who is gathering in The Hague, ask for a seat, or host a table of your own.
           </p>
-        </Band>
+        </div>
+      </section>
 
+      <main className="w-full">
         {story.map((item) => (
           <Band key={item.label} fill>
             <p className="text-xs tracking-wide text-muted">{item.label}</p>
