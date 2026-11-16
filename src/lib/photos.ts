@@ -2,6 +2,7 @@ import { deleteObject, getDownloadURL, getMetadata, listAll, ref, uploadBytes } 
 import { jpegBlob } from '@/lib/avatar';
 import { firebaseErrorCode } from '@/lib/errors';
 import { getFirebase } from '@/lib/firebase';
+import { isIsoDate } from '@/lib/guards';
 import { LIMITS } from '@/lib/limits';
 
 export type SessionFileKind = 'image' | 'audio' | 'text';
@@ -154,6 +155,17 @@ export async function downloadSessionFile(file: SessionFile, date: string): Prom
 
 export async function deleteSessionFile(path: string): Promise<void> {
   await deleteObject(ref(getFirebase().storage, path));
+}
+
+/** Dates that still have a file, including after the study moves to another weekday. */
+export async function listSessionFileDates(studyId: string): Promise<string[]> {
+  const root = ref(getFirebase().storage, `sessions/${studyId}`);
+  const listed = await listAll(root).catch((error: unknown) => {
+    if (firebaseErrorCode(error) === 'storage/object-not-found') return null;
+    throw error;
+  });
+  if (!listed) return [];
+  return listed.prefixes.map((prefix) => prefix.name).filter(isIsoDate);
 }
 
 /** Removes every session photo while the study document still exists, so the rules can see the host. */

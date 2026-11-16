@@ -1,6 +1,8 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
+import { isIsoDate } from '@/lib/guards';
 import { LIMITS } from '@/lib/limits';
+import { listSessionFileDates } from '@/lib/photos';
 
 function sessionRef(studyId: string, date: string) {
   return doc(getFirebase().db, 'studies', studyId, 'sessions', date);
@@ -22,6 +24,17 @@ export async function saveSessionDescription(studyId: string, date: string, desc
     description: text,
     updatedAt: new Date().toISOString(),
   });
+}
+
+/** Dates that stay in history because a description or a file was saved there. */
+export async function listAnchoredSessionDates(studyId: string): Promise<string[]> {
+  const notes = await getDocs(collection(getFirebase().db, 'studies', studyId, 'sessions'));
+  const described = notes.docs.flatMap((item) => {
+    const description = item.data().description;
+    return isIsoDate(item.id) && typeof description === 'string' && description.trim() ? [item.id] : [];
+  });
+  const files = await listSessionFileDates(studyId).catch(() => [] as string[]);
+  return [...new Set([...described, ...files])];
 }
 
 export async function deleteSessionNotes(studyId: string): Promise<void> {

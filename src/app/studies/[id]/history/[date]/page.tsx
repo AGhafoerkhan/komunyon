@@ -10,6 +10,7 @@ import { Alert, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { formatDdMmYyyy, historySessions } from '@/lib/format';
 import { isIsoDate } from '@/lib/guards';
+import { listAnchoredSessionDates } from '@/lib/sessions';
 import { subscribeStudy } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
@@ -20,6 +21,7 @@ export default function StudySessionPage() {
   const { user } = useAuth();
   const [study, setStudy] = useState<BibleStudy | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [anchored, setAnchored] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,10 +39,26 @@ export default function StudySessionPage() {
     );
   }, [studyId]);
 
+  const allowed = Boolean(study && user && (study.hostId === user.uid || study.approvedUserIds.includes(user.uid)));
+
+  useEffect(() => {
+    if (!studyId || !allowed) return;
+    let active = true;
+    void listAnchoredSessionDates(studyId)
+      .then((found) => {
+        if (active) setAnchored(found);
+      })
+      .catch(() => {
+        if (active) setAnchored([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [studyId, allowed]);
+
   if (!user) return null;
 
-  const allowed = Boolean(study && (study.hostId === user.uid || study.approvedUserIds.includes(user.uid)));
-  const known = Boolean(study && historySessions(study).includes(date));
+  const known = Boolean(study && anchored && historySessions(study, 8, new Date(), anchored).includes(date));
 
   return (
     <AppShell>
@@ -58,7 +76,8 @@ export default function StudySessionPage() {
       {loaded && study && !allowed ? (
         <p className="mt-6 text-sm text-muted">The host and approved members can open this session.</p>
       ) : null}
-      {loaded && study && allowed && !known ? (
+      {loaded && study && allowed && anchored === null ? <p className="mt-6 text-sm text-muted">Loading session…</p> : null}
+      {loaded && study && allowed && anchored !== null && !known ? (
         <p className="mt-6 text-sm text-muted">This date is not a session of this study.</p>
       ) : null}
       {study && allowed && known ? (

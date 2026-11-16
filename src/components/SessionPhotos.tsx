@@ -1,12 +1,29 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { formatDdMmYyyy, historySessions, upcomingSession } from '@/lib/format';
+import { listAnchoredSessionDates } from '@/lib/sessions';
 import type { BibleStudy } from '@/types';
 
 export function SessionPhotos({ study }: { study: BibleStudy }) {
-  const dates = historySessions(study);
+  const [anchored, setAnchored] = useState<string[]>([]);
+  const dates = historySessions(study, 8, new Date(), anchored);
   const next = upcomingSession(study);
+
+  useEffect(() => {
+    let active = true;
+    void listAnchoredSessionDates(study.id)
+      .then((found) => {
+        if (active) setAnchored(found);
+      })
+      .catch(() => {
+        if (active) setAnchored([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [study.id]);
 
   if (dates.length === 0) {
     return <p className="text-sm text-muted">Canceled sessions stay off this list.</p>;
