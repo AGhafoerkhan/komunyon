@@ -22,6 +22,27 @@ export async function askDeviceNotices(): Promise<DeviceNoticePermission> {
   }
 }
 
+const ASKED_PREFIX = 'komunyon-notice-asked:';
+
+let noticeAsk: { uid: string; started: number; promise: Promise<DeviceNoticePermission> } | null = null;
+
+export function beginNoticeAsk(uid: string): { started: number; promise: Promise<DeviceNoticePermission> } | null {
+  if (typeof window === 'undefined') return null;
+  if (noticeAsk?.uid === uid) return noticeAsk;
+  if (sessionStorage.getItem(ASKED_PREFIX + uid) === '1') return null;
+  sessionStorage.setItem(ASKED_PREFIX + uid, '1');
+  noticeAsk = { uid, started: performance.now(), promise: askDeviceNotices() };
+  return noticeAsk;
+}
+
+export function clearNoticeAsk(): void {
+  noticeAsk = null;
+  if (typeof window === 'undefined') return;
+  for (const key of Object.keys(sessionStorage)) {
+    if (key.startsWith(ASKED_PREFIX)) sessionStorage.removeItem(key);
+  }
+}
+
 export function noticeLine(notice: HostNotice): string {
   if (notice.kind === 'left') return `${notice.fullName} left`;
   if (notice.kind === 'cancelled') return `${notice.fullName} cancelled`;

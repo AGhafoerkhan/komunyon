@@ -1,4 +1,4 @@
-const CACHE = 'komunyon-v1';
+const CACHE = 'komunyon-v2';
 const OFFLINE = '/offline.html';
 
 self.addEventListener('install', (event) => {
@@ -29,7 +29,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/')) {
+  if (url.pathname.startsWith('/icons/')) {
     event.respondWith(cacheFirst(request));
   }
 });
