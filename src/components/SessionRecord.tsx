@@ -226,13 +226,21 @@ export function SessionRecord({
           <ul className={cardGrid}>
             {images.map((file) => (
               <li key={file.path} className="relative min-w-0 rounded-lg border border-line bg-card p-2">
-                {isHost ? <RemoveButton busy={busy} onClick={() => setPendingRemove(file)} /> : null}
+                <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => void download(file)}
+                    className="h-7 rounded-full bg-card px-2 text-xs text-canal"
+                  >
+                    Download
+                  </button>
+                  {isHost ? <RemoveButton busy={busy} floating={false} onClick={() => setPendingRemove(file)} /> : null}
+                </div>
                 <button type="button" onClick={() => setOpen(file)} className="block w-full" aria-label="View session photo">
                   {/* Download URLs are tokenized and are not a fixed remote pattern. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={file.url} alt="" className="aspect-square w-full rounded-md object-cover" />
                 </button>
-                <FileActions file={file} onDownload={download} />
               </li>
             ))}
           </ul>
@@ -352,14 +360,14 @@ function RecordingPlayer({ src }: { src: string }) {
   );
 }
 
-function RemoveButton({ busy, onClick }: { busy: boolean; onClick: () => void }) {
+function RemoveButton({ busy, onClick, floating = true }: { busy: boolean; onClick: () => void; floating?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={busy}
       aria-label="Remove"
-      className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-card text-sm leading-none text-clay disabled:opacity-50"
+      className={`${floating ? 'absolute right-2 top-2 z-10' : ''} flex h-7 w-7 items-center justify-center rounded-full bg-card text-sm leading-none text-clay disabled:opacity-50`}
     >
       X
     </button>
