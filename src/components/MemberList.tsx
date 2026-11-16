@@ -20,7 +20,7 @@ export function MemberList({
   return (
     <section className="rounded-lg border border-line bg-card">
       <div className="border-b border-line px-4 py-3">
-        <h2 className="font-serif text-xl">
+        <h2 className="font-serif text-xl break-words">
           {title}
           <span className="ml-2 font-sans text-base font-normal text-muted tabular-nums">{requests.length}</span>
         </h2>
@@ -38,7 +38,7 @@ export function MemberList({
               <div className="flex min-w-0 flex-1 gap-3">
                 <Avatar src={request.photoURL} name={request.fullName} size={44} />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium">
+                  <p className="text-sm font-medium break-words">
                     {request.fullName}
                     {request.profileMissing ? null : <span className="font-normal text-muted"> · {request.age}</span>}
                   </p>
@@ -49,7 +49,9 @@ export function MemberList({
                   )}
                 </div>
               </div>
-              <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">{renderActions(request)}</div>
+              <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end [&>*]:w-full sm:[&>*]:w-auto">
+                {renderActions(request)}
+              </div>
             </li>
           ))}
         </ul>

@@ -150,7 +150,7 @@ export default function StudyPage() {
 
   return (
     <AppShell>
-      <Link href="/dashboard" className="text-sm text-muted hover:text-ink">
+      <Link href="/dashboard" className="inline-flex text-sm text-muted hover:text-ink">
         ← All studies
       </Link>
 
@@ -283,7 +283,7 @@ function StudyBody({
             <FormatBadge format={study.format} />
             <span className="text-sm text-muted">{study.area}</span>
           </div>
-          <h1 className="mt-3 font-serif text-4xl leading-tight">{study.title}</h1>
+          <h1 className="mt-3 font-serif text-3xl leading-tight break-words sm:text-4xl">{study.title}</h1>
           {study.tags.length > 0 ? (
             <div className="mt-3">
               <TagList tags={study.tags} />
@@ -299,8 +299,8 @@ function StudyBody({
               <p className="text-xs text-muted">{role === 'host' ? 'You are hosting' : 'Host'}</p>
             </div>
           </div>
-          <p className="mt-5 max-w-2xl text-sm leading-relaxed whitespace-pre-wrap">{study.description}</p>
-          <dl className="mt-6 grid max-w-lg grid-cols-2 gap-4 text-sm">
+          <p className="mt-5 max-w-2xl text-sm leading-relaxed break-words whitespace-pre-wrap">{study.description}</p>
+          <dl className="mt-6 grid max-w-lg grid-cols-1 gap-4 text-sm min-[28rem]:grid-cols-2">
             <div>
               <dt className="text-muted">When</dt>
               <dd className="mt-1 font-medium">{formatSchedule(study)}</dd>
@@ -325,7 +325,7 @@ function StudyBody({
               {detailsState === 'loading' ? <p className="mt-2 text-sm text-muted">Loading the address…</p> : null}
               {detailsState === 'ready' && details ? (
                 <>
-                  <p className="mt-2 text-sm whitespace-pre-wrap">{details.exactAddress}</p>
+                  <p className="mt-2 text-sm break-words whitespace-pre-wrap">{details.exactAddress}</p>
                   <h3 className="mt-4 text-sm font-medium">Entry notes</h3>
                   <p className="mt-2 text-sm whitespace-pre-wrap text-muted">
                     {details.entryNotes.trim() || 'No entry notes.'}

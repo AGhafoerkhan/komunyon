@@ -15,7 +15,7 @@ export function buttonClass(variant: ButtonVariant = 'primary', size: ButtonSize
   };
   const sizes: Record<ButtonSize, string> = {
     md: 'h-10 px-3.5 text-sm',
-    sm: 'h-8 px-2.5 text-sm',
+    sm: 'h-9 px-3 text-sm',
   };
   return `inline-flex items-center justify-center gap-2 rounded-md font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${sizes[size]}`;
 }
@@ -31,7 +31,9 @@ export function Button({
 }
 
 export const fieldClass =
-  'w-full rounded-md border border-line bg-card px-3 py-2 text-sm text-ink outline-none placeholder:text-muted/70 focus:border-canal';
+  'w-full min-h-11 rounded-md border border-line bg-card px-3 py-2 text-base text-ink outline-none placeholder:text-muted/70 focus:border-canal sm:text-sm';
+
+export const pageTitleClass = 'font-serif text-3xl leading-tight break-words sm:text-4xl';
 
 export function Field({
   label,

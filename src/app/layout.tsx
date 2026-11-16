@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Figtree, Fraunces } from 'next/font/google';
 import { AuthProvider } from '@/components/AuthProvider';
 import { RouteGuard } from '@/components/RouteGuard';
@@ -15,6 +15,12 @@ const fraunces = Fraunces({
   variable: '--font-fraunces',
   display: 'swap',
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: 'Komunyon — Bible studies in The Hague',

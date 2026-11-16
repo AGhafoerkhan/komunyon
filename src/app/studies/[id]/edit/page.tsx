@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { draftFromStudy, StudyForm } from '@/components/StudyForm';
 import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
-import { Alert, LoadingScreen } from '@/components/ui';
+import { Alert, LoadingScreen, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { getPrivateDetails, getStudy, updateStudy } from '@/lib/studies';
 import type { BibleStudy, PrivateStudyDetails } from '@/types';
@@ -80,10 +80,10 @@ export default function EditStudyPage() {
 
   return (
     <AppShell>
-      <Link href={`/studies/${study.id}`} className="text-sm text-muted hover:text-ink">
+      <Link href={`/studies/${study.id}`} className="block truncate text-sm text-muted hover:text-ink">
         ← {study.title}
       </Link>
-      <h1 className="mt-3 font-serif text-4xl">Edit study</h1>
+      <h1 className={`mt-3 ${pageTitleClass}`}>Edit study</h1>
       {error ? (
         <div className="mt-4">
           <Alert>{error}</Alert>

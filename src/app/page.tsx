@@ -25,29 +25,29 @@ export default function HomePage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-8">
-      <header className="flex items-center justify-between">
+    <div className="mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8">
+      <header className="flex items-center justify-between gap-3 pt-[env(safe-area-inset-top)]">
         <span className="font-serif text-lg">Komunyon</span>
         <span className="text-sm text-muted">The Hague</span>
       </header>
 
-      <main className="flex max-w-xl flex-1 flex-col justify-center py-16">
+      <main className="flex max-w-xl flex-1 flex-col justify-center py-10 sm:py-16">
         <p className="text-sm font-medium text-canal">Bible studies &amp; communion</p>
-        <h1 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">A seat at the table, in The Hague.</h1>
+        <h1 className="mt-3 font-serif text-3xl leading-tight break-words sm:text-5xl">A seat at the table, in The Hague.</h1>
         <p className="mt-5 max-w-md text-base leading-relaxed text-muted">
           Host a group or ask to join one. People can see the neighbourhood, the time, and who is hosting. The street
           address opens only after the host approves you.
         </p>
 
         {configured ? (
-          <div className="mt-8 flex flex-col items-start gap-3">
+          <div className="mt-8 flex w-full max-w-md flex-col items-stretch gap-3 sm:items-start">
             {error || signInError ? <Alert>{error || signInError}</Alert> : null}
             <button
               type="button"
               onPointerDown={() => prepareGoogleSignIn()}
               onClick={() => void signIn()}
               disabled={busy}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium text-ink transition hover:bg-sand disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium text-ink transition hover:bg-sand disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               {busy ? <Spinner /> : <GoogleMark />}
               Sign in with Google
@@ -69,7 +69,9 @@ export default function HomePage() {
         )}
       </main>
 
-      <footer className="text-sm text-muted">The Hague only · Hosts approve each person · You can host and join</footer>
+      <footer className="text-sm leading-relaxed text-muted">
+        The Hague only · Hosts approve each person · You can host and join
+      </footer>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { StudyCard } from '@/components/StudyCard';
 import { AppShell } from '@/components/TopBar';
 import { useAuth } from '@/components/AuthProvider';
-import { Alert, LoadingScreen, buttonClass } from '@/components/ui';
+import { Alert, LoadingScreen, buttonClass, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { subscribeStudies } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
@@ -34,7 +34,7 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <h1 className="font-serif text-4xl">Studies in The Hague</h1>
+        <h1 className={pageTitleClass}>Studies in The Hague</h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
           Neighbourhood, time, and who is hosting. The street address stays hidden until you are approved to join.
         </p>
@@ -45,7 +45,7 @@ export default function DashboardPage() {
       {!loaded ? (
         <p className="text-sm text-muted">Loading studies…</p>
       ) : studies.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-line px-6 py-14 text-center">
+        <div className="rounded-lg border border-dashed border-line px-4 py-10 text-center sm:px-6 sm:py-14">
           <p className="font-serif text-2xl">No studies in The Hague yet</p>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
             Host the first gathering. The address stays private until you approve someone.
@@ -55,9 +55,9 @@ export default function DashboardPage() {
           </Link>
         </div>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {studies.map((study) => (
-            <li key={study.id}>
+            <li key={study.id} className="min-w-0">
               <StudyCard study={study} viewerId={user.uid} />
             </li>
           ))}

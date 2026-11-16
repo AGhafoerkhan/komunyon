@@ -53,22 +53,22 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative w-full max-w-md rounded-lg border border-line bg-card p-5 shadow-lg outline-none"
+        className="relative max-h-[min(32rem,calc(100dvh-2rem))] w-full max-w-md overflow-y-auto rounded-lg border border-line bg-card p-5 shadow-lg outline-none"
       >
-        <h2 id={titleId} className="font-serif text-2xl leading-tight">
+        <h2 id={titleId} className="font-serif text-2xl leading-tight break-words">
           {title}
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
+        <p className="mt-2 text-sm leading-relaxed break-words text-muted">{body}</p>
         {error ? (
           <div className="mt-4">
             <Alert>{error}</Alert>
           </div>
         ) : null}
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={busy}>
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={onConfirm} disabled={busy}>
+          <Button variant="danger" className="w-full sm:w-auto" onClick={onConfirm} disabled={busy}>
             {busy ? <Spinner /> : null}
             {confirmLabel}
           </Button>
