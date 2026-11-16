@@ -39,6 +39,12 @@ export function LoginDebug() {
 
   const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
   const provider = user?.providerData[0]?.providerId ?? 'none';
+  const cameBackSignedOut = events.some((line) => line.includes('redirect result: none, so the dashboard was not opened'));
+  const verdict = user
+    ? `Signed in as ${user.email ?? user.uid}. Opening the dashboard, or profile setup if a required detail is still missing.`
+    : cameBackSignedOut
+      ? 'You came back to the homepage signed out. Google did not hand a login to this tab, so the dashboard was not opened.'
+      : 'Not signed in yet.';
   const stored = (read: () => string[]) => {
     try {
       return read();
@@ -48,6 +54,7 @@ export function LoginDebug() {
   };
   const report = [
     'Komunyon login debug',
+    verdict,
     'Open with https://komunyon.vercel.app/?debug=1',
     `url: ${window.location.href}`,
     `navigation: ${navigation?.type ?? 'unknown'}`,
@@ -105,7 +112,8 @@ export function LoginDebug() {
             </button>
           </div>
         </div>
-        <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed">
+        <p className="mt-3 text-sm leading-relaxed text-[#f0f2f4]">{verdict}</p>
+        <pre className="mt-3 max-h-[70dvh] overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed">
           {report}
         </pre>
       </div>

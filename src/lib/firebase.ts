@@ -14,7 +14,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { firebaseErrorCode } from '@/lib/errors';
-import { loginLog } from '@/lib/loginDebug';
+import { loginLog, markRedirectStarted, returnTripLines, takeRedirectMarker } from '@/lib/loginDebug';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
@@ -25,9 +25,14 @@ export interface FirebaseClient {
 }
 
 function readConfig() {
+  const configuredDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '';
+  const onProductionSite =
+    typeof window !== 'undefined' && window.location.hostname === 'komunyon.vercel.app';
   return {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '',
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '',
+    // Firefox blocks a login that returns from firebaseapp.com. On that browser the
+    // helper has to live on komunyon.vercel.app, which is proxied to Firebase.
+    authDomain: onProductionSite && prefersRedirectSignIn() ? 'komunyon.vercel.app' : configuredDomain,
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '',
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '',
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '',
@@ -83,11 +88,14 @@ export async function completeRedirectSignIn(auth: Auth): Promise<void> {
     return;
   }
   redirectResultRead = true;
-  loginLog(`reading redirect result on ${window.location.hostname}`);
+  const cameBack = takeRedirectMarker();
+  loginLog(cameBack ? 'same tab came back from Google' : 'no redirect marker on this page');
+  for (const line of returnTripLines()) loginLog(line);
+  loginLog(`reading redirect result, auth domain ${readConfig().authDomain}`);
   try {
     const result = await getRedirectResult(auth);
     if (!result) {
-      loginLog('redirect result: none');
+      loginLog(cameBack ? 'redirect result: none, so the dashboard was not opened' : 'redirect result: none');
       return;
     }
     loginLog(`redirect result: logged in, uid ${result.user.uid}`);
@@ -111,7 +119,8 @@ function prefersRedirectSignIn(): boolean {
 async function redirectGoogleSignIn(auth: Auth, provider: GoogleAuthProvider): Promise<void> {
   loginLog('sign-in method: redirect');
   await setPersistence(auth, browserSessionPersistence);
-  loginLog('persistence set to this tab');
+  loginLog(`persistence set to this tab, auth domain ${readConfig().authDomain}`);
+  markRedirectStarted();
   await signInWithRedirect(auth, provider);
   loginLog('redirect started');
 }

@@ -1,6 +1,7 @@
 const FLAG_KEY = 'komunyon-login-debug';
 const LOG_KEY = 'komunyon-login-log';
-const MAX_LINES = 120;
+const REDIRECT_MARKER = 'komunyon-redirect-pending';
+const MAX_LINES = 200;
 
 const listeners = new Set<() => void>();
 let lines: string[] | null = null;
@@ -67,6 +68,54 @@ export function clearLoginDebug(): void {
 
 function redactKey(key: string): string {
   return key.replace(/AIza[0-9A-Za-z_-]+/g, '[api-key]');
+}
+
+export function markRedirectStarted(): void {
+  sessionStorage.setItem(REDIRECT_MARKER, '1');
+}
+
+export function takeRedirectMarker(): boolean {
+  const pending = sessionStorage.getItem(REDIRECT_MARKER) === '1';
+  sessionStorage.removeItem(REDIRECT_MARKER);
+  return pending;
+}
+
+export function returnTripLines(): string[] {
+  const url = new URL(window.location.href);
+  const names = [...url.searchParams.keys()];
+  const hash = window.location.hash;
+  let referrer = 'none';
+  try {
+    referrer = document.referrer ? new URL(document.referrer).hostname : 'none';
+  } catch {
+    referrer = 'unreadable';
+  }
+  const firebaseError = url.searchParams.get('firebaseError');
+  return [
+    `return path: ${url.pathname}`,
+    `return query names: ${names.length > 0 ? names.join(', ') : 'none'}`,
+    hash ? `return hash: present, length ${hash.length}` : 'return hash: none',
+    `return referrer: ${referrer}`,
+    firebaseError ? `return firebaseError: ${firebaseError.slice(0, 80)}` : 'return firebaseError: none',
+    ...allStorageKeyLines(sessionStorage, 'session'),
+    ...allStorageKeyLines(localStorage, 'local'),
+  ];
+}
+
+function allStorageKeyLines(storage: Storage, label: string): string[] {
+  const keys: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (!key) continue;
+    let size = 0;
+    try {
+      size = storage.getItem(key)?.length ?? 0;
+    } catch {
+      size = -1;
+    }
+    keys.push(`${label} ${redactKey(key)} (${size} chars)`);
+  }
+  return keys.length > 0 ? keys : [`${label}: empty`];
 }
 
 export function readableCookieLines(): string[] {
