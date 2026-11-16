@@ -24,17 +24,10 @@ export interface FirebaseClient {
   storage: FirebaseStorage;
 }
 
-const PRODUCTION_HOST = 'komunyon.vercel.app';
-
 function readConfig() {
-  const configuredDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '';
-  const authDomain =
-    typeof window !== 'undefined' && window.location.hostname === PRODUCTION_HOST
-      ? PRODUCTION_HOST
-      : configuredDomain;
   return {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '',
-    authDomain,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '',
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '',
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '',
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '',
