@@ -71,7 +71,7 @@ export default function HomePage() {
         </Band>
 
         {story.map((item) => (
-          <Band key={item.label} tone={item.tone}>
+          <Band key={item.label} tone={item.tone} fill>
             <p className="text-sm font-medium text-canal">{item.label}</p>
             <h2 className="mt-6 w-full font-serif text-3xl leading-tight break-words sm:text-5xl">{item.title}</h2>
             <p className="mt-6 w-full text-base leading-relaxed text-muted sm:text-lg">{item.body}</p>
@@ -174,9 +174,11 @@ export default function HomePage() {
 function Band({
   children,
   tone = 'paper',
+  fill = false,
 }: {
   children: ReactNode;
   tone?: 'paper' | 'sand' | 'card' | 'canal';
+  fill?: boolean;
 }) {
   const tones = {
     paper: 'bg-paper text-ink',
@@ -185,8 +187,14 @@ function Band({
     canal: 'bg-canal text-white',
   };
   return (
-    <section className={`w-full ${tones[tone]}`}>
-      <div className="w-full px-5 py-16 sm:px-8 sm:py-24 lg:px-12 lg:py-28">{children}</div>
+    <section className={`flex w-full ${fill ? 'min-h-dvh' : ''} ${tones[tone]}`}>
+      <div
+        className={`flex w-full flex-col justify-center px-5 sm:px-8 lg:px-12 ${
+          fill ? 'py-16' : 'py-16 sm:py-24 lg:py-28'
+        }`}
+      >
+        {children}
+      </div>
     </section>
   );
 }
