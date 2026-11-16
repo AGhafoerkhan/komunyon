@@ -46,7 +46,8 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
   const uid = user.uid;
 
   const images = files.filter((file) => file.kind === 'image');
-  const attachments = files.filter((file) => file.kind !== 'image');
+  const recordings = files.filter((file) => file.kind === 'audio');
+  const texts = files.filter((file) => file.kind === 'text');
 
   async function saveDescription() {
     if (!isHost) return;
@@ -132,7 +133,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
       </div>
 
       <div className="mt-8">
-        <h2 className="font-serif text-2xl">Photos and files</h2>
+        <h2 className="font-serif text-2xl">Files</h2>
         {images.length > 0 ? (
           <ul className={cardGrid}>
             {images.map((file) => (
@@ -147,32 +148,38 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
             ))}
           </ul>
         ) : null}
-        {attachments.length > 0 ? (
+        {recordings.length > 0 ? (
           <ul className={cardGrid}>
-            {attachments.map((file) => (
+            {recordings.map((file) => (
               <li key={file.path} className="flex min-h-28 flex-col justify-between rounded-lg border border-line bg-card p-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-ink">{file.kind === 'audio' ? 'Recording' : 'Text file'}</p>
-                  {file.kind === 'audio' ? <audio controls src={file.url} className="mt-2 w-full" preload="none" /> : null}
+                  <p className="text-sm font-medium text-ink">Recording</p>
+                  <audio controls src={file.url} className="mt-2 w-full" preload="none" />
                 </div>
                 <FileActions file={file} busy={busy} isHost={isHost} onDownload={download} onRemove={removeFile} />
               </li>
             ))}
           </ul>
         ) : null}
-        {!loading && images.length === 0 && attachments.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">No photos or files for this session yet.</p>
+        {texts.length > 0 ? (
+          <ul className={cardGrid}>
+            {texts.map((file) => (
+              <li key={file.path} className="flex min-h-28 flex-col justify-between rounded-lg border border-line bg-card p-3">
+                <p className="text-sm font-medium text-ink">Text file</p>
+                <FileActions file={file} busy={busy} isHost={isHost} onDownload={download} onRemove={removeFile} />
+              </li>
+            ))}
+          </ul>
         ) : null}
+        {!loading && files.length === 0 ? <p className="mt-3 text-sm text-muted">No files for this session yet.</p> : null}
         {isHost ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <FileButton label={busy ? 'Saving…' : 'Add a photo'} accept="image/*" disabled={busy} onFile={addFile} />
+          <div className="mt-4">
             <FileButton
-              label={busy ? 'Saving…' : 'Add a recording'}
-              accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm"
+              label={busy ? 'Saving…' : 'Add a file'}
+              accept="image/*,audio/*,.txt,.m4a,.mp3,.wav,.ogg,.webm,text/plain"
               disabled={busy}
               onFile={addFile}
             />
-            <FileButton label={busy ? 'Saving…' : 'Add a text file'} accept=".txt,text/plain" disabled={busy} onFile={addFile} />
           </div>
         ) : null}
       </div>
