@@ -485,6 +485,19 @@ service cloud.firestore {
             && signedIn()
             && (uid == request.auth.uid || studyDoc(studyId).hostId == request.auth.uid);
         }
+
+        match /summary/{summaryId} {
+          allow read: if studyExists(studyId) && canReadPrivate(studyDoc(studyId));
+          allow create, update: if studyExists(studyId)
+            && signedIn()
+            && summaryId == 'attendance'
+            && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
+            && request.resource.data.keys().hasOnly(['attendingCount', 'updatedAt'])
+            && request.resource.data.attendingCount is int
+            && request.resource.data.attendingCount >= 0
+            && request.resource.data.attendingCount <= studyDoc(studyId).maxCapacity
+            && request.resource.data.updatedAt is string;
+        }
       }
 
       match /private/details {
