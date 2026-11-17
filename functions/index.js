@@ -35,5 +35,23 @@ exports.toggleSessionAttendance = onCall({ region: 'europe-west4' }, async (requ
     transaction.set(attendeeRef, { uid: request.auth.uid, joined, updatedAt: new Date().toISOString() });
     transaction.set(summaryRef, { attendingCount: Math.max(0, count + delta), updatedAt: new Date().toISOString() });
   });
+
+  // A session is canceled only when every host-side person has explicitly
+  // marked themselves unavailable for this date.
+  const managerSnap = await db.collection(`studies/${studyId}/managers`).get();
+  const studySnap = await studyRef.get();
+  if (studySnap.exists) {
+    const study = studySnap.data();
+    const teamIds = [...new Set([study.hostId, ...managerSnap.docs.map((item) => item.id)])];
+    const teamRefs = teamIds.map((uid) => db.doc(`studies/${studyId}/sessions/${date}/attendees/${uid}`));
+    const teamSnaps = await db.getAll(...teamRefs);
+    const allUnavailable = teamSnaps.every((item) => item.exists && item.data().joined === false);
+    const skipped = Array.isArray(study.skippedDates) && study.skippedDates.includes(date);
+    if (allUnavailable && !skipped) {
+      await studyRef.update({ skippedDates: FieldValue.arrayUnion(date), updatedAt: new Date().toISOString() });
+    } else if (!allUnavailable && skipped) {
+      await studyRef.update({ skippedDates: FieldValue.arrayRemove(date), updatedAt: new Date().toISOString() });
+    }
+  }
   return { joined };
 });
