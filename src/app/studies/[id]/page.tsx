@@ -586,6 +586,8 @@ function StudyBody({
   const sessionDate = upcomingSession(study);
   const [sessionJoined, setSessionJoined] = useState(false);
   const [sessionTaken, setSessionTaken] = useState(0);
+  const [showAttending, setShowAttending] = useState(false);
+  const [attendingMembers, setAttendingMembers] = useState<JoinRequest[]>([]);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
 
@@ -611,6 +613,16 @@ function StudyBody({
     } finally {
       setAttendanceBusy(false);
     }
+  }
+
+  async function toggleAttending() {
+    if (!sessionDate || (role !== 'approved' && role !== 'host')) return;
+    const next = !showAttending;
+    setShowAttending(next);
+    if (!next) return;
+    const records = await loadSessionAttendance(study.id, sessionDate);
+    const ids = records.filter((record) => record.joined).map((record) => record.uid);
+    setAttendingMembers(await loadPeople(study.id, ids));
   }
 
   return (
@@ -683,6 +695,27 @@ function StudyBody({
               </dd>
             </div>
           </dl>
+          {sessionDate && (role === 'approved' || role === 'host') ? (
+            <>
+              <button
+                type="button"
+                className="mt-3 text-left text-sm text-muted underline decoration-1 underline-offset-2 hover:text-ink"
+                onClick={() => void toggleAttending()}
+              >
+                {showAttending ? 'Hide attending people' : `See ${sessionTaken} ${sessionTaken === 1 ? 'person' : 'people'} attending`}
+              </button>
+              {showAttending ? (
+                <div className="mt-3 max-w-lg">
+                  <MemberList
+                    title="Attending this session"
+                    empty="No one has joined this session yet."
+                    requests={attendingMembers}
+                    showPhone
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </article>
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20">
