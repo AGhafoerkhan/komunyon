@@ -118,8 +118,6 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
                   </Button>
                   <Link
                     href={`/studies/${study.id}/admin?uid=${encodeURIComponent(person.userId)}`}
-                    target="_blank"
-                    rel="noreferrer"
                     className={buttonClass('secondary', 'sm')}
                   >
                     Admin

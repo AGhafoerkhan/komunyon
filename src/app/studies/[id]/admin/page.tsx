@@ -79,13 +79,25 @@ export default function CoHostAdminPage() {
         <h1 className={`mt-2 ${pageTitleClass}`}>{name}</h1>
         {error ? <div className="mt-5"><Alert>{error}</Alert></div> : (
           <section className="mt-6 rounded-lg border border-line bg-card p-4">
-            <label className="flex items-start gap-3">
-              <input className="mt-1 size-4" type="checkbox" checked={canEdit} onChange={(event) => setCanEdit(event.target.checked)} />
+            <div className="flex items-center justify-between gap-4">
               <span>
                 <span className="block font-medium">Can edit this study</span>
                 <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to use the Edit study page.</span>
               </span>
-            </label>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={canEdit}
+                aria-label="Can edit this study"
+                onClick={() => setCanEdit((current) => !current)}
+                className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canEdit ? 'border-canal bg-canal' : 'border-line bg-sand'}`}
+              >
+                <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canEdit ? 'translate-x-6' : 'translate-x-0'}`} />
+                <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canEdit ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>
+                  {canEdit ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            </div>
             <Button className="mt-5" onClick={() => void save()} disabled={saving}>
               {saving ? 'Saving…' : 'Save access'}
             </Button>
