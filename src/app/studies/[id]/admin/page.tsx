@@ -100,9 +100,6 @@ export default function CoHostAdminPage() {
                 </span>
               </button>
             </div>
-            <Button className="mt-5" onClick={() => void save()} disabled={saving}>
-              {saving ? 'Saving…' : 'Save access'}
-            </Button>
             <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
               <span>
                 <span className="block font-medium">Can manage participants</span>
@@ -122,6 +119,9 @@ export default function CoHostAdminPage() {
                 </span>
               </button>
             </div>
+            <Button className="mt-6" onClick={() => void save()} disabled={saving}>
+              {saving ? 'Saving…' : 'Save access'}
+            </Button>
           </section>
         )}
       </div>
