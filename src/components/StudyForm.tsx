@@ -334,7 +334,7 @@ function WeekSkips({
                   {formatDdMmYyyy(date)}
                 </span>
                 <span className={`shrink-0 text-sm ${canceled ? 'text-clay' : 'text-canal'}`}>
-                  {canceled ? 'Canceled' : 'Meets'}
+                  {canceled ? 'Canceled' : 'Ongoing'}
                 </span>
               </button>
             </li>
