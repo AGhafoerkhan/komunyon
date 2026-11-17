@@ -734,7 +734,22 @@ function StudyBody({
               ) : null}
             </div>
             <div>
-              <dt className="text-muted">Spots</dt>
+              <dt className="text-muted">
+                <span className="inline-flex items-center gap-1">
+                  Spots
+                  {sessionDate && (role === 'approved' || role === 'host') ? (
+                    <button
+                      type="button"
+                      aria-label={showAttending ? 'Hide people attending' : 'See people attending'}
+                      title={showAttending ? 'Hide people attending' : 'See people attending'}
+                      onClick={() => void toggleAttending()}
+                      className="text-xs leading-none text-muted hover:text-ink"
+                    >
+                      ⓘ
+                    </button>
+                  ) : null}
+                </span>
+              </dt>
               <dd className="mt-1 font-medium tabular-nums">
                 {sessionDate ? sessionTaken : taken} / {study.maxCapacity}
                 <span className="font-normal text-muted"> · {spotsLabel(sessionDate ? sessionTaken : taken, study.maxCapacity)}</span>
