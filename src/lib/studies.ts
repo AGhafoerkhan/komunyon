@@ -19,8 +19,9 @@ import { deleteStudyPhotos } from '@/lib/photos';
 import { deleteSessionNotes } from '@/lib/sessions';
 import { getFirebase } from '@/lib/firebase';
 import { normalizeTime } from '@/lib/guards';
-import { upcomingSessions } from '@/lib/format';
+import { upcomingSession, upcomingSessions } from '@/lib/format';
 import { sortTags } from '@/lib/tags';
+import { setSessionAttendance } from '@/lib/attendance';
 import { parseBibleStudy, parsePrivateDetails, parseUserProfile } from '@/lib/parse';
 import type { BibleStudy, JoinRequest, PrivateStudyDetails, StudyDraft, UserProfile } from '@/types';
 
@@ -203,6 +204,8 @@ export async function acceptInvite(study: BibleStudy, uid: string): Promise<void
       ...(study.pendingUserIds.includes(uid) ? { pendingUserIds: arrayRemove(uid) } : {}),
       updatedAt: nowIso(),
     });
+    const firstSession = upcomingSession(study);
+    if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true);
     await syncStorageAccess(study.id);
   } catch (error) {
     await deleteDoc(doc(getFirebase().db, 'studies', study.id, 'notices', uid)).catch(() => undefined);
@@ -366,6 +369,8 @@ export async function approveMember(study: BibleStudy, uid: string): Promise<voi
     approvedUserIds: arrayUnion(uid),
     updatedAt: nowIso(),
   });
+  const firstSession = upcomingSession(study);
+  if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true);
   await syncStorageAccess(study.id);
 }
 
