@@ -5,7 +5,7 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 initializeApp();
 const db = getFirestore();
 
-exports.toggleSessionAttendance = onCall(async (request) => {
+exports.toggleSessionAttendance = onCall({ region: 'europe-west4' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to manage attendance.');
   const { studyId, date, joined } = request.data || {};
   if (typeof studyId !== 'string' || typeof date !== 'string' || typeof joined !== 'boolean') {

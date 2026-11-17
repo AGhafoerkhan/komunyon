@@ -148,7 +148,7 @@ export function getFirebase(): FirebaseClient {
       auth: getAuth(app),
       db: getFirestore(app),
       storage: getStorage(app),
-      functions: getFunctions(app),
+      functions: getFunctions(app, 'europe-west4'),
     };
   }
   return client;
