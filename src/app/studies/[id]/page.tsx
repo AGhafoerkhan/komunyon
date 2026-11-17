@@ -1013,9 +1013,9 @@ function StudyBody({
                           type="button"
                           className={`w-full text-left underline underline-offset-2 disabled:opacity-50 ${study.skippedDates.includes(date) ? 'text-canal decoration-1' : 'text-clay decoration-black decoration-dashed'}`}
                           onClick={() => void toggleHostPlannedSession(date)}
-                          disabled={planningBusy !== null}
+                          disabled={planningBusy !== null || hostAvailability[date] !== true}
                         >
-                          {study.skippedDates.includes(date) ? 'Proceed' : 'Cancel'}
+                          {hostAvailability[date] !== true ? 'Join attendance first' : study.skippedDates.includes(date) ? 'Proceed' : 'Cancel'}
                         </button>
                       ) : (
                         <button
