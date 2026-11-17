@@ -35,9 +35,9 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
   return (
     <Link
       href={`/studies/${study.id}`}
-      className="flex h-[360px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
+      className="flex h-[332px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex h-10 shrink-0 items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar src={study.hostPhotoURL} name={study.hostName} size={40} />
           <div className="min-w-0">
@@ -50,11 +50,15 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
         </div>
         <FormatBadge format={study.format} />
       </div>
-      <h2 className="font-serif text-xl leading-snug break-words">{study.title}</h2>
-      <TagList tags={study.tags} />
-      <p className="text-sm break-words text-muted">{formatSchedule(study)}</p>
-      {cancellationNote(study) ? <p className="text-sm leading-relaxed text-clay">{cancellationNote(study)}</p> : null}
-      <p className="mt-auto text-sm tabular-nums">
+      <h2 className="h-12 shrink-0 overflow-hidden font-serif text-xl leading-snug break-words">{study.title}</h2>
+      <div className="flex h-6 shrink-0 items-start overflow-hidden">
+        <TagList tags={study.tags} />
+      </div>
+      <p className="h-5 shrink-0 overflow-hidden text-sm break-words text-muted">{formatSchedule(study)}</p>
+      <p className="h-10 shrink-0 overflow-hidden text-sm leading-relaxed text-clay line-clamp-2">
+        {cancellationNote(study) || '\u00a0'}
+      </p>
+      <p className="mt-auto shrink-0 text-sm tabular-nums">
         <span className="font-medium text-ink">
           {sessionDate ? sessionTaken : taken} / {study.maxCapacity}
         </span>
