@@ -910,7 +910,11 @@ function StudyBody({
                 onClick={() => setPlanningOpen((open) => !open)}
                 aria-expanded={planningOpen}
               >
-                {planningOpen ? 'Hide future sessions' : 'Plan future sessions'}
+                {planningOpen
+                  ? 'Hide future sessions'
+                  : role === 'host' || canManageSessions
+                    ? 'Plan future sessions'
+                    : 'Plan future attendance'}
               </button>
               {planningOpen ? (
                 <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
