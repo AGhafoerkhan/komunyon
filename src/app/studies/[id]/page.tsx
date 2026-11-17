@@ -902,7 +902,7 @@ function StudyBody({
               />
             </div>
           ) : null}
-          {study.format === 'recurring' && (role === 'host' || canManageSessions) ? (
+          {study.format === 'recurring' && (role === 'approved' || role === 'host' || canManageSessions) ? (
             <div className="mt-4 max-w-lg">
               <button
                 type="button"
