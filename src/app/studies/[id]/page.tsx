@@ -775,7 +775,7 @@ function StudyBody({
                     onClick={() => void toggleAttendance()}
                     disabled={attendanceBusy || (!sessionJoined && sessionTaken >= study.maxCapacity)}
                   >
-                    {sessionJoined ? 'Leave' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
+                    {sessionJoined ? 'Ongoing · Cancel' : sessionTaken >= study.maxCapacity ? 'Full' : 'Ongoing · Join'}
                   </button>
                 ) : role === 'host' && scheduledDate ? (
                   <span className="inline-flex items-center gap-2">
@@ -839,7 +839,7 @@ function StudyBody({
                           onClick={() => void togglePlannedSession(date)}
                           disabled={planningBusy !== null || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
                         >
-                          {plannedSessions[date] ? 'Leave' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
+                          {plannedSessions[date] ? 'Ongoing · Cancel' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Ongoing · Join'}
                         </button>
                       )}
                     </li>
