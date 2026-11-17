@@ -698,6 +698,7 @@ function StudyBody({
   const [planningBusy, setPlanningBusy] = useState<string | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
+  const [attendanceRequired, setAttendanceRequired] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
   const visibleSessionTaken = sessionTaken;
 
@@ -773,6 +774,10 @@ function StudyBody({
 
   async function toggleCurrentSession() {
     if (role !== 'host' && !canManageSessions || !scheduledDate || cancelBusy) return;
+    if (sessionCanceled && !sessionJoined) {
+      setAttendanceRequired(true);
+      return;
+    }
     setCancelBusy(true);
     try {
       await setSessionCanceled(study.id, scheduledDate, !sessionCanceled);
@@ -1178,6 +1183,26 @@ function StudyBody({
         </div>
       ) : null}
       {photo ? <PhotoLightbox src={photo.src} name={photo.name} onClose={() => setPhoto(null)} /> : null}
+      {attendanceRequired ? (
+        <ConfirmDialog
+          title="Join attendance first"
+          body="You must first join attendance before proceeding with this session. This lets participants know who will host it."
+          confirmLabel="Join attendance"
+          busy={attendanceBusy}
+          error={null}
+          onClose={() => setAttendanceRequired(false)}
+          onConfirm={() => {
+            if (!sessionDate || attendanceBusy) return;
+            setAttendanceBusy(true);
+            void saveSessionAttendance(study.id, sessionDate, viewerId, true, study.maxCapacity)
+              .then(() => {
+                setSessionJoined(true);
+                setAttendanceRequired(false);
+              })
+              .finally(() => setAttendanceBusy(false));
+          }}
+        />
+      ) : null}
     </div>
   );
 }
