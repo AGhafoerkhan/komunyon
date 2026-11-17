@@ -13,6 +13,7 @@ export function MemberList({
   renderActions,
   onPhoto,
   showPhone = true,
+  coHostIds = [],
   rowId,
 }: {
   title: string;
@@ -22,6 +23,7 @@ export function MemberList({
   renderActions?: (request: JoinRequest) => ReactNode;
   onPhoto?: (src: string, name: string) => void;
   showPhone?: boolean;
+  coHostIds?: string[];
   rowId?: (request: JoinRequest) => string;
 }) {
   return (
@@ -53,6 +55,7 @@ export function MemberList({
                 <div className="min-w-0">
                   <p className="text-sm font-medium break-words">
                     {request.fullName}
+                    {coHostIds.includes(request.userId) ? <span className="font-normal text-canal"> · Co-host</span> : null}
                     {request.profileMissing ? null : <span className="font-normal text-muted"> · {request.age}</span>}
                   </p>
                   {request.place ? <p className="mt-0.5 text-xs text-muted">{request.place}</p> : null}

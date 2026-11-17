@@ -27,6 +27,7 @@ import {
   deleteStudy,
   leaveStudy,
   loadJoinRequests,
+  loadCoHostIds,
   loadPeople,
   removeMember,
   requestToJoin,
@@ -66,6 +67,7 @@ export default function StudyPage() {
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>([]);
   const [approvedMembers, setApprovedMembers] = useState<JoinRequest[]>([]);
+  const [coHostIds, setCoHostIds] = useState<string[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
   const [removed, setRemoved] = useState(false);
   const [leftBySelf, setLeftBySelf] = useState(false);
@@ -203,6 +205,14 @@ export default function StudyPage() {
     };
   }, [study, user]);
 
+  useEffect(() => {
+    if (!study || !user || (study.hostId !== user.uid && !study.approvedUserIds.includes(user.uid))) {
+      setCoHostIds([]);
+      return;
+    }
+    void loadCoHostIds(study.id).then(setCoHostIds).catch(() => setCoHostIds([]));
+  }, [study, user]);
+
   const closeConfirm = useCallback(() => {
     if (busy) return;
     setConfirm(null);
@@ -289,6 +299,7 @@ export default function StudyPage() {
         <StudyBody
           study={study}
           viewerId={user.uid}
+          coHostIds={coHostIds}
           role={roleFor(study, user.uid)}
           details={details}
           detailsState={detailsState}
@@ -547,6 +558,7 @@ function dialogCopy(action: ConfirmAction, studyTitle: string): { title: string;
 function StudyBody({
   study,
   viewerId,
+  coHostIds,
   role,
   details,
   detailsState,
@@ -568,6 +580,7 @@ function StudyBody({
 }: {
   study: BibleStudy;
   viewerId: string;
+  coHostIds: string[];
   role: Role;
   details: PrivateStudyDetails | null;
   detailsState: 'hidden' | 'loading' | 'ready';
@@ -809,6 +822,7 @@ function StudyBody({
                 empty="No one has joined this session yet."
                 requests={attendingMembers}
                 showPhone
+                    coHostIds={coHostIds}
               />
             </div>
           ) : null}
@@ -972,6 +986,7 @@ function StudyBody({
             empty="No one else is approved yet."
             requests={approvedMembers}
             showPhone={false}
+            coHostIds={coHostIds}
             onPhoto={openPhoto}
           />
         </div>

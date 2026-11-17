@@ -304,6 +304,11 @@ export async function setSessionCanceled(studyId: string, date: string, canceled
   });
 }
 
+export async function loadCoHostIds(studyId: string): Promise<string[]> {
+  const snapshot = await getDocs(collection(getFirebase().db, 'studies', studyId, 'managers'));
+  return snapshot.docs.map((item) => item.id);
+}
+
 export async function deleteStudy(studyId: string): Promise<void> {
   const { db } = getFirebase();
   await deleteStudyPhotos(studyId);

@@ -457,7 +457,8 @@ service cloud.firestore {
       match /managers/{uid} {
         allow read: if studyExists(studyId)
           && signedIn()
-          && studyDoc(studyId).hostId == request.auth.uid;
+          && (studyDoc(studyId).hostId == request.auth.uid
+            || studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid]));
         allow create, update: if studyExists(studyId)
           && signedIn()
           && studyDoc(studyId).hostId == request.auth.uid
