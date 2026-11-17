@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { Avatar, Button, fieldClass } from '@/components/ui';
+import { Avatar, Button, buttonClass, fieldClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { getFirebase } from '@/lib/firebase';
 import { loadPeople } from '@/lib/studies';
@@ -115,9 +116,14 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
                   <Button size="sm" variant="secondary" disabled={busy !== null} onClick={() => void toggle({ uid: person.userId, fullName: person.fullName, photoURL: person.photoURL } as UserProfile)}>
                     Remove
                   </Button>
-                  <Button size="sm" variant="secondary" disabled={busy !== null} onClick={() => setAdminUid(adminUid === person.userId ? null : person.userId)}>
+                  <Link
+                    href={`/studies/${study.id}/admin?uid=${encodeURIComponent(person.userId)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={buttonClass('secondary', 'sm')}
+                  >
                     Admin
-                  </Button>
+                  </Link>
                 </li>
                 {adminUid === person.userId ? (
                   <li className="border-b border-line pb-3 text-sm">
