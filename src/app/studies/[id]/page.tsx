@@ -29,6 +29,7 @@ import {
   loadJoinRequests,
   subscribeCoHostIds,
   subscribeCoHostEditPermission,
+  subscribeCoHostParticipantPermission,
   loadPeople,
   removeMember,
   requestToJoin,
@@ -75,6 +76,7 @@ export default function StudyPage() {
   const [hostMember, setHostMember] = useState<JoinRequest | null>(null);
   const [coHostIds, setCoHostIds] = useState<string[]>([]);
   const [canEditStudy, setCanEditStudy] = useState(false);
+  const [canManageParticipants, setCanManageParticipants] = useState(false);
   const [rosterReady, setRosterReady] = useState(false);
   const [removed, setRemoved] = useState(false);
   const [leftBySelf, setLeftBySelf] = useState(false);
@@ -192,7 +194,7 @@ export default function StudyPage() {
       return;
     }
     let active = true;
-    const task = host
+    const task = host || canManageParticipants
       ? loadJoinRequests(study)
       : loadPeople(study.id, study.approvedUserIds).then((people) => ({ pending: [], approved: people }));
     void task
@@ -210,7 +212,7 @@ export default function StudyPage() {
     return () => {
       active = false;
     };
-  }, [study, user]);
+  }, [canManageParticipants, study, user]);
 
   useEffect(() => {
     if (!study || !user || study.hostId === user.uid) {
@@ -218,6 +220,14 @@ export default function StudyPage() {
       return;
     }
     return subscribeCoHostEditPermission(study.id, user.uid, setCanEditStudy, () => setCanEditStudy(false));
+  }, [study, user]);
+
+  useEffect(() => {
+    if (!study || !user || study.hostId === user.uid) {
+      setCanManageParticipants(study?.hostId === user?.uid);
+      return;
+    }
+    return subscribeCoHostParticipantPermission(study.id, user.uid, setCanManageParticipants, () => setCanManageParticipants(false));
   }, [study, user]);
 
   useEffect(() => {
@@ -346,6 +356,7 @@ export default function StudyPage() {
           coHostIds={coHostIds}
           hostMember={hostMember}
           canEditStudy={canEditStudy}
+          canManageParticipants={canManageParticipants}
           role={roleFor(study, user.uid)}
           details={details}
           detailsState={detailsState}
@@ -607,6 +618,7 @@ function StudyBody({
   coHostIds,
   hostMember,
   canEditStudy,
+  canManageParticipants,
   role,
   details,
   detailsState,
@@ -631,6 +643,7 @@ function StudyBody({
   coHostIds: string[];
   hostMember: JoinRequest | null;
   canEditStudy: boolean;
+  canManageParticipants: boolean;
   role: Role;
   details: PrivateStudyDetails | null;
   detailsState: 'hidden' | 'loading' | 'ready';
@@ -1044,7 +1057,7 @@ function StudyBody({
         </div>
       ) : null}
 
-      {role === 'host' ? (
+      {role === 'host' || canManageParticipants ? (
         <div className="mt-8 grid gap-4">
           <InvitePeople study={study} />
           <CoHostPanel study={study} />

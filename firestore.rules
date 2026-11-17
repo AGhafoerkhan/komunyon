@@ -207,6 +207,12 @@ service cloud.firestore {
       return isHost() || isManagerEditor(studyId);
     }
 
+    function isParticipantManager(studyId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canManageParticipants == true;
+    }
+
     function hostPreserved() {
       return request.resource.data.hostId == resource.data.hostId
         && request.resource.data.createdAt == resource.data.createdAt;
@@ -258,6 +264,18 @@ service cloud.firestore {
         && request.auth.uid != resource.data.hostId
         && onlyTouched(['approvedUserIds', 'updatedAt'])
         && selfRemovedFrom(resource.data.approvedUserIds, request.resource.data.approvedUserIds)
+        && validPublicStudy(request.resource.data);
+    }
+
+    function managerRemovesMember(studyId) {
+      return signedIn()
+        && isParticipantManager(studyId)
+        && request.auth.uid != resource.data.hostId
+        && onlyTouched(['approvedUserIds', 'updatedAt'])
+        && request.resource.data.approvedUserIds is list
+        && resource.data.approvedUserIds.hasAll(request.resource.data.approvedUserIds)
+        && resource.data.approvedUserIds.size() == request.resource.data.approvedUserIds.size() + 1
+        && !request.resource.data.approvedUserIds.hasAny([resource.data.hostId])
         && validPublicStudy(request.resource.data);
     }
 
@@ -436,6 +454,7 @@ service cloud.firestore {
         || selfRequestsToJoin()
         || selfCancelsRequest()
         || selfLeavesGroup()
+        || managerRemovesMember(studyId)
         || selfAcceptsInvite()
         || selfDeclinesInvite()
         || (
@@ -571,8 +590,9 @@ service cloud.firestore {
           || (
             studyExists(studyId)
             && signedIn()
-            && studyDoc(studyId).hostId == request.auth.uid
+            && (studyDoc(studyId).hostId == request.auth.uid || isParticipantManager(studyId))
             && uid != request.auth.uid
+            && uid != studyDoc(studyId).hostId
             && studyDoc(studyId).approvedUserIds.hasAny([uid])
             && request.resource.data.keys().hasOnly(['type', 'userId', 'createdAt', 'studyTitle', 'hostName'])
             && request.resource.data.type == 'removed'

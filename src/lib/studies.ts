@@ -335,6 +335,19 @@ export function subscribeCoHostEditPermission(
   );
 }
 
+export function subscribeCoHostParticipantPermission(
+  studyId: string,
+  uid: string,
+  onData: (canManage: boolean) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    doc(getFirebase().db, 'studies', studyId, 'managers', uid),
+    (snapshot) => onData(snapshot.exists() && snapshot.data().permissions?.canManageParticipants === true),
+    onError,
+  );
+}
+
 export async function deleteStudy(studyId: string): Promise<void> {
   const { db } = getFirebase();
   await deleteStudyPhotos(studyId);
