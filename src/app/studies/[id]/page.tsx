@@ -64,6 +64,7 @@ export default function StudyPage() {
   const [approvedMembers, setApprovedMembers] = useState<JoinRequest[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
   const [removed, setRemoved] = useState(false);
+  const [leftBySelf, setLeftBySelf] = useState(false);
   const [heardRemoval, setHeardRemoval] = useState(false);
   const [removalsChecked, setRemovalsChecked] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -244,7 +245,8 @@ export default function StudyPage() {
   }
 
   const memberNow = Boolean(study?.approvedUserIds.includes(user.uid));
-  const showRemoved = removed || (heardRemoval && !memberNow);
+  const showLeft = leftBySelf;
+  const showRemoved = !showLeft && (removed || (heardRemoval && !memberNow));
 
   return (
     <AppShell>
@@ -257,6 +259,14 @@ export default function StudyPage() {
       ) : !study && !blocked ? (
         <div className="mt-6">
           <p className="font-serif text-3xl">This study is no longer listed.</p>
+        </div>
+      ) : showLeft ? (
+        <div id="left" className="mt-6 max-w-xl scroll-mt-24">
+          <p className="font-serif text-3xl">You left this event.</p>
+          <p className="mt-3 text-sm leading-relaxed text-muted">
+            {study ? `${study.title} is no longer yours to open. ` : null}
+            You no longer have the address.
+          </p>
         </div>
       ) : showRemoved ? (
         <div id="removed" className="mt-6 max-w-xl scroll-mt-24">
@@ -309,7 +319,10 @@ export default function StudyPage() {
           onClose={closeConfirm}
           onConfirm={() => {
             if (confirm.kind === 'leave') {
-              void run('leave', () => leaveStudy(study.id, user.uid));
+              void run('leave', async () => {
+                await leaveStudy(study.id, user.uid);
+                setLeftBySelf(true);
+              });
               return;
             }
             if (confirm.kind === 'delete') {
