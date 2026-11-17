@@ -280,6 +280,14 @@ service cloud.firestore {
         && validPublicStudy(request.resource.data);
     }
 
+    function managerManagesSessions(studyId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canManageSessions == true
+        && onlyTouched(['skippedDates', 'updatedAt'])
+        && validPublicStudy(request.resource.data);
+    }
+
     function selfAcceptsInvite() {
       return signedIn()
         && request.auth.uid != resource.data.hostId
@@ -456,6 +464,7 @@ service cloud.firestore {
         || selfCancelsRequest()
         || selfLeavesGroup()
         || managerRemovesMember(studyId)
+        || managerManagesSessions(studyId)
         || selfAcceptsInvite()
         || selfDeclinesInvite()
         || (
@@ -499,11 +508,13 @@ service cloud.firestore {
           && (!request.resource.data.keys().hasAny(['updatedAt']) || request.resource.data.updatedAt is string)
           && (!request.resource.data.keys().hasAny(['permissions'])
             || (request.resource.data.permissions is map
-              && request.resource.data.permissions.keys().hasOnly(['canEdit', 'canManageParticipants'])
+              && request.resource.data.permissions.keys().hasOnly(['canEdit', 'canManageParticipants', 'canManageSessions'])
               && (!request.resource.data.permissions.keys().hasAny(['canEdit'])
                 || request.resource.data.permissions.canEdit is bool)
               && (!request.resource.data.permissions.keys().hasAny(['canManageParticipants'])
-                || request.resource.data.permissions.canManageParticipants is bool)));
+                || request.resource.data.permissions.canManageParticipants is bool)
+              && (!request.resource.data.permissions.keys().hasAny(['canManageSessions'])
+                || request.resource.data.permissions.canManageSessions is bool)));
         allow delete: if studyExists(studyId)
           && signedIn()
           && studyDoc(studyId).hostId == request.auth.uid;

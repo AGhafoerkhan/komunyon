@@ -19,6 +19,7 @@ export default function CoHostAdminPage() {
   const [name, setName] = useState('Co-host');
   const [canEdit, setCanEdit] = useState(false);
   const [canManageParticipants, setCanManageParticipants] = useState(false);
+  const [canManageSessions, setCanManageSessions] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +41,7 @@ export default function CoHostAdminPage() {
         setName(study.approvedUserIds.includes(uid) ? 'Assigned co-host' : 'Co-host');
         setCanEdit(manager.exists() && manager.data().permissions?.canEdit === true);
         setCanManageParticipants(manager.exists() && manager.data().permissions?.canManageParticipants === true);
+        setCanManageSessions(manager.exists() && manager.data().permissions?.canManageSessions === true);
         setLoaded(true);
       })
       .catch((failure: unknown) => {
@@ -62,7 +64,7 @@ export default function CoHostAdminPage() {
       if (!study || study.hostId !== user.uid) throw new Error('Only the primary host can manage co-host access.');
       await setDoc(doc(getFirebase().db, 'studies', studyId, 'managers', uid), {
         uid,
-        permissions: { canEdit, canManageParticipants },
+        permissions: { canEdit, canManageParticipants, canManageSessions },
         updatedAt: new Date().toISOString(),
       }, { merge: true });
     } catch (failure) {
@@ -117,6 +119,16 @@ export default function CoHostAdminPage() {
                 <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageParticipants ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>
                   {canManageParticipants ? 'ON' : 'OFF'}
                 </span>
+              </button>
+            </div>
+            <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
+              <span>
+                <span className="block font-medium">Can manage sessions</span>
+                <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to proceed or cancel future sessions.</span>
+              </span>
+              <button type="button" role="switch" aria-checked={canManageSessions} aria-label="Can manage sessions" onClick={() => setCanManageSessions((current) => !current)} className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canManageSessions ? 'border-canal bg-canal' : 'border-line bg-sand'}`}>
+                <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageSessions ? 'translate-x-6' : 'translate-x-0'}`} />
+                <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageSessions ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageSessions ? 'ON' : 'OFF'}</span>
               </button>
             </div>
             <Button className="mt-6" onClick={() => void save()} disabled={saving}>

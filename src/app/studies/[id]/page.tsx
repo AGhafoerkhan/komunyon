@@ -30,6 +30,7 @@ import {
   subscribeCoHostIds,
   subscribeCoHostEditPermission,
   subscribeCoHostParticipantPermission,
+  subscribeCoHostSessionPermission,
   loadPeople,
   removeMember,
   requestToJoin,
@@ -77,6 +78,7 @@ export default function StudyPage() {
   const [coHostIds, setCoHostIds] = useState<string[]>([]);
   const [canEditStudy, setCanEditStudy] = useState(false);
   const [canManageParticipants, setCanManageParticipants] = useState(false);
+  const [canManageSessions, setCanManageSessions] = useState(false);
   const [rosterReady, setRosterReady] = useState(false);
   const [removed, setRemoved] = useState(false);
   const [leftBySelf, setLeftBySelf] = useState(false);
@@ -231,6 +233,14 @@ export default function StudyPage() {
   }, [study, user]);
 
   useEffect(() => {
+    if (!study || !user || study.hostId === user.uid) {
+      setCanManageSessions(study?.hostId === user?.uid);
+      return;
+    }
+    return subscribeCoHostSessionPermission(study.id, user.uid, setCanManageSessions, () => setCanManageSessions(false));
+  }, [study, user]);
+
+  useEffect(() => {
     let active = true;
     if (!study) {
       setHostMember(null);
@@ -357,6 +367,7 @@ export default function StudyPage() {
           hostMember={hostMember}
           canEditStudy={canEditStudy}
           canManageParticipants={canManageParticipants}
+          canManageSessions={canManageSessions}
           role={roleFor(study, user.uid)}
           details={details}
           detailsState={detailsState}
@@ -619,6 +630,7 @@ function StudyBody({
   hostMember,
   canEditStudy,
   canManageParticipants,
+  canManageSessions,
   role,
   details,
   detailsState,
@@ -644,6 +656,7 @@ function StudyBody({
   hostMember: JoinRequest | null;
   canEditStudy: boolean;
   canManageParticipants: boolean;
+  canManageSessions: boolean;
   role: Role;
   details: PrivateStudyDetails | null;
   detailsState: 'hidden' | 'loading' | 'ready';
@@ -699,7 +712,7 @@ function StudyBody({
   }, [role, sessionDate, study, viewerId]);
 
   const futureDates = study.format === 'recurring' && study.dayOfWeek !== null
-    ? upcomingSessions(study.dayOfWeek, study.time, 8).filter((date) => role === 'host' || !study.skippedDates.includes(date))
+    ? upcomingSessions(study.dayOfWeek, study.time, 8).filter((date) => role === 'host' || canManageSessions || !study.skippedDates.includes(date))
     : [];
 
   useEffect(() => {
@@ -889,7 +902,7 @@ function StudyBody({
               />
             </div>
           ) : null}
-          {study.format === 'recurring' && (role === 'approved' || role === 'host') ? (
+          {study.format === 'recurring' && (role === 'approved' || role === 'host' || canManageSessions) ? (
             <div className="mt-4 max-w-lg">
               <button
                 type="button"
@@ -916,7 +929,7 @@ function StudyBody({
                           ⓘ
                         </button>
                       </span>
-                      {role === 'host' ? (
+                      {role === 'host' || canManageSessions ? (
                         <button
                           type="button"
                           className={`w-full text-left underline underline-offset-2 disabled:opacity-50 ${study.skippedDates.includes(date) ? 'text-canal decoration-1' : 'text-clay decoration-black decoration-dashed'}`}
