@@ -1037,7 +1037,7 @@ function StudyBody({
           ) : null}
           <MemberList
             title="Pending requests"
-            description="Photo, name, age, and bio. Approving shares the address and takes a spot."
+            description="Photo, name, age, and bio. Approving shares the address."
             empty="No pending requests."
             requests={pendingRequests}
             rowId={(request) => `request-${request.userId}`}
