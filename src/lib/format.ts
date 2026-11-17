@@ -115,7 +115,7 @@ export function upcomingSession(study: ScheduledStudy, now = new Date()): string
     return study.date;
   }
   if (study.format !== 'recurring' || study.dayOfWeek === null) return null;
-  const next = upcomingSessions(study.dayOfWeek, study.time, 1, now)[0];
+  const next = upcomingSessions(study.dayOfWeek, study.time, 16, now).find((date) => !skipped.has(date));
   if (!next || skipped.has(next)) return null;
   return next;
 }
