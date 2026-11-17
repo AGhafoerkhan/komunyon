@@ -15,7 +15,7 @@ import { actionError } from '@/lib/errors';
 import { loadSessionAttendance, setSessionAttendance as saveSessionAttendance, subscribeSessionAttendance } from '@/lib/attendance';
 import { normalizePhone } from '@/lib/validate';
 import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
-import { upcomingSession } from '@/lib/format';
+import { formatDdMmYyyy, upcomingSession, upcomingSessions } from '@/lib/format';
 import { loadProfile } from '@/lib/users';
 import {
   acceptInvite,
@@ -593,6 +593,9 @@ function StudyBody({
   const [sessionTaken, setSessionTaken] = useState(0);
   const [showAttending, setShowAttending] = useState(false);
   const [attendingMembers, setAttendingMembers] = useState<JoinRequest[]>([]);
+  const [planningOpen, setPlanningOpen] = useState(false);
+  const [plannedSessions, setPlannedSessions] = useState<Record<string, boolean>>({});
+  const [planningBusy, setPlanningBusy] = useState<string | null>(null);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
 
@@ -604,6 +607,38 @@ function StudyBody({
       .catch(() => setSessionTaken(0));
     return unsubscribe;
   }, [role, sessionDate, study, viewerId]);
+
+  const futureDates = study.format === 'recurring' && study.dayOfWeek !== null
+    ? upcomingSessions(study.dayOfWeek, study.time, 8).filter((date) => !study.skippedDates.includes(date))
+    : [];
+
+  useEffect(() => {
+    if (role !== 'approved' || futureDates.length === 0) return;
+    let active = true;
+    void Promise.all(
+      futureDates.map(async (date) => {
+        const records = await loadSessionAttendance(study.id, date);
+        return [date, records.some((record) => record.uid === viewerId && record.joined)] as const;
+      }),
+    ).then((entries) => {
+      if (active) setPlannedSessions(Object.fromEntries(entries));
+    });
+    return () => {
+      active = false;
+    };
+  }, [futureDates.join(','), role, study.id, viewerId]);
+
+  async function togglePlannedSession(date: string) {
+    if (role !== 'approved' || planningBusy) return;
+    setPlanningBusy(date);
+    const next = !(plannedSessions[date] ?? false);
+    try {
+      await saveSessionAttendance(study.id, date, viewerId, next, study.maxCapacity);
+      setPlannedSessions((current) => ({ ...current, [date]: next }));
+    } finally {
+      setPlanningBusy(null);
+    }
+  }
 
   async function toggleAttendance() {
     if (!sessionDate || role !== 'approved' || attendanceBusy) return;
@@ -721,6 +756,35 @@ function StudyBody({
                 </div>
               ) : null}
             </>
+          ) : null}
+          {study.format === 'recurring' && role === 'approved' ? (
+            <div className="mt-4 max-w-lg">
+              <button
+                type="button"
+                className="text-sm text-muted underline decoration-1 underline-offset-2 hover:text-ink"
+                onClick={() => setPlanningOpen((open) => !open)}
+                aria-expanded={planningOpen}
+              >
+                {planningOpen ? 'Hide future sessions' : 'Plan future sessions'}
+              </button>
+              {planningOpen ? (
+                <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
+                  {futureDates.map((date) => (
+                    <li key={date} className="flex items-center justify-between gap-3 py-2">
+                      <span>{formatDdMmYyyy(date)} · {study.time}</span>
+                      <button
+                        type="button"
+                        className="shrink-0 text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
+                        onClick={() => void togglePlannedSession(date)}
+                        disabled={planningBusy !== null}
+                      >
+                        {plannedSessions[date] ? 'Leave' : 'Join'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           ) : null}
         </article>
 
