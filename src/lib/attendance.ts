@@ -10,7 +10,17 @@ function attendanceRef(studyId: string, date: string, uid: string) {
   return doc(getFirebase().db, 'studies', studyId, 'sessions', date, 'attendees', uid);
 }
 
-export async function setSessionAttendance(studyId: string, date: string, uid: string, joined: boolean): Promise<void> {
+export async function setSessionAttendance(
+  studyId: string,
+  date: string,
+  uid: string,
+  joined: boolean,
+  capacity: number,
+): Promise<void> {
+  const attendance = await loadSessionAttendance(studyId, date);
+  const alreadyJoined = attendance.some((record) => record.uid === uid && record.joined);
+  const joinedCount = attendance.filter((record) => record.joined).length;
+  if (joined && !alreadyJoined && joinedCount >= capacity) throw new Error('This session is full.');
   await setDoc(attendanceRef(studyId, date, uid), { uid, joined, updatedAt: new Date().toISOString() });
 }
 

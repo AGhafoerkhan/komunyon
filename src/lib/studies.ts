@@ -205,7 +205,7 @@ export async function acceptInvite(study: BibleStudy, uid: string): Promise<void
       updatedAt: nowIso(),
     });
     const firstSession = upcomingSession(study);
-    if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true);
+    if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
     await syncStorageAccess(study.id);
   } catch (error) {
     await deleteDoc(doc(getFirebase().db, 'studies', study.id, 'notices', uid)).catch(() => undefined);
@@ -370,7 +370,7 @@ export async function approveMember(study: BibleStudy, uid: string): Promise<voi
     updatedAt: nowIso(),
   });
   const firstSession = upcomingSession(study);
-  if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true);
+  if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
   await syncStorageAccess(study.id);
 }
 

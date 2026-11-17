@@ -12,7 +12,7 @@ import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { setSessionAttendance as saveSessionAttendance, subscribeSessionAttendance } from '@/lib/attendance';
+import { loadSessionAttendance, setSessionAttendance as saveSessionAttendance, subscribeSessionAttendance } from '@/lib/attendance';
 import { normalizePhone } from '@/lib/validate';
 import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
 import { upcomingSession } from '@/lib/format';
@@ -585,12 +585,16 @@ function StudyBody({
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
   const sessionDate = upcomingSession(study);
   const [sessionJoined, setSessionJoined] = useState(false);
+  const [sessionTaken, setSessionTaken] = useState(0);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
 
   useEffect(() => {
     if (!sessionDate || (role !== 'approved' && role !== 'host')) return;
     const unsubscribe = subscribeSessionAttendance(study.id, sessionDate, viewerId, setSessionJoined, () => undefined);
+    void loadSessionAttendance(study.id, sessionDate)
+      .then((records) => setSessionTaken(records.filter((record) => record.joined).length))
+      .catch(() => setSessionTaken(0));
     return unsubscribe;
   }, [role, sessionDate, study, viewerId]);
 
@@ -600,8 +604,10 @@ function StudyBody({
     const next = !sessionJoined;
     try {
       // The current viewer's uid is supplied by the parent through the role-specific action below.
-      await saveSessionAttendance(study.id, sessionDate, viewerId, next);
+      await saveSessionAttendance(study.id, sessionDate, viewerId, next, study.maxCapacity);
       setSessionJoined(next);
+      const records = await loadSessionAttendance(study.id, sessionDate);
+      setSessionTaken(records.filter((record) => record.joined).length);
     } finally {
       setAttendanceBusy(false);
     }
@@ -657,8 +663,8 @@ function StudyBody({
             <div>
               <dt className="text-muted">Spots</dt>
               <dd className="mt-1 font-medium tabular-nums">
-                {taken} / {study.maxCapacity}
-                <span className="font-normal text-muted"> · {spotsLabel(taken, study.maxCapacity)}</span>
+                {sessionDate ? sessionTaken : taken} / {study.maxCapacity}
+                <span className="font-normal text-muted"> · {spotsLabel(sessionDate ? sessionTaken : taken, study.maxCapacity)}</span>
               </dd>
             </div>
             <div>
