@@ -93,7 +93,7 @@ export function InvitePeople({ study }: { study: BibleStudy }) {
         />
         {searching ? <p className="mt-3 text-sm text-muted">Searching…</p> : null}
         {!searching && term.trim().length >= 2 && results.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">No one with that name yet.</p>
+          <p className="mt-3 text-sm text-muted">No one else with that name.</p>
         ) : null}
         {results.length > 0 ? (
           <ul className="mt-3">

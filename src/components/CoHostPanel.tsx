@@ -144,7 +144,7 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
           </div>
         ) : null}
         {searching ? <p className="mt-3 text-sm text-muted">Searching…</p> : null}
-        {!searching && term.trim().length >= 2 && results.length === 0 ? <p className="mt-3 text-sm text-muted">No one with that name yet.</p> : null}
+        {!searching && term.trim().length >= 2 && results.length === 0 ? <p className="mt-3 text-sm text-muted">No one else with that name.</p> : null}
         <ul>
           {results.map((person) => {
             const approved = people.some((member) => member.userId === person.uid);
