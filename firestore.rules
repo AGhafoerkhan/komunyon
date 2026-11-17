@@ -479,8 +479,11 @@ service cloud.firestore {
           && (!request.resource.data.keys().hasAny(['updatedAt']) || request.resource.data.updatedAt is string)
           && (!request.resource.data.keys().hasAny(['permissions'])
             || (request.resource.data.permissions is map
-              && request.resource.data.permissions.keys().hasOnly(['canEdit'])
-              && request.resource.data.permissions.canEdit is bool));
+              && request.resource.data.permissions.keys().hasOnly(['canEdit', 'canManageParticipants'])
+              && (!request.resource.data.permissions.keys().hasAny(['canEdit'])
+                || request.resource.data.permissions.canEdit is bool)
+              && (!request.resource.data.permissions.keys().hasAny(['canManageParticipants'])
+                || request.resource.data.permissions.canManageParticipants is bool)));
         allow delete: if studyExists(studyId)
           && signedIn()
           && studyDoc(studyId).hostId == request.auth.uid;
