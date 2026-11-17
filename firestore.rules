@@ -470,7 +470,7 @@ service cloud.firestore {
             || studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid]));
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && isStudyEditor(studyId)
+          && studyDoc(studyId).hostId == request.auth.uid
           && studyDoc(studyId).approvedUserIds.hasAny([uid])
           && request.resource.data.keys().hasOnly(['uid', 'createdAt', 'permissions', 'updatedAt'])
           && request.resource.data.uid == uid
