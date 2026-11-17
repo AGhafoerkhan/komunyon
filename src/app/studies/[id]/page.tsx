@@ -620,7 +620,7 @@ function StudyBody({
     : [];
 
   useEffect(() => {
-    if (role !== 'approved' || futureDates.length === 0) return;
+    if ((role !== 'approved' && role !== 'host') || futureDates.length === 0) return;
     let active = true;
     void Promise.all(
       futureDates.map(async (date) => {
