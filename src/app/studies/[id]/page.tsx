@@ -595,6 +595,7 @@ function StudyBody({
   const [attendingMembers, setAttendingMembers] = useState<JoinRequest[]>([]);
   const [planningOpen, setPlanningOpen] = useState(false);
   const [plannedSessions, setPlannedSessions] = useState<Record<string, boolean>>({});
+  const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
   const [planningBusy, setPlanningBusy] = useState<string | null>(null);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
@@ -618,10 +619,12 @@ function StudyBody({
     void Promise.all(
       futureDates.map(async (date) => {
         const records = await loadSessionAttendance(study.id, date);
-        return [date, records.some((record) => record.uid === viewerId && record.joined)] as const;
+        return [date, records] as const;
       }),
     ).then((entries) => {
-      if (active) setPlannedSessions(Object.fromEntries(entries));
+      if (!active) return;
+      setPlannedSessions(Object.fromEntries(entries.map(([date, records]) => [date, records.some((record) => record.uid === viewerId && record.joined)])));
+      setSessionCounts(Object.fromEntries(entries.map(([date, records]) => [date, records.filter((record) => record.joined).length])));
     });
     return () => {
       active = false;
@@ -632,6 +635,7 @@ function StudyBody({
     if (role !== 'approved' || planningBusy) return;
     setPlanningBusy(date);
     const next = !(plannedSessions[date] ?? false);
+    if (next && (sessionCounts[date] ?? 0) >= study.maxCapacity) return;
     try {
       await saveSessionAttendance(study.id, date, viewerId, next, study.maxCapacity);
       setPlannedSessions((current) => ({ ...current, [date]: next }));
@@ -644,6 +648,7 @@ function StudyBody({
     if (!sessionDate || role !== 'approved' || attendanceBusy) return;
     setAttendanceBusy(true);
     const next = !sessionJoined;
+    if (next && sessionTaken >= study.maxCapacity) return;
     try {
       // The current viewer's uid is supplied by the parent through the role-specific action below.
       await saveSessionAttendance(study.id, sessionDate, viewerId, next, study.maxCapacity);
@@ -727,9 +732,9 @@ function StudyBody({
                     type="button"
                     className="text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
                     onClick={() => void toggleAttendance()}
-                    disabled={attendanceBusy}
+                    disabled={attendanceBusy || (!sessionJoined && sessionTaken >= study.maxCapacity)}
                   >
-                    {sessionJoined ? 'Leave' : 'Join'}
+                    {sessionJoined ? 'Leave' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
                   </button>
                 ) : role === 'host' ? 'Your study' : '—'}
               </dd>
@@ -776,9 +781,9 @@ function StudyBody({
                         type="button"
                         className="shrink-0 text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
                         onClick={() => void togglePlannedSession(date)}
-                        disabled={planningBusy !== null}
+                        disabled={planningBusy !== null || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
                       >
-                        {plannedSessions[date] ? 'Leave' : 'Join'}
+                        {plannedSessions[date] ? 'Leave' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
                       </button>
                     </li>
                   ))}
