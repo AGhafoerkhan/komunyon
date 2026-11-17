@@ -81,8 +81,13 @@ function PhoneLink({ phone }: { phone: string }) {
   const dial = normalizePhone(phone);
   if (!dial) return <p className="mt-0.5 text-xs text-muted">{phone}</p>;
   return (
-    <a href={`tel:${dial}`} className="mt-0.5 inline-block text-xs text-ink underline decoration-1 underline-offset-2 hover:text-canal">
-      {phone}
-    </a>
+    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
+      <a href={`tel:${dial}`} className="text-ink underline decoration-1 underline-offset-2 hover:text-canal">
+        Call {phone}
+      </a>
+      <a href={`https://wa.me/${dial.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-ink underline decoration-1 underline-offset-2 hover:text-canal">
+        WhatsApp
+      </a>
+    </span>
   );
 }

@@ -497,9 +497,14 @@ function HostPhone({ phone }: { phone: string | null }) {
   const dial = phone ? normalizePhone(phone) : null;
   if (!dial) return <p className="text-sm text-muted">The host has no phone number saved.</p>;
   return (
-    <a href={`tel:${dial}`} className="text-sm text-ink underline decoration-1 underline-offset-2 hover:text-canal">
-      {phone}
-    </a>
+    <span className="flex flex-wrap items-center gap-x-2 text-sm">
+      <a href={`tel:${dial}`} className="text-ink underline decoration-1 underline-offset-2 hover:text-canal">
+        Call {phone}
+      </a>
+      <a href={`https://wa.me/${dial.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-ink underline decoration-1 underline-offset-2 hover:text-canal">
+        WhatsApp
+      </a>
+    </span>
   );
 }
 
