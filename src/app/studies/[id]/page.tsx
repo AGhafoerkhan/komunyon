@@ -699,6 +699,7 @@ function StudyBody({
   const [cancelBusy, setCancelBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
+  const visibleSessionTaken = sessionTaken + (hostMember ? 1 : 0);
 
   useEffect(() => {
     if (!sessionDate || (role !== 'approved' && role !== 'host')) return;
@@ -882,8 +883,8 @@ function StudyBody({
                 </span>
               </dt>
               <dd className="mt-1 font-medium tabular-nums">
-                {sessionCanceled ? 0 : sessionDate ? sessionTaken : taken} / {study.maxCapacity}
-                <span className="font-normal text-muted"> · {spotsLabel(sessionCanceled ? 0 : sessionDate ? sessionTaken : taken, study.maxCapacity)}</span>
+                {sessionCanceled ? 0 : sessionDate ? visibleSessionTaken : taken} / {study.maxCapacity}
+                <span className="font-normal text-muted"> · {spotsLabel(sessionCanceled ? 0 : sessionDate ? visibleSessionTaken : taken, study.maxCapacity)}</span>
               </dd>
             </div>
             <div>
