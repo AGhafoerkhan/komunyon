@@ -739,7 +739,7 @@ function StudyBody({
   }
 
   async function toggleHostPlannedSession(date: string) {
-    if (role !== 'host' || planningBusy) return;
+    if (role !== 'host' && !canManageSessions || planningBusy) return;
     setPlanningBusy(date);
     try {
       await setSessionCanceled(study.id, date, !study.skippedDates.includes(date));
@@ -749,7 +749,7 @@ function StudyBody({
   }
 
   async function toggleCurrentSession() {
-    if (role !== 'host' || !scheduledDate || cancelBusy) return;
+    if (role !== 'host' && !canManageSessions || !scheduledDate || cancelBusy) return;
     setCancelBusy(true);
     try {
       await setSessionCanceled(study.id, scheduledDate, !sessionCanceled);
@@ -876,7 +876,7 @@ function StudyBody({
                   >
                     {sessionJoined ? 'Cancel' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
                   </button>
-                ) : role === 'host' && scheduledDate ? (
+                ) : (role === 'host' || canManageSessions) && scheduledDate ? (
                   <span className="inline-flex items-center gap-2">
                     <button
                       type="button"
