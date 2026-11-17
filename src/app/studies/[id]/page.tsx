@@ -686,12 +686,12 @@ function StudyBody({
     }
   }
 
-  async function toggleAttending() {
-    if (!sessionDate || (role !== 'approved' && role !== 'host')) return;
+  async function toggleAttending(date = sessionDate) {
+    if (!date || (role !== 'approved' && role !== 'host')) return;
     const next = !showAttending;
     setShowAttending(next);
     if (!next) return;
-    const records = await loadSessionAttendance(study.id, sessionDate);
+    const records = await loadSessionAttendance(study.id, date);
     const ids = records.filter((record) => record.joined).map((record) => record.uid);
     setAttendingMembers(await loadPeople(study.id, ids));
   }
@@ -822,7 +822,19 @@ function StudyBody({
                 <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
                   {futureDates.map((date) => (
                     <li key={date} className="flex items-center justify-between gap-3 py-2">
-                      <span>{formatDdMmYyyy(date)} · {study.time}</span>
+                      <span className="min-w-0">{formatDdMmYyyy(date)} · {study.time}</span>
+                      <span className="ml-auto shrink-0 text-muted tabular-nums">
+                        {sessionCounts[date] ?? 0} / {study.maxCapacity} · {spotsLabel(sessionCounts[date] ?? 0, study.maxCapacity)}
+                        <button
+                          type="button"
+                          aria-label={`See people attending ${formatDdMmYyyy(date)}`}
+                          title="See people attending"
+                          onClick={() => void toggleAttending(date)}
+                          className="ml-2 text-xs leading-none hover:text-ink"
+                        >
+                          ⓘ
+                        </button>
+                      </span>
                       {role === 'host' ? (
                         <button
                           type="button"
