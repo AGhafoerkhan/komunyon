@@ -1093,9 +1093,11 @@ function StudyBody({
             rowId={(request) => `member-${request.userId}`}
             onPhoto={openPhoto}
             renderActions={(request) => (
-              <Button size="sm" variant="secondary" onClick={() => onAskRemove(request)} disabled={busy !== null}>
-                Remove from group
-              </Button>
+              request.userId === viewerId ? null : (
+                <Button size="sm" variant="secondary" onClick={() => onAskRemove(request)} disabled={busy !== null}>
+                  Remove from group
+                </Button>
+              )
             )}
           />
         </div>

@@ -271,6 +271,7 @@ service cloud.firestore {
       return signedIn()
         && isParticipantManager(studyId)
         && request.auth.uid != resource.data.hostId
+        && request.resource.data.approvedUserIds.hasAny([request.auth.uid])
         && onlyTouched(['approvedUserIds', 'updatedAt'])
         && request.resource.data.approvedUserIds is list
         && resource.data.approvedUserIds.hasAll(request.resource.data.approvedUserIds)
