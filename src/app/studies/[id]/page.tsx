@@ -833,20 +833,20 @@ function StudyBody({
                       {role === 'host' ? (
                         <button
                           type="button"
-                          className={`shrink-0 underline decoration-1 underline-offset-2 disabled:opacity-50 ${study.skippedDates.includes(date) ? 'text-clay' : 'text-canal'}`}
+                          className={`shrink-0 underline underline-offset-2 disabled:opacity-50 ${study.skippedDates.includes(date) ? 'text-canal decoration-1' : 'text-clay decoration-black decoration-dashed'}`}
                           onClick={() => void toggleHostPlannedSession(date)}
                           disabled={planningBusy !== null}
                         >
-                          {study.skippedDates.includes(date) ? 'Canceled · Proceed' : 'Ongoing · Cancel'}
+                          {study.skippedDates.includes(date) ? 'Proceed' : 'Cancel'}
                         </button>
                       ) : (
                         <button
                           type="button"
-                          className="shrink-0 text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
+                          className={`shrink-0 underline underline-offset-2 disabled:opacity-50 ${plannedSessions[date] ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
                           onClick={() => void togglePlannedSession(date)}
                           disabled={planningBusy !== null || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
                         >
-                          {plannedSessions[date] ? 'Ongoing · Cancel' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Ongoing · Join'}
+                          {plannedSessions[date] ? 'Cancel' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
                         </button>
                       )}
                     </li>
