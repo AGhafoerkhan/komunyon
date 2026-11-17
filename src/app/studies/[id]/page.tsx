@@ -853,7 +853,7 @@ function StudyBody({
                 title="Attending this session"
                 description={role === 'approved' ? 'The host will attend.' : undefined}
                 empty="No one has joined this session yet."
-                requests={attendingMembers}
+                    requests={hostMember ? [hostMember, ...attendingMembers] : attendingMembers}
                 showPhone
                     coHostIds={coHostIds}
               />
