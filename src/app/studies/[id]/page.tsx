@@ -12,7 +12,7 @@ import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { loadSessionAttendance, setSessionAttendance as saveSessionAttendance, subscribeSessionAttendance } from '@/lib/attendance';
+import { loadSessionAttendance, setSessionAttendance as saveSessionAttendance, subscribeSessionAttendance, subscribeSessionAttendanceList } from '@/lib/attendance';
 import { normalizePhone } from '@/lib/validate';
 import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
 import { formatDdMmYyyy, upcomingSession, upcomingSessions } from '@/lib/format';
@@ -609,10 +609,16 @@ function StudyBody({
   useEffect(() => {
     if (!sessionDate || (role !== 'approved' && role !== 'host')) return;
     const unsubscribe = subscribeSessionAttendance(study.id, sessionDate, viewerId, setSessionJoined, () => undefined);
-    void loadSessionAttendance(study.id, sessionDate)
-      .then((records) => setSessionTaken(records.filter((record) => record.joined).length))
-      .catch(() => setSessionTaken(0));
-    return unsubscribe;
+    const unsubscribeList = subscribeSessionAttendanceList(
+      study.id,
+      sessionDate,
+      (records) => setSessionTaken(records.filter((record) => record.joined).length),
+      () => setSessionTaken(0),
+    );
+    return () => {
+      unsubscribe();
+      unsubscribeList();
+    };
   }, [role, sessionDate, study, viewerId]);
 
   const futureDates = study.format === 'recurring' && study.dayOfWeek !== null
@@ -621,20 +627,11 @@ function StudyBody({
 
   useEffect(() => {
     if ((role !== 'approved' && role !== 'host') || futureDates.length === 0) return;
-    let active = true;
-    void Promise.all(
-      futureDates.map(async (date) => {
-        const records = await loadSessionAttendance(study.id, date);
-        return [date, records] as const;
-      }),
-    ).then((entries) => {
-      if (!active) return;
-      setPlannedSessions(Object.fromEntries(entries.map(([date, records]) => [date, records.some((record) => record.uid === viewerId && record.joined)])));
-      setSessionCounts(Object.fromEntries(entries.map(([date, records]) => [date, records.filter((record) => record.joined).length])));
-    });
-    return () => {
-      active = false;
-    };
+    const unsubscribes = futureDates.map((date) => subscribeSessionAttendanceList(study.id, date, (records) => {
+      setPlannedSessions((current) => ({ ...current, [date]: records.some((record) => record.uid === viewerId && record.joined) }));
+      setSessionCounts((current) => ({ ...current, [date]: records.filter((record) => record.joined).length }));
+    }, () => undefined));
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [futureDates.join(','), role, study.id, viewerId]);
 
   async function togglePlannedSession(date: string) {

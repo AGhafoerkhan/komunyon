@@ -38,6 +38,28 @@ export function subscribeSessionAttendance(
   );
 }
 
+export function subscribeSessionAttendanceList(
+  studyId: string,
+  date: string,
+  onData: (records: SessionAttendance[]) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    collection(getFirebase().db, 'studies', studyId, 'sessions', date, 'attendees'),
+    (snapshot) => {
+      onData(
+        snapshot.docs.flatMap((item) => {
+          const data = item.data();
+          return typeof data.uid === 'string' && typeof data.joined === 'boolean'
+            ? [{ uid: data.uid, joined: data.joined }]
+            : [];
+        }),
+      );
+    },
+    onError,
+  );
+}
+
 export async function loadSessionAttendance(studyId: string, date: string): Promise<SessionAttendance[]> {
   const snapshot = await getDocs(collection(getFirebase().db, 'studies', studyId, 'sessions', date, 'attendees'));
   return snapshot.docs.flatMap((item) => {
