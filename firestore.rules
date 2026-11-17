@@ -197,15 +197,6 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == resource.data.hostId;
     }
 
-    function isStudyEditor() {
-      return isHost()
-        || (
-          signedIn()
-          && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.keys().hasAny(['permissions'])
-          && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canEdit == true
-        );
-    }
-
     function hostPreserved() {
       return request.resource.data.hostId == resource.data.hostId
         && request.resource.data.createdAt == resource.data.createdAt;
@@ -428,7 +419,7 @@ service cloud.firestore {
         && request.resource.data.approvedUserIds.size() == 0;
 
       allow update: if (
-          isStudyEditor()
+          isHost()
           && hostPreserved()
           && validPublicStudy(request.resource.data)
         )
@@ -470,7 +461,7 @@ service cloud.firestore {
             || studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid]));
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && (studyDoc(studyId).hostId == request.auth.uid || isStudyEditor())
+          && studyDoc(studyId).hostId == request.auth.uid
           && studyDoc(studyId).approvedUserIds.hasAny([uid])
           && request.resource.data.keys().hasOnly(['uid', 'createdAt', 'permissions', 'updatedAt'])
           && request.resource.data.uid == uid
@@ -490,7 +481,7 @@ service cloud.firestore {
 
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && isStudyEditor()
+          && studyDoc(studyId).hostId == request.auth.uid
           && date.matches('^\\d{4}-\\d{2}-\\d{2}$')
           && request.resource.data.keys().hasOnly(['description', 'updatedAt'])
           && request.resource.data.description is string
@@ -518,7 +509,7 @@ service cloud.firestore {
 
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && isStudyEditor()
+          && studyDoc(studyId).hostId == request.auth.uid
           && request.resource.data.keys().hasOnly(['exactAddress', 'entryNotes', 'updatedAt'])
           && request.resource.data.exactAddress is string
           && request.resource.data.exactAddress.size() > 0
