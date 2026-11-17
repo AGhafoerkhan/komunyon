@@ -13,7 +13,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
   return (
     <Link
       href={`/studies/${study.id}`}
-      className="flex h-full flex-col gap-3 rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
+      className="flex h-[360px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
