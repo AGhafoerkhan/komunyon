@@ -890,7 +890,7 @@ function StudyBody({
               </dd>
             </div>
           </dl>
-          {sessionDate && (role === 'approved' || role === 'host') && showAttending ? (
+          {sessionDate && (role === 'approved' || role === 'host') && !canManageSessions && showAttending ? (
             <div className="mt-3 max-w-lg">
               <MemberList
                 title="Attending this session"
@@ -902,7 +902,7 @@ function StudyBody({
               />
             </div>
           ) : null}
-          {study.format === 'recurring' && (role === 'approved' || role === 'host' || canManageSessions) ? (
+          {study.format === 'recurring' && (role === 'host' || canManageSessions) ? (
             <div className="mt-4 max-w-lg">
               <button
                 type="button"
