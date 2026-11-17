@@ -454,6 +454,22 @@ service cloud.firestore {
           && studyDoc(studyId).hostId == request.auth.uid;
       }
 
+      match /managers/{uid} {
+        allow read: if studyExists(studyId)
+          && signedIn()
+          && studyDoc(studyId).hostId == request.auth.uid;
+        allow create, update: if studyExists(studyId)
+          && signedIn()
+          && studyDoc(studyId).hostId == request.auth.uid
+          && studyDoc(studyId).approvedUserIds.hasAny([uid])
+          && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.createdAt is string;
+        allow delete: if studyExists(studyId)
+          && signedIn()
+          && studyDoc(studyId).hostId == request.auth.uid;
+      }
+
       match /sessions/{date} {
         allow get, list: if studyExists(studyId) && canReadPrivate(studyDoc(studyId));
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { CoHostPanel } from '@/components/CoHostPanel';
 import { InvitePeople } from '@/components/InvitePeople';
 import { MemberList } from '@/components/MemberList';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
@@ -975,6 +976,7 @@ function StudyBody({
       {role === 'host' ? (
         <div className="mt-8 grid gap-4">
           <InvitePeople study={study} />
+          <CoHostPanel study={study} />
           {!rosterReady ? <p className="text-sm text-muted">Loading requests…</p> : null}
           {full ? (
             <p className="text-sm text-muted">
