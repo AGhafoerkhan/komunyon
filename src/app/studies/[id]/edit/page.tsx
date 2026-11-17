@@ -23,6 +23,7 @@ export default function EditStudyPage() {
   const [error, setError] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [hostProfile, setHostProfile] = useState(profile);
+  const [permissionChecked, setPermissionChecked] = useState(false);
 
   useEffect(() => {
     if (!studyId || !user) return;
@@ -40,11 +41,15 @@ export default function EditStudyPage() {
           setHostProfile(await loadProfile(nextStudy.hostId));
           setDetails(await getPrivateDetails(studyId));
         }
+        setPermissionChecked(true);
       } catch (failure) {
         if (!active) return;
         setError(actionError(failure));
       } finally {
-        if (active) setLoaded(true);
+        if (active) {
+          setPermissionChecked(true);
+          setLoaded(true);
+        }
       }
     })();
     return () => {
@@ -53,13 +58,13 @@ export default function EditStudyPage() {
   }, [studyId, user]);
 
   useEffect(() => {
-    if (study && user && study.hostId !== user.uid && !canEdit) {
+    if (study && user && permissionChecked && study.hostId !== user.uid && !canEdit) {
       router.replace(`/studies/${study.id}`);
     }
-  }, [canEdit, router, study, user]);
+  }, [canEdit, permissionChecked, router, study, user]);
 
   if (!user || !profile) return <LoadingScreen />;
-  if (!loaded) {
+  if (!loaded || !permissionChecked) {
     return (
       <AppShell>
         <p className="text-sm text-muted">Loading study…</p>
