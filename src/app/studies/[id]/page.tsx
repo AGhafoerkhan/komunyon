@@ -890,7 +890,7 @@ function StudyBody({
               </dd>
             </div>
           </dl>
-          {sessionDate && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && !canManageSessions && showAttending ? (
+          {sessionDate && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && showAttending ? (
             <div className="mt-3 max-w-lg">
               <MemberList
                 title="Attending this session"
