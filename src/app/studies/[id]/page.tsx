@@ -712,6 +712,25 @@ function StudyBody({
     };
   }, [role, sessionDate, study, viewerId]);
 
+  useEffect(() => {
+    if (!showAttending || !sessionDate || (role !== 'approved' && role !== 'host' && !coHostIds.includes(viewerId))) {
+      return;
+    }
+    let active = true;
+    const unsubscribe = subscribeSessionAttendanceList(study.id, sessionDate, (records) => {
+      const ids = records.filter((record) => record.joined).map((record) => record.uid);
+      void loadPeople(study.id, ids).then((people) => {
+        if (active) setAttendingMembers(people);
+      });
+    }, () => {
+      if (active) setAttendingMembers([]);
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [coHostIds, role, sessionDate, showAttending, study.id, viewerId]);
+
   const futureDates = study.format === 'recurring' && study.dayOfWeek !== null
     ? upcomingSessions(study.dayOfWeek, study.time, 8).filter((date) => role === 'host' || canManageSessions || !study.skippedDates.includes(date))
     : [];
