@@ -813,9 +813,9 @@ function StudyBody({
               {planningOpen ? (
                 <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
                   {futureDates.map((date) => (
-                    <li key={date} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 py-2">
+                    <li key={date} className="grid grid-cols-3 items-center gap-3 py-2">
                       <span className="min-w-0">{formatDdMmYyyy(date)} · {study.time}</span>
-                      <span className="shrink-0 text-right text-muted tabular-nums">
+                      <span className="w-full text-left text-muted tabular-nums">
                         {sessionCounts[date] ?? 0} / {study.maxCapacity} · {spotsLabel(sessionCounts[date] ?? 0, study.maxCapacity)}
                         <button
                           type="button"
@@ -830,7 +830,7 @@ function StudyBody({
                       {role === 'host' ? (
                         <button
                           type="button"
-                          className={`shrink-0 underline underline-offset-2 disabled:opacity-50 ${study.skippedDates.includes(date) ? 'text-canal decoration-1' : 'text-clay decoration-black decoration-dashed'}`}
+                          className={`w-full text-left underline underline-offset-2 disabled:opacity-50 ${study.skippedDates.includes(date) ? 'text-canal decoration-1' : 'text-clay decoration-black decoration-dashed'}`}
                           onClick={() => void toggleHostPlannedSession(date)}
                           disabled={planningBusy !== null}
                         >
@@ -839,7 +839,7 @@ function StudyBody({
                       ) : (
                         <button
                           type="button"
-                          className={`shrink-0 underline underline-offset-2 disabled:opacity-50 ${plannedSessions[date] ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
+                          className={`w-full text-left underline underline-offset-2 disabled:opacity-50 ${plannedSessions[date] ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
                           onClick={() => void togglePlannedSession(date)}
                           disabled={planningBusy !== null || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
                         >
