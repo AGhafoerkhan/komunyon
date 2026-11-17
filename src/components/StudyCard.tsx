@@ -8,6 +8,7 @@ import type { BibleStudy } from '@/types';
 export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: string }) {
   const taken = study.approvedUserIds.length;
   const hosting = study.hostId === viewerId;
+  const joined = hosting || study.approvedUserIds.includes(viewerId);
 
   return (
     <Link
@@ -38,6 +39,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
         <span className="text-muted"> · {spotsLabel(taken, study.maxCapacity)}</span>
         {hosting && !study.isPublic ? <span className="text-muted"> · Private</span> : null}
         {hosting ? <span className="text-canal"> · Your study</span> : null}
+        {joined ? <span className="text-canal"> · Joined</span> : null}
       </p>
     </Link>
   );
