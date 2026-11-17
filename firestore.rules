@@ -197,7 +197,7 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == resource.data.hostId;
     }
 
-    function isStudyEditor(studyId) {
+    function isStudyEditor() {
       return isHost()
         || (
           signedIn()
@@ -428,7 +428,7 @@ service cloud.firestore {
         && request.resource.data.approvedUserIds.size() == 0;
 
       allow update: if (
-          isStudyEditor(studyId)
+          isStudyEditor()
           && hostPreserved()
           && validPublicStudy(request.resource.data)
         )
@@ -470,7 +470,7 @@ service cloud.firestore {
             || studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid]));
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && (studyDoc(studyId).hostId == request.auth.uid || isStudyEditor(studyId))
+          && (studyDoc(studyId).hostId == request.auth.uid || isStudyEditor())
           && studyDoc(studyId).approvedUserIds.hasAny([uid])
           && request.resource.data.keys().hasOnly(['uid', 'createdAt', 'permissions', 'updatedAt'])
           && request.resource.data.uid == uid
@@ -490,7 +490,7 @@ service cloud.firestore {
 
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && isStudyEditor(studyId)
+          && isStudyEditor()
           && date.matches('^\\d{4}-\\d{2}-\\d{2}$')
           && request.resource.data.keys().hasOnly(['description', 'updatedAt'])
           && request.resource.data.description is string
@@ -518,7 +518,7 @@ service cloud.firestore {
 
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && isStudyEditor(studyId)
+          && isStudyEditor()
           && request.resource.data.keys().hasOnly(['exactAddress', 'entryNotes', 'updatedAt'])
           && request.resource.data.exactAddress is string
           && request.resource.data.exactAddress.size() > 0
