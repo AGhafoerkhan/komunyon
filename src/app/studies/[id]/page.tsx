@@ -887,7 +887,7 @@ function StudyBody({
               </dd>
             </div>
             <div>
-              <dt className="text-muted">{role === 'host' || canManageSessions ? 'Session' : 'Attendance'}</dt>
+              <dt className="text-muted">{role === 'host' ? 'Session' : 'Attendance'}</dt>
               <dd className="mt-1 font-medium tabular-nums">
                 {sessionCanceled && role !== 'host' && !canManageSessions ? (
                   '—'
