@@ -1015,9 +1015,11 @@ function StudyBody({
               <Link href={`/studies/${study.id}/edit`} className={`${buttonClass('primary')} w-full`}>
                 Edit study
               </Link>
-              <Button className="w-full" variant="danger" onClick={onAskDelete} disabled={busy !== null}>
-                Delete study
-              </Button>
+              {role === 'host' ? (
+                <Button className="w-full" variant="danger" onClick={onAskDelete} disabled={busy !== null}>
+                  Delete study
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </aside>

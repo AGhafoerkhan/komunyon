@@ -8,7 +8,8 @@ import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
 import { Alert, LoadingScreen, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { getPrivateDetails, getStudy, updateStudy } from '@/lib/studies';
+import { getPrivateDetails, getStudy, loadCoHostEditPermission, updateStudy } from '@/lib/studies';
+import { loadProfile } from '@/lib/users';
 import type { BibleStudy, PrivateStudyDetails } from '@/types';
 
 export default function EditStudyPage() {
@@ -20,6 +21,8 @@ export default function EditStudyPage() {
   const [details, setDetails] = useState<PrivateStudyDetails | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
+  const [hostProfile, setHostProfile] = useState(profile);
 
   useEffect(() => {
     if (!studyId || !user) return;
@@ -30,6 +33,11 @@ export default function EditStudyPage() {
         if (!active) return;
         setStudy(nextStudy);
         if (nextStudy && nextStudy.hostId === user.uid) {
+          setDetails(await getPrivateDetails(studyId));
+          setCanEdit(true);
+        } else if (nextStudy && (await loadCoHostEditPermission(studyId, user.uid))) {
+          setCanEdit(true);
+          setHostProfile(await loadProfile(nextStudy.hostId));
           setDetails(await getPrivateDetails(studyId));
         }
       } catch (failure) {
@@ -45,10 +53,10 @@ export default function EditStudyPage() {
   }, [studyId, user]);
 
   useEffect(() => {
-    if (study && user && study.hostId !== user.uid) {
+    if (study && user && study.hostId !== user.uid && !canEdit) {
       router.replace(`/studies/${study.id}`);
     }
-  }, [router, study, user]);
+  }, [canEdit, router, study, user]);
 
   if (!user || !profile) return <LoadingScreen />;
   if (!loaded) {
@@ -68,7 +76,7 @@ export default function EditStudyPage() {
       </AppShell>
     );
   }
-  if (study.hostId !== user.uid) {
+  if (study.hostId !== user.uid && !canEdit) {
     return (
       <AppShell>
         <p className="text-sm text-muted">Only the host can edit this study.</p>
@@ -95,7 +103,7 @@ export default function EditStudyPage() {
           minCapacity={minCapacity}
           submitLabel="Save changes"
           onSubmit={async (draft) => {
-            await updateStudy(study.id, profile, draft);
+            await updateStudy(study.id, hostProfile ?? profile, draft);
             router.push(`/studies/${study.id}`);
           }}
         />
