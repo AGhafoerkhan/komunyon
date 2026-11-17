@@ -197,13 +197,14 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == resource.data.hostId;
     }
 
+    function isManagerEditor(studyId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canEdit == true;
+    }
+
     function isStudyEditor(studyId) {
-      return isHost()
-        || (
-          signedIn()
-          && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
-          && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canEdit == true
-        );
+      return isHost() || isManagerEditor(studyId);
     }
 
     function hostPreserved() {
@@ -518,7 +519,7 @@ service cloud.firestore {
 
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && isStudyEditor(studyId)
+          && (studyDoc(studyId).hostId == request.auth.uid || isManagerEditor(studyId))
           && request.resource.data.keys().hasOnly(['exactAddress', 'entryNotes', 'updatedAt'])
           && request.resource.data.exactAddress is string
           && request.resource.data.exactAddress.size() > 0
