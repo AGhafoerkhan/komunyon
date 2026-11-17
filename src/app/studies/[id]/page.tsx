@@ -41,6 +41,10 @@ import type { BibleStudy, JoinRequest, PrivateStudyDetails } from '@/types';
 
 type Role = 'host' | 'approved' | 'invited' | 'pending' | 'visitor';
 
+function uniqueMembers(members: JoinRequest[]): JoinRequest[] {
+  return [...new Map(members.map((member) => [member.userId, member])).values()];
+}
+
 type ConfirmAction =
   | { kind: 'leave' }
   | { kind: 'delete' }
@@ -866,7 +870,7 @@ function StudyBody({
                 title="Attending this session"
                 description={role === 'approved' ? 'The host will attend.' : undefined}
                 empty="No one has joined this session yet."
-                    requests={hostMember ? [hostMember, ...attendingMembers] : attendingMembers}
+                    requests={uniqueMembers(hostMember ? [hostMember, ...attendingMembers] : attendingMembers)}
                 showPhone
                     coHostIds={coHostIds}
               />
@@ -1032,7 +1036,7 @@ function StudyBody({
             title="People in this study"
             description="Everyone approved to share this gathering. Open a photo to see it full size."
             empty="No one else is approved yet."
-            requests={hostMember ? [hostMember, ...approvedMembers] : approvedMembers}
+            requests={uniqueMembers(hostMember ? [hostMember, ...approvedMembers] : approvedMembers)}
             showPhone={false}
             coHostIds={coHostIds}
             onPhoto={openPhoto}
