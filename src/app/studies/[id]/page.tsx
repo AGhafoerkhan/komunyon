@@ -683,7 +683,10 @@ function StudyBody({
   const scheduledDate = study.format === 'recurring' && study.dayOfWeek !== null
     ? upcomingSessions(study.dayOfWeek, study.time, 1)[0] ?? null
     : study.date;
-  const sessionCanceled = Boolean(scheduledDate && study.skippedDates.includes(scheduledDate));
+  const sessionCanceled = Boolean(
+    (scheduledDate && study.skippedDates.includes(scheduledDate))
+      || (sessionDate && study.skippedDates.includes(sessionDate)),
+  );
   const [sessionJoined, setSessionJoined] = useState(false);
   const [sessionTaken, setSessionTaken] = useState(0);
   const [showAttending, setShowAttending] = useState(false);
@@ -886,15 +889,8 @@ function StudyBody({
             <div>
               <dt className="text-muted">{role === 'host' || canManageSessions ? 'Session' : 'Attendance'}</dt>
               <dd className="mt-1 font-medium tabular-nums">
-                {role === 'approved' && sessionDate ? (
-                  <button
-                    type="button"
-                    className={sessionJoined ? 'text-clay underline decoration-black decoration-dashed underline-offset-2 disabled:opacity-50' : 'text-canal underline decoration-1 underline-offset-2 disabled:opacity-50'}
-                    onClick={() => void toggleAttendance()}
-                    disabled={attendanceBusy || (!sessionJoined && sessionTaken >= study.maxCapacity)}
-                  >
-                    {sessionJoined ? 'Cancel' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
-                  </button>
+                {sessionCanceled && role !== 'host' && !canManageSessions ? (
+                  '—'
                 ) : (role === 'host' || canManageSessions) && scheduledDate ? (
                   <span className="inline-flex items-center gap-2">
                     <button
@@ -906,6 +902,15 @@ function StudyBody({
                       {sessionCanceled ? 'Proceed' : 'Cancel'}
                     </button>
                   </span>
+                ) : role === 'approved' && sessionDate && !sessionCanceled ? (
+                  <button
+                    type="button"
+                    className={sessionJoined ? 'text-clay underline decoration-black decoration-dashed underline-offset-2 disabled:opacity-50' : 'text-canal underline decoration-1 underline-offset-2 disabled:opacity-50'}
+                    onClick={() => void toggleAttendance()}
+                    disabled={attendanceBusy || (!sessionJoined && sessionTaken >= study.maxCapacity)}
+                  >
+                    {sessionJoined ? 'Cancel' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
+                  </button>
                 ) : '—'}
               </dd>
             </div>
