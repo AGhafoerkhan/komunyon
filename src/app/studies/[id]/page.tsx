@@ -898,13 +898,10 @@ function StudyBody({
                       type="button"
                       className={sessionCanceled ? 'text-canal underline decoration-1 underline-offset-2 hover:text-ink disabled:opacity-50' : 'text-clay underline decoration-black decoration-dashed underline-offset-2 hover:text-ink disabled:opacity-50'}
                       onClick={() => void toggleCurrentSession()}
-                      disabled={cancelBusy || (sessionCanceled && !sessionJoined)}
+                      disabled={cancelBusy}
                     >
                       {sessionCanceled ? 'Proceed' : 'Cancel'}
                     </button>
-                    {sessionCanceled && !sessionJoined ? (
-                      <span className="text-xs font-normal text-muted">Join attendance to proceed</span>
-                    ) : null}
                   </span>
                 ) : role === 'approved' && sessionDate && !sessionCanceled ? (
                   <button
