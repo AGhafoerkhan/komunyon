@@ -688,6 +688,10 @@ function StudyBody({
   const [sessionTaken, setSessionTaken] = useState(0);
   const [showAttending, setShowAttending] = useState(false);
   const [attendingMembers, setAttendingMembers] = useState<JoinRequest[]>([]);
+
+  useEffect(() => {
+    setShowAttending(!canManageSessions);
+  }, [canManageSessions]);
   const [planningOpen, setPlanningOpen] = useState(false);
   const [plannedSessions, setPlannedSessions] = useState<Record<string, boolean>>({});
   const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
