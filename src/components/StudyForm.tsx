@@ -222,7 +222,7 @@ export function StudyForm({
           </Field>
           <Field
             label="Max capacity"
-            hint={minCapacity > 1 ? `At least ${minCapacity} — people you have already approved.` : 'Including guests, not yourself.'}
+            hint={minCapacity > 1 ? `At least ${minCapacity} — people you have already approved.` : 'Including guests and yourself.'}
             error={fields.maxCapacity}
           >
             <input
