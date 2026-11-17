@@ -9,6 +9,8 @@ import { Button, FormError, LoadingScreen, Spinner, pageTitleClass } from '@/com
 import { claimAccountDeletion, eraseOwnAccount, finishAccountDeletion } from '@/lib/account';
 import { actionError } from '@/lib/errors';
 import { useTheme } from '@/components/ThemeProvider';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getFirebase } from '@/lib/firebase';
 
 export default function ProfilePage() {
   const { user, profile, signOutUser } = useAuth();
@@ -16,6 +18,20 @@ export default function ProfilePage() {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activity, setActivity] = useState({ hosted: 0, joined: 0, circles: 0 });
+
+  useEffect(() => {
+    if (!user) return;
+    const { db } = getFirebase();
+    void Promise.all([
+      getDocs(query(collection(db, 'studies'), where('hostId', '==', user.uid))),
+      getDocs(query(collection(db, 'studies'), where('approvedUserIds', 'array-contains', user.uid))),
+    ]).then(([hosted, joined]) => {
+      setActivity({ hosted: hosted.size, joined: joined.size, circles: 0 });
+    }).catch(() => {
+      // Activity is supplementary; keep the profile usable if a count query is unavailable.
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!user || !claimAccountDeletion()) return;
@@ -50,6 +66,13 @@ export default function ProfilePage() {
           This is what hosts see with a join request, and what appears on studies you host.
         </p>
         <ProfileForm mode="edit" initial={profile} />
+        <div className="mt-4 flex items-center gap-2 text-sm text-muted" aria-label="Profile activity">
+          <span>{activity.hosted} Hosted</span>
+          <span aria-hidden="true">·</span>
+          <span>{activity.joined} Joined</span>
+          <span aria-hidden="true">·</span>
+          <span>{activity.circles} Circles</span>
+        </div>
         <DeviceNotices />
         <section className="mt-8 rounded-lg border border-line bg-card p-4 shadow-sm transition-all duration-300">
           <div className="flex items-center justify-between gap-4">
