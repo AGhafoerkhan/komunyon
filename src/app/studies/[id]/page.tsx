@@ -865,7 +865,7 @@ function StudyBody({
               <dt className="text-muted">
                 <span className="inline-flex items-center gap-1">
                   Spots
-                  {sessionDate && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) ? (
+                  {sessionDate && !sessionCanceled && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) ? (
                     <button
                       type="button"
                       aria-label={showAttending ? 'Hide people attending' : 'See people attending'}
@@ -879,8 +879,8 @@ function StudyBody({
                 </span>
               </dt>
               <dd className="mt-1 font-medium tabular-nums">
-                {sessionDate ? sessionTaken : taken} / {study.maxCapacity}
-                <span className="font-normal text-muted"> · {spotsLabel(sessionDate ? sessionTaken : taken, study.maxCapacity)}</span>
+                {sessionCanceled ? 0 : sessionDate ? sessionTaken : taken} / {study.maxCapacity}
+                <span className="font-normal text-muted"> · {spotsLabel(sessionCanceled ? 0 : sessionDate ? sessionTaken : taken, study.maxCapacity)}</span>
               </dd>
             </div>
             <div>
@@ -910,7 +910,7 @@ function StudyBody({
               </dd>
             </div>
           </dl>
-          {sessionDate && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && showAttending ? (
+          {sessionDate && !sessionCanceled && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && showAttending ? (
             <div className="mt-3 max-w-lg">
               <MemberList
                 title="Attending this session"
