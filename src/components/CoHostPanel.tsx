@@ -83,6 +83,22 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
       <div className="px-4 py-3">
         {error ? <p className="mb-3 text-sm text-clay">{error}</p> : null}
         <input className={fieldClass} value={term} onChange={(event) => setTerm(event.target.value)} placeholder="Search an approved participant" aria-label="Search an approved participant" autoComplete="off" />
+        {coHostIds.length > 0 ? (
+          <div className="mt-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">Assigned co-hosts</p>
+            <ul className="mt-2">
+              {people.filter((person) => coHostIds.includes(person.userId)).map((person) => (
+                <li key={person.userId} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
+                  <Avatar src={person.photoURL} name={person.fullName} size={36} />
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium">{person.fullName}</p>
+                  <Button size="sm" variant="secondary" disabled={busy !== null} onClick={() => void toggle({ uid: person.userId, fullName: person.fullName, photoURL: person.photoURL } as UserProfile)}>
+                    Remove
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {searching ? <p className="mt-3 text-sm text-muted">Searching…</p> : null}
         {!searching && term.trim().length >= 2 && results.length === 0 ? <p className="mt-3 text-sm text-muted">No one with that name yet.</p> : null}
         <ul>
