@@ -771,18 +771,17 @@ function StudyBody({
                 {role === 'approved' && sessionDate ? (
                   <button
                     type="button"
-                    className="text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
+                    className={sessionJoined ? 'text-clay underline decoration-black decoration-dashed underline-offset-2 disabled:opacity-50' : 'text-canal underline decoration-1 underline-offset-2 disabled:opacity-50'}
                     onClick={() => void toggleAttendance()}
                     disabled={attendanceBusy || (!sessionJoined && sessionTaken >= study.maxCapacity)}
                   >
-                    {sessionJoined ? 'Ongoing · Cancel' : sessionTaken >= study.maxCapacity ? 'Full' : 'Ongoing · Join'}
+                    {sessionJoined ? 'Cancel' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
                   </button>
                 ) : role === 'host' && scheduledDate ? (
                   <span className="inline-flex items-center gap-2">
-                    <span className={sessionCanceled ? 'text-clay' : 'text-canal'}>{sessionCanceled ? 'Canceled' : 'Ongoing'}</span>
                     <button
                       type="button"
-                      className="text-muted underline decoration-1 underline-offset-2 hover:text-ink disabled:opacity-50"
+                      className={sessionCanceled ? 'text-canal underline decoration-1 underline-offset-2 hover:text-ink disabled:opacity-50' : 'text-clay underline decoration-black decoration-dashed underline-offset-2 hover:text-ink disabled:opacity-50'}
                       onClick={() => void toggleCurrentSession()}
                       disabled={cancelBusy}
                     >
