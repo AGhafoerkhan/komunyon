@@ -54,7 +54,7 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
   }
 
   return (
-    <section className="rounded-lg border border-line bg-card">
+    <section id="co-host" className="rounded-lg border border-line bg-card scroll-mt-24">
       <div className="border-b border-line px-4 py-3">
         <h2 className="font-serif text-xl">Co-host</h2>
         <p className="mt-1 text-sm text-muted">Assign an approved participant to help manage this study.</p>

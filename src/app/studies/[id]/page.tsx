@@ -732,7 +732,11 @@ function StudyBody({
               <div className="flex items-center gap-2">
                 <p className="text-xs text-muted">{role === 'host' ? 'You are hosting' : 'Host'}</p>
                 {role === 'host' ? (
-                  <button type="button" disabled className="text-xs text-muted underline decoration-1 underline-offset-2 opacity-60">
+                  <button
+                    type="button"
+                    className="text-xs text-muted underline decoration-1 underline-offset-2 hover:text-ink"
+                    onClick={() => document.getElementById('co-host')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  >
                     + Co-host
                   </button>
                 ) : null}
