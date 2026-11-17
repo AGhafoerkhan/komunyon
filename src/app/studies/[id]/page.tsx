@@ -689,6 +689,7 @@ function StudyBody({
   const [showAttending, setShowAttending] = useState(false);
   const [attendingMembers, setAttendingMembers] = useState<JoinRequest[]>([]);
   const [planningOpen, setPlanningOpen] = useState(false);
+  const [personalPlanningOpen, setPersonalPlanningOpen] = useState(false);
   const [plannedSessions, setPlannedSessions] = useState<Record<string, boolean>>({});
   const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
   const [planningBusy, setPlanningBusy] = useState<string | null>(null);
@@ -725,7 +726,7 @@ function StudyBody({
   }, [futureDates.join(','), role, study.id, viewerId]);
 
   async function togglePlannedSession(date: string) {
-    if (role !== 'approved' || planningBusy) return;
+    if (role !== 'approved' && role !== 'host' && !canManageSessions || planningBusy) return;
     setPlanningBusy(date);
     const next = !(plannedSessions[date] ?? false);
     if (next && (sessionCounts[date] ?? 0) >= study.maxCapacity) return;
@@ -900,6 +901,38 @@ function StudyBody({
                 showPhone
                     coHostIds={coHostIds}
               />
+            </div>
+          ) : null}
+          {study.format === 'recurring' && (role === 'host' || canManageSessions) ? (
+            <div className="mt-4 max-w-lg">
+              <button
+                type="button"
+                className="text-sm text-muted underline decoration-1 underline-offset-2 hover:text-ink"
+                onClick={() => setPersonalPlanningOpen((open) => !open)}
+                aria-expanded={personalPlanningOpen}
+              >
+                {personalPlanningOpen ? 'Hide future attendance' : 'Plan future attendance'}
+              </button>
+              {personalPlanningOpen ? (
+                <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
+                  {futureDates.filter((date) => !study.skippedDates.includes(date)).map((date) => (
+                    <li key={`personal-${date}`} className="grid grid-cols-3 items-center gap-3 py-2">
+                      <span className="min-w-0">{formatDdMmYyyy(date)} · {study.time}</span>
+                      <span className="w-full text-left text-muted tabular-nums">
+                        {sessionCounts[date] ?? 0} / {study.maxCapacity} · {spotsLabel(sessionCounts[date] ?? 0, study.maxCapacity)}
+                      </span>
+                      <button
+                        type="button"
+                        className={`w-full text-left underline underline-offset-2 disabled:opacity-50 ${plannedSessions[date] ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
+                        onClick={() => void togglePlannedSession(date)}
+                        disabled={planningBusy !== null || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
+                      >
+                        {plannedSessions[date] ? 'Cancel' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ) : null}
           {study.format === 'recurring' && (role === 'approved' || role === 'host' || canManageSessions) ? (
