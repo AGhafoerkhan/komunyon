@@ -785,13 +785,6 @@ function StudyBody({
           </dl>
           {sessionDate && (role === 'approved' || role === 'host') ? (
             <>
-              <button
-                type="button"
-                className="mt-3 text-left text-sm text-muted underline decoration-1 underline-offset-2 hover:text-ink"
-                onClick={() => void toggleAttending()}
-              >
-                {showAttending ? 'Hide attending people' : `See ${sessionTaken} ${sessionTaken === 1 ? 'person' : 'people'} attending`}
-              </button>
               {showAttending ? (
                 <div className="mt-3 max-w-lg">
                   <MemberList
