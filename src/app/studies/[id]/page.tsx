@@ -12,8 +12,10 @@ import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
+import { loadSessionAttendance, setSessionAttendance as saveSessionAttendance, subscribeSessionAttendance } from '@/lib/attendance';
 import { normalizePhone } from '@/lib/validate';
 import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
+import { upcomingSession } from '@/lib/format';
 import { loadProfile } from '@/lib/users';
 import {
   acceptInvite,
@@ -284,6 +286,7 @@ export default function StudyPage() {
       ) : study ? (
         <StudyBody
           study={study}
+          viewerId={user.uid}
           role={roleFor(study, user.uid)}
           details={details}
           detailsState={detailsState}
@@ -536,6 +539,7 @@ function dialogCopy(action: ConfirmAction, studyTitle: string): { title: string;
 
 function StudyBody({
   study,
+  viewerId,
   role,
   details,
   detailsState,
@@ -556,6 +560,7 @@ function StudyBody({
   onAskRemove,
 }: {
   study: BibleStudy;
+  viewerId: string;
   role: Role;
   details: PrivateStudyDetails | null;
   detailsState: 'hidden' | 'loading' | 'ready';
@@ -579,7 +584,32 @@ function StudyBody({
   const full = taken >= study.maxCapacity;
   const ratio = study.maxCapacity === 0 ? 0 : Math.min(100, (taken / study.maxCapacity) * 100);
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
+  const sessionDate = upcomingSession(study);
+  const [sessionJoined, setSessionJoined] = useState(false);
+  const [sessionTaken, setSessionTaken] = useState(study.approvedUserIds.length);
+  const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
+
+  useEffect(() => {
+    if (!sessionDate || (role !== 'approved' && role !== 'host')) return;
+    const unsubscribe = subscribeSessionAttendance(study.id, sessionDate, viewerId, setSessionJoined, () => undefined);
+    void loadSessionAttendance(study.id, sessionDate).then((records) => setSessionTaken(records.filter((record) => record.joined).length));
+    return unsubscribe;
+  }, [role, sessionDate, study, viewerId]);
+
+  async function toggleAttendance() {
+    if (!sessionDate || role !== 'approved' || attendanceBusy) return;
+    setAttendanceBusy(true);
+    const next = !sessionJoined;
+    try {
+      // The current viewer's uid is supplied by the parent through the role-specific action below.
+      await saveSessionAttendance(study.id, sessionDate, viewerId, next);
+      setSessionJoined(next);
+      setSessionTaken((current) => Math.max(0, current + (next ? 1 : -1)));
+    } finally {
+      setAttendanceBusy(false);
+    }
+  }
 
   return (
     <div className="mt-4">
@@ -636,6 +666,17 @@ function StudyBody({
               </dd>
             </div>
           </dl>
+          {role === 'approved' && sessionDate ? (
+            <div className="mt-4 max-w-lg rounded-md border border-line bg-card p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span>{sessionJoined ? 'You are attending this session.' : 'You are not attending this session.'}</span>
+                <Button size="sm" variant="secondary" onClick={() => void toggleAttendance()} disabled={attendanceBusy}>
+                  {sessionJoined ? 'Leave session' : 'Attend session'}
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted">{sessionTaken} / {study.maxCapacity} joined · future sessions stay open by default.</p>
+            </div>
+          ) : null}
           <div className="mt-3 h-1.5 max-w-lg overflow-hidden rounded-full bg-sand">
             <div className="h-full rounded-full bg-canal" style={{ width: `${ratio}%` }} />
           </div>
