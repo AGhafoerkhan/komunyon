@@ -650,6 +650,16 @@ function StudyBody({
     }
   }
 
+  async function toggleHostPlannedSession(date: string) {
+    if (role !== 'host' || planningBusy) return;
+    setPlanningBusy(date);
+    try {
+      await setSessionCanceled(study.id, date, !study.skippedDates.includes(date));
+    } finally {
+      setPlanningBusy(null);
+    }
+  }
+
   async function toggleCurrentSession() {
     if (role !== 'host' || !scheduledDate || cancelBusy) return;
     setCancelBusy(true);
@@ -798,7 +808,7 @@ function StudyBody({
               ) : null}
             </>
           ) : null}
-          {study.format === 'recurring' && role === 'approved' ? (
+          {study.format === 'recurring' && (role === 'approved' || role === 'host') ? (
             <div className="mt-4 max-w-lg">
               <button
                 type="button"
@@ -813,14 +823,25 @@ function StudyBody({
                   {futureDates.map((date) => (
                     <li key={date} className="flex items-center justify-between gap-3 py-2">
                       <span>{formatDdMmYyyy(date)} · {study.time}</span>
-                      <button
-                        type="button"
-                        className="shrink-0 text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
-                        onClick={() => void togglePlannedSession(date)}
-                        disabled={planningBusy !== null || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
-                      >
-                        {plannedSessions[date] ? 'Leave' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
-                      </button>
+                      {role === 'host' ? (
+                        <button
+                          type="button"
+                          className={`shrink-0 underline decoration-1 underline-offset-2 disabled:opacity-50 ${study.skippedDates.includes(date) ? 'text-clay' : 'text-canal'}`}
+                          onClick={() => void toggleHostPlannedSession(date)}
+                          disabled={planningBusy !== null}
+                        >
+                          {study.skippedDates.includes(date) ? 'Canceled · Proceed' : 'Ongoing · Cancel'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="shrink-0 text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
+                          onClick={() => void togglePlannedSession(date)}
+                          disabled={planningBusy !== null || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
+                        >
+                          {plannedSessions[date] ? 'Leave' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
