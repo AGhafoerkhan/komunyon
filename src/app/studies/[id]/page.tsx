@@ -32,6 +32,7 @@ import {
   subscribePrivateDetails,
   subscribeRemovalNotices,
   subscribeStudy,
+  setSessionCanceled,
 } from '@/lib/studies';
 import type { BibleStudy, JoinRequest, PrivateStudyDetails } from '@/types';
 
@@ -589,6 +590,10 @@ function StudyBody({
   const full = taken >= study.maxCapacity;
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
   const sessionDate = upcomingSession(study);
+  const scheduledDate = study.format === 'recurring' && study.dayOfWeek !== null
+    ? upcomingSessions(study.dayOfWeek, study.time, 1)[0] ?? null
+    : study.date;
+  const sessionCanceled = Boolean(scheduledDate && study.skippedDates.includes(scheduledDate));
   const [sessionJoined, setSessionJoined] = useState(false);
   const [sessionTaken, setSessionTaken] = useState(0);
   const [showAttending, setShowAttending] = useState(false);
@@ -597,6 +602,7 @@ function StudyBody({
   const [plannedSessions, setPlannedSessions] = useState<Record<string, boolean>>({});
   const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
   const [planningBusy, setPlanningBusy] = useState<string | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
 
@@ -641,6 +647,16 @@ function StudyBody({
       setPlannedSessions((current) => ({ ...current, [date]: next }));
     } finally {
       setPlanningBusy(null);
+    }
+  }
+
+  async function toggleCurrentSession() {
+    if (role !== 'host' || !scheduledDate || cancelBusy) return;
+    setCancelBusy(true);
+    try {
+      await setSessionCanceled(study.id, scheduledDate, !sessionCanceled);
+    } finally {
+      setCancelBusy(false);
     }
   }
 
@@ -736,7 +752,19 @@ function StudyBody({
                   >
                     {sessionJoined ? 'Leave' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
                   </button>
-                ) : role === 'host' ? 'Your study' : '—'}
+                ) : role === 'host' && scheduledDate ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className={sessionCanceled ? 'text-clay' : 'text-canal'}>{sessionCanceled ? 'Canceled' : 'Ongoing'}</span>
+                    <button
+                      type="button"
+                      className="text-muted underline decoration-1 underline-offset-2 hover:text-ink disabled:opacity-50"
+                      onClick={() => void toggleCurrentSession()}
+                      disabled={cancelBusy}
+                    >
+                      {sessionCanceled ? 'Proceed' : 'Cancel'}
+                    </button>
+                  </span>
+                ) : '—'}
               </dd>
             </div>
           </dl>

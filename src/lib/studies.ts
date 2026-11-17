@@ -297,6 +297,13 @@ export async function updateStudy(studyId: string, host: UserProfile, draft: Stu
   await syncStorageAccess(studyId);
 }
 
+export async function setSessionCanceled(studyId: string, date: string, canceled: boolean): Promise<void> {
+  await updateDoc(studyRef(studyId), {
+    skippedDates: canceled ? arrayUnion(date) : arrayRemove(date),
+    updatedAt: nowIso(),
+  });
+}
+
 export async function deleteStudy(studyId: string): Promise<void> {
   const { db } = getFirebase();
   await deleteStudyPhotos(studyId);
