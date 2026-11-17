@@ -65,14 +65,7 @@ export default function ProfilePage() {
         <p className="mt-3 text-sm leading-relaxed text-muted">
           This is what hosts see with a join request, and what appears on studies you host.
         </p>
-        <ProfileForm mode="edit" initial={profile} />
-        <div className="mt-4 flex items-center gap-2 text-sm text-muted" aria-label="Profile activity">
-          <span>{activity.hosted} Hosted</span>
-          <span aria-hidden="true">·</span>
-          <span>{activity.joined} Joined</span>
-          <span aria-hidden="true">·</span>
-          <span>{activity.circles} Circles</span>
-        </div>
+        <ProfileForm mode="edit" initial={profile} activity={activity} />
         <DeviceNotices />
         <section className="mt-8 rounded-lg border border-line bg-card p-4 shadow-sm transition-all duration-300">
           <div className="flex items-center justify-between gap-4">

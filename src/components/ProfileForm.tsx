@@ -12,6 +12,7 @@ import { CHECK_AGAIN, validateProfile, type ProfileField } from '@/lib/validate'
 export function ProfileForm({
   mode,
   initial,
+  activity,
 }: {
   mode: 'onboarding' | 'edit';
   initial: {
@@ -24,9 +25,15 @@ export function ProfileForm({
     neighbourhood: string;
     phone: string;
   };
+  activity?: {
+    hosted: number;
+    joined: number;
+    circles: number;
+  };
 }) {
   const { saveProfile, user } = useAuth();
   const accountPhoto = initial.photoURL || user?.photoURL || '';
+  const profileActivity = activity ?? { hosted: 0, joined: 0, circles: 0 };
   const startingCountry = initial.country || 'Netherlands';
   const startingCities = citiesIn(startingCountry);
   const startingCity = initial.city || (startingCountry === 'Netherlands' ? 'The Hague' : '');
@@ -128,7 +135,13 @@ export function ProfileForm({
 
       <div className="flex flex-wrap items-center gap-4">
         <Avatar src={preview} name={fullName || 'Profile'} size={72} />
-        <div className="text-sm leading-relaxed text-muted">
+        <div className="min-w-0 flex-1 text-sm leading-relaxed text-muted">
+          <p className="font-medium text-ink">{fullName || 'Your profile'}{age ? ` · ${age}` : ''}</p>
+          <p className="mt-1 text-xs" aria-label="Profile activity">
+            {profileActivity.hosted} Hosted <span aria-hidden="true">·</span>{' '}
+            {profileActivity.joined} Joined <span aria-hidden="true">·</span>{' '}
+            {profileActivity.circles} Circles
+          </p>
           <p>{preview ? 'A picture is required. This one is used until you choose another.' : 'A picture is required.'}</p>
           {fields.photo ? <p className="mt-1.5 text-sm text-clay">{fields.photo}</p> : null}
           <label className="mt-2 inline-block cursor-pointer font-medium text-canal">
