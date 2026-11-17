@@ -774,7 +774,7 @@ function StudyBody({
   }
 
   async function toggleAttending(date = sessionDate) {
-    if (!date || (role !== 'approved' && role !== 'host')) return;
+    if (!date || (role !== 'approved' && role !== 'host' && !coHostIds.includes(viewerId))) return;
     const next = !showAttending;
     setShowAttending(next);
     if (!next) return;
@@ -845,7 +845,7 @@ function StudyBody({
               <dt className="text-muted">
                 <span className="inline-flex items-center gap-1">
                   Spots
-                  {sessionDate && (role === 'approved' || role === 'host') ? (
+                  {sessionDate && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) ? (
                     <button
                       type="button"
                       aria-label={showAttending ? 'Hide people attending' : 'See people attending'}
@@ -890,7 +890,7 @@ function StudyBody({
               </dd>
             </div>
           </dl>
-          {sessionDate && (role === 'approved' || role === 'host') && !canManageSessions && showAttending ? (
+          {sessionDate && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && !canManageSessions && showAttending ? (
             <div className="mt-3 max-w-lg">
               <MemberList
                 title="Attending this session"
