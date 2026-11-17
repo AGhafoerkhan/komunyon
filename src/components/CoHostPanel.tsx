@@ -51,12 +51,12 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
     setSearching(true);
     const timer = window.setTimeout(() => {
       void searchProfiles(query)
-        .then((profiles) => setResults(profiles.filter((person) => person.uid !== study.hostId)))
+        .then((profiles) => setResults(profiles.filter((person) => person.uid !== study.hostId && !coHostIds.includes(person.uid))))
         .catch((failure: unknown) => setError(actionError(failure)))
         .finally(() => setSearching(false));
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [study.hostId, term]);
+  }, [coHostIds, study.hostId, term]);
 
   async function toggle(person: UserProfile) {
     const assigned = coHostIds.includes(person.uid);
