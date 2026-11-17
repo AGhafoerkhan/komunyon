@@ -793,21 +793,6 @@ function StudyBody({
               </dd>
             </div>
           </dl>
-          {sessionDate && (role === 'approved' || role === 'host') ? (
-            <>
-              {showAttending ? (
-                <div className="mt-3 max-w-lg">
-                  <MemberList
-                    title="Attending this session"
-                    description={role === 'approved' ? 'The host will attend.' : undefined}
-                    empty="No one has joined this session yet."
-                    requests={attendingMembers}
-                    showPhone
-                  />
-                </div>
-              ) : null}
-            </>
-          ) : null}
           {study.format === 'recurring' && (role === 'approved' || role === 'host') ? (
             <div className="mt-4 max-w-lg">
               <button
@@ -858,6 +843,17 @@ function StudyBody({
                   ))}
                 </ul>
               ) : null}
+            </div>
+          ) : null}
+          {sessionDate && (role === 'approved' || role === 'host') && showAttending ? (
+            <div className="mt-3 max-w-lg">
+              <MemberList
+                title="Attending this session"
+                description={role === 'approved' ? 'The host will attend.' : undefined}
+                empty="No one has joined this session yet."
+                requests={attendingMembers}
+                showPhone
+              />
             </div>
           ) : null}
         </article>
