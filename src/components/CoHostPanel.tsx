@@ -2,14 +2,18 @@
 
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { Avatar, Button } from '@/components/ui';
+import { Avatar, Button, fieldClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { getFirebase } from '@/lib/firebase';
 import { loadPeople } from '@/lib/studies';
-import type { BibleStudy, JoinRequest } from '@/types';
+import { searchProfiles } from '@/lib/users';
+import type { BibleStudy, JoinRequest, UserProfile } from '@/types';
 
 export function CoHostPanel({ study }: { study: BibleStudy }) {
   const [people, setPeople] = useState<JoinRequest[]>([]);
+  const [term, setTerm] = useState('');
+  const [results, setResults] = useState<UserProfile[]>([]);
+  const [searching, setSearching] = useState(false);
   const [coHostIds, setCoHostIds] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,18 +37,35 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
     };
   }, [study.id, study.approvedUserIds]);
 
-  async function toggle(person: JoinRequest) {
-    const assigned = coHostIds.includes(person.userId);
-    setBusy(person.userId);
+  useEffect(() => {
+    const query = term.trim();
+    if (query.length < 2) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timer = window.setTimeout(() => {
+      void searchProfiles(query)
+        .then((profiles) => setResults(profiles.filter((person) => person.uid !== study.hostId)))
+        .catch((failure: unknown) => setError(actionError(failure)))
+        .finally(() => setSearching(false));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [study.hostId, term]);
+
+  async function toggle(person: UserProfile) {
+    const assigned = coHostIds.includes(person.uid);
+    setBusy(person.uid);
     setError(null);
     try {
-      const managerRef = doc(getFirebase().db, 'studies', study.id, 'managers', person.userId);
+      const managerRef = doc(getFirebase().db, 'studies', study.id, 'managers', person.uid);
       if (assigned) {
         await deleteDoc(managerRef);
-        setCoHostIds((current) => current.filter((id) => id !== person.userId));
+        setCoHostIds((current) => current.filter((id) => id !== person.uid));
       } else {
-        await setDoc(managerRef, { uid: person.userId, createdAt: new Date().toISOString() });
-        setCoHostIds((current) => [...current, person.userId]);
+        await setDoc(managerRef, { uid: person.uid, createdAt: new Date().toISOString() });
+        setCoHostIds((current) => [...current, person.uid]);
       }
     } catch (failure) {
       setError(actionError(failure));
@@ -61,16 +82,19 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
       </div>
       <div className="px-4 py-3">
         {error ? <p className="mb-3 text-sm text-clay">{error}</p> : null}
-        {people.length === 0 ? <p className="text-sm text-muted">Approve someone first to assign a co-host.</p> : null}
+        <input className={fieldClass} value={term} onChange={(event) => setTerm(event.target.value)} placeholder="Search an approved participant" aria-label="Search an approved participant" autoComplete="off" />
+        {searching ? <p className="mt-3 text-sm text-muted">Searching…</p> : null}
+        {!searching && term.trim().length >= 2 && results.length === 0 ? <p className="mt-3 text-sm text-muted">No one with that name yet.</p> : null}
         <ul>
-          {people.map((person) => {
-            const assigned = coHostIds.includes(person.userId);
+          {results.map((person) => {
+            const approved = people.some((member) => member.userId === person.uid);
+            const assigned = coHostIds.includes(person.uid);
             return (
-              <li key={person.userId} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
+              <li key={person.uid} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
                 <Avatar src={person.photoURL} name={person.fullName} size={36} />
                 <p className="min-w-0 flex-1 truncate text-sm font-medium">{person.fullName}</p>
-                <Button size="sm" variant="secondary" disabled={busy !== null} onClick={() => void toggle(person)}>
-                  {assigned ? 'Remove' : 'Assign'}
+                <Button size="sm" variant="secondary" disabled={!approved || busy !== null} onClick={() => void toggle(person)}>
+                  {!approved ? 'Approve first' : assigned ? 'Remove' : 'Assign'}
                 </Button>
               </li>
             );
