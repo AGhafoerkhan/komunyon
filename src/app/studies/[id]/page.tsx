@@ -67,6 +67,7 @@ export default function StudyPage() {
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>([]);
   const [approvedMembers, setApprovedMembers] = useState<JoinRequest[]>([]);
+  const [hostMember, setHostMember] = useState<JoinRequest | null>(null);
   const [coHostIds, setCoHostIds] = useState<string[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -206,6 +207,35 @@ export default function StudyPage() {
   }, [study, user]);
 
   useEffect(() => {
+    let active = true;
+    if (!study) {
+      setHostMember(null);
+      return;
+    }
+    void loadProfile(study.hostId)
+      .then((profile) => {
+        if (!active || !profile) return;
+        setHostMember({
+          id: `host_${profile.uid}`,
+          studyId: study.id,
+          userId: profile.uid,
+          fullName: profile.fullName,
+          age: profile.age,
+          photoURL: profile.photoURL,
+          bio: profile.bio,
+          phone: profile.phone,
+          place: [profile.neighbourhood, profile.city, profile.country].filter(Boolean).join(', '),
+          status: 'approved',
+          profileMissing: false,
+        });
+      })
+      .catch(() => setHostMember(null));
+    return () => {
+      active = false;
+    };
+  }, [study?.hostId, study?.id]);
+
+  useEffect(() => {
     if (!study || !user || (study.hostId !== user.uid && !study.approvedUserIds.includes(user.uid))) {
       setCoHostIds([]);
       return;
@@ -300,6 +330,7 @@ export default function StudyPage() {
           study={study}
           viewerId={user.uid}
           coHostIds={coHostIds}
+          hostMember={hostMember}
           role={roleFor(study, user.uid)}
           details={details}
           detailsState={detailsState}
@@ -559,6 +590,7 @@ function StudyBody({
   study,
   viewerId,
   coHostIds,
+  hostMember,
   role,
   details,
   detailsState,
@@ -581,6 +613,7 @@ function StudyBody({
   study: BibleStudy;
   viewerId: string;
   coHostIds: string[];
+  hostMember: JoinRequest | null;
   role: Role;
   details: PrivateStudyDetails | null;
   detailsState: 'hidden' | 'loading' | 'ready';
@@ -984,7 +1017,7 @@ function StudyBody({
             title="People in this study"
             description="Everyone approved to share this gathering. Open a photo to see it full size."
             empty="No one else is approved yet."
-            requests={approvedMembers}
+            requests={hostMember ? [hostMember, ...approvedMembers] : approvedMembers}
             showPhone={false}
             coHostIds={coHostIds}
             onPhoto={openPhoto}
