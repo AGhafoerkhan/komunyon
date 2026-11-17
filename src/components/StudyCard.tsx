@@ -1,14 +1,36 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { Avatar, FormatBadge, TagList } from '@/components/ui';
-import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
+import { loadSessionAttendance } from '@/lib/attendance';
+import { cancellationNote, formatSchedule, spotsLabel, upcomingSession } from '@/lib/format';
 import type { BibleStudy } from '@/types';
 
 export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: string }) {
   const taken = study.approvedUserIds.length;
   const hosting = study.hostId === viewerId;
   const joined = !hosting && study.approvedUserIds.includes(viewerId);
+  const sessionDate = upcomingSession(study);
+  const [sessionTaken, setSessionTaken] = useState(taken);
+
+  useEffect(() => {
+    if (!sessionDate || (!hosting && !joined)) {
+      setSessionTaken(taken);
+      return;
+    }
+    let active = true;
+    void loadSessionAttendance(study.id, sessionDate)
+      .then((records) => {
+        if (active) setSessionTaken(records.filter((record) => record.joined).length);
+      })
+      .catch(() => {
+        if (active) setSessionTaken(taken);
+      });
+    return () => {
+      active = false;
+    };
+  }, [hosting, joined, sessionDate, study.id, taken]);
 
   return (
     <Link
@@ -34,9 +56,9 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
       {cancellationNote(study) ? <p className="text-sm leading-relaxed text-clay">{cancellationNote(study)}</p> : null}
       <p className="mt-auto text-sm tabular-nums">
         <span className="font-medium text-ink">
-          {taken} / {study.maxCapacity}
+          {sessionDate ? sessionTaken : taken} / {study.maxCapacity}
         </span>
-        <span className="text-muted"> · {spotsLabel(taken, study.maxCapacity)}</span>
+        <span className="text-muted"> · {spotsLabel(sessionDate ? sessionTaken : taken, study.maxCapacity)}</span>
         {hosting && !study.isPublic ? <span className="text-muted"> · Private</span> : null}
         {hosting ? <span className="text-canal"> · Your study</span> : null}
         {joined ? <span className="text-canal"> · Joined</span> : null}
