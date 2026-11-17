@@ -616,7 +616,7 @@ function StudyBody({
   }, [role, sessionDate, study, viewerId]);
 
   const futureDates = study.format === 'recurring' && study.dayOfWeek !== null
-    ? upcomingSessions(study.dayOfWeek, study.time, 8).filter((date) => !study.skippedDates.includes(date))
+    ? upcomingSessions(study.dayOfWeek, study.time, 8).filter((date) => role === 'host' || !study.skippedDates.includes(date))
     : [];
 
   useEffect(() => {
