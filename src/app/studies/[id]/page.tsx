@@ -695,11 +695,13 @@ function StudyBody({
   const [personalPlanningOpen, setPersonalPlanningOpen] = useState(false);
   const [plannedSessions, setPlannedSessions] = useState<Record<string, boolean>>({});
   const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
+  const [hostAvailability, setHostAvailability] = useState<Record<string, boolean>>({});
   const [planningBusy, setPlanningBusy] = useState<string | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
   const visibleSessionTaken = sessionTaken;
+  const hostTeamMember = role === 'host' || coHostIds.includes(viewerId);
 
   useEffect(() => {
     if (!sessionDate || (role !== 'approved' && role !== 'host')) return;
@@ -707,14 +709,20 @@ function StudyBody({
     const unsubscribeList = subscribeSessionAttendanceList(
       study.id,
       sessionDate,
-      (records) => setSessionTaken(records.filter((record) => record.joined).length),
+      (records) => {
+        setSessionTaken(records.filter((record) => record.joined).length);
+        setHostAvailability((current) => ({
+          ...current,
+          [sessionDate]: records.some((record) => record.joined && [study.hostId, ...coHostIds].includes(record.uid)),
+        }));
+      },
       () => setSessionTaken(0),
     );
     return () => {
       unsubscribe();
       unsubscribeList();
     };
-  }, [role, sessionDate, study, viewerId]);
+  }, [coHostIds, role, sessionDate, study, viewerId]);
 
   useEffect(() => {
     if (!showAttending || !sessionDate || (role !== 'approved' && role !== 'host' && !coHostIds.includes(viewerId))) {
@@ -723,6 +731,10 @@ function StudyBody({
     let active = true;
     const unsubscribe = subscribeSessionAttendanceList(study.id, sessionDate, (records) => {
       const ids = records.filter((record) => record.joined).map((record) => record.uid);
+      setHostAvailability((current) => ({
+        ...current,
+        [sessionDate]: records.some((record) => record.joined && [study.hostId, ...coHostIds].includes(record.uid)),
+      }));
       void loadPeople(study.id, ids).then((people) => {
         if (active) setAttendingMembers(people);
       });
@@ -733,7 +745,7 @@ function StudyBody({
       active = false;
       unsubscribe();
     };
-  }, [coHostIds, role, sessionDate, showAttending, study.id, viewerId]);
+  }, [coHostIds, role, sessionDate, showAttending, study, viewerId]);
 
   const futureDates = study.format === 'recurring' && study.dayOfWeek !== null
     ? upcomingSessions(study.dayOfWeek, study.time, 8).filter((date) => role === 'host' || canManageSessions || !study.skippedDates.includes(date))
@@ -744,9 +756,13 @@ function StudyBody({
     const unsubscribes = futureDates.map((date) => subscribeSessionAttendanceList(study.id, date, (records) => {
       setPlannedSessions((current) => ({ ...current, [date]: records.some((record) => record.uid === viewerId && record.joined) }));
       setSessionCounts((current) => ({ ...current, [date]: records.filter((record) => record.joined).length }));
+      setHostAvailability((current) => ({
+        ...current,
+        [date]: records.some((record) => record.joined && [study.hostId, ...coHostIds].includes(record.uid)),
+      }));
     }, () => undefined));
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-  }, [futureDates.join(','), role, study.id, viewerId]);
+  }, [coHostIds, futureDates.join(','), role, study, viewerId]);
 
   async function togglePlannedSession(date: string) {
     if (role !== 'approved' && role !== 'host' && !canManageSessions || planningBusy) return;
@@ -898,19 +914,20 @@ function StudyBody({
                       type="button"
                       className={sessionCanceled ? 'text-canal underline decoration-1 underline-offset-2 hover:text-ink disabled:opacity-50' : 'text-clay underline decoration-black decoration-dashed underline-offset-2 hover:text-ink disabled:opacity-50'}
                       onClick={() => void toggleCurrentSession()}
-                      disabled={cancelBusy}
+                      disabled={cancelBusy || (sessionCanceled && !sessionJoined)}
                     >
                       {sessionCanceled ? 'Proceed' : 'Cancel'}
                     </button>
+                    {sessionCanceled && !sessionJoined ? <span className="text-xs font-normal text-muted">Join attendance first</span> : null}
                   </span>
                 ) : role === 'approved' && sessionDate && !sessionCanceled ? (
                   <button
                     type="button"
                     className={sessionJoined ? 'text-clay underline decoration-black decoration-dashed underline-offset-2 disabled:opacity-50' : 'text-canal underline decoration-1 underline-offset-2 disabled:opacity-50'}
                     onClick={() => void toggleAttendance()}
-                    disabled={attendanceBusy || (!sessionJoined && sessionTaken >= study.maxCapacity)}
+                    disabled={attendanceBusy || (!sessionJoined && (role === 'approved' && (!hostAvailability[sessionDate] || sessionTaken >= study.maxCapacity)))}
                   >
-                    {sessionJoined ? 'Cancel' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
+                    {sessionJoined ? 'Cancel' : role === 'approved' && !hostAvailability[sessionDate] ? 'No host' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
                   </button>
                 ) : '—'}
               </dd>
@@ -928,7 +945,7 @@ function StudyBody({
               />
             </div>
           ) : null}
-          {study.format === 'recurring' && (role === 'host' || canManageSessions) ? (
+          {study.format === 'recurring' && hostTeamMember ? (
             <div className="mt-4 max-w-lg">
               <button
                 type="button"
@@ -950,9 +967,9 @@ function StudyBody({
                         type="button"
                         className={`w-full text-left underline underline-offset-2 disabled:opacity-50 ${plannedSessions[date] ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
                         onClick={() => void togglePlannedSession(date)}
-                        disabled={planningBusy !== null || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
+                        disabled={planningBusy !== null || (!plannedSessions[date] && hostAvailability[date] === false && !hostTeamMember) || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
                       >
-                        {plannedSessions[date] ? 'Cancel' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
+                        {plannedSessions[date] ? 'Cancel' : !hostTeamMember && hostAvailability[date] === false ? 'No host' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
                       </button>
                     </li>
                   ))}
@@ -960,7 +977,7 @@ function StudyBody({
               ) : null}
             </div>
           ) : null}
-          {study.format === 'recurring' && (role === 'approved' || role === 'host' || canManageSessions) ? (
+          {study.format === 'recurring' && (role === 'host' || canManageSessions || (role === 'approved' && !coHostIds.includes(viewerId))) ? (
             <div className="mt-4 max-w-lg">
               <button
                 type="button"
@@ -1005,9 +1022,9 @@ function StudyBody({
                           type="button"
                           className={`w-full text-left underline underline-offset-2 disabled:opacity-50 ${plannedSessions[date] ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
                           onClick={() => void togglePlannedSession(date)}
-                          disabled={planningBusy !== null || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
+                          disabled={planningBusy !== null || (!plannedSessions[date] && hostAvailability[date] === false) || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
                         >
-                          {plannedSessions[date] ? 'Cancel' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
+                          {plannedSessions[date] ? 'Cancel' : hostAvailability[date] === false ? 'No host' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
                         </button>
                       )}
                     </li>
