@@ -809,7 +809,7 @@ function StudyBody({
           <p className="mt-5 max-w-2xl text-sm leading-relaxed break-words whitespace-pre-wrap">{study.description}</p>
           <dl className="mt-6 grid max-w-lg grid-cols-1 gap-4 text-sm min-[28rem]:grid-cols-3">
             <div>
-              <dt className="text-muted">When</dt>
+              <dt className="text-muted">Starts</dt>
               <dd className="mt-1 font-medium">{formatSchedule(study)}</dd>
               {cancellationNote(study) ? (
                 <dd className="mt-1 text-sm font-normal leading-relaxed text-clay">{cancellationNote(study)}</dd>
