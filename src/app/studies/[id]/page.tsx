@@ -28,6 +28,7 @@ import {
   leaveStudy,
   loadJoinRequests,
   loadCoHostIds,
+  loadCoHostEditPermission,
   loadPeople,
   removeMember,
   requestToJoin,
@@ -69,6 +70,7 @@ export default function StudyPage() {
   const [approvedMembers, setApprovedMembers] = useState<JoinRequest[]>([]);
   const [hostMember, setHostMember] = useState<JoinRequest | null>(null);
   const [coHostIds, setCoHostIds] = useState<string[]>([]);
+  const [canEditStudy, setCanEditStudy] = useState(false);
   const [rosterReady, setRosterReady] = useState(false);
   const [removed, setRemoved] = useState(false);
   const [leftBySelf, setLeftBySelf] = useState(false);
@@ -207,6 +209,14 @@ export default function StudyPage() {
   }, [study, user]);
 
   useEffect(() => {
+    if (!study || !user || study.hostId === user.uid) {
+      setCanEditStudy(study?.hostId === user?.uid);
+      return;
+    }
+    void loadCoHostEditPermission(study.id, user.uid).then(setCanEditStudy).catch(() => setCanEditStudy(false));
+  }, [study, user]);
+
+  useEffect(() => {
     let active = true;
     if (!study) {
       setHostMember(null);
@@ -331,6 +341,7 @@ export default function StudyPage() {
           viewerId={user.uid}
           coHostIds={coHostIds}
           hostMember={hostMember}
+          canEditStudy={canEditStudy}
           role={roleFor(study, user.uid)}
           details={details}
           detailsState={detailsState}
@@ -591,6 +602,7 @@ function StudyBody({
   viewerId,
   coHostIds,
   hostMember,
+  canEditStudy,
   role,
   details,
   detailsState,
@@ -614,6 +626,7 @@ function StudyBody({
   viewerId: string;
   coHostIds: string[];
   hostMember: JoinRequest | null;
+  canEditStudy: boolean;
   role: Role;
   details: PrivateStudyDetails | null;
   detailsState: 'hidden' | 'loading' | 'ready';
@@ -997,7 +1010,7 @@ function StudyBody({
             </Button>
           ) : null}
 
-          {role === 'host' ? (
+          {role === 'host' || canEditStudy ? (
             <div className="flex flex-col gap-2">
               <Link href={`/studies/${study.id}/edit`} className={`${buttonClass('primary')} w-full`}>
                 Edit study

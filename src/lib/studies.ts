@@ -309,6 +309,11 @@ export async function loadCoHostIds(studyId: string): Promise<string[]> {
   return snapshot.docs.map((item) => item.id);
 }
 
+export async function loadCoHostEditPermission(studyId: string, uid: string): Promise<boolean> {
+  const snapshot = await getDoc(doc(getFirebase().db, 'studies', studyId, 'managers', uid));
+  return snapshot.exists() && snapshot.data().permissions?.canEdit === true;
+}
+
 export async function deleteStudy(studyId: string): Promise<void> {
   const { db } = getFirebase();
   await deleteStudyPhotos(studyId);
