@@ -699,7 +699,7 @@ function StudyBody({
   const [cancelBusy, setCancelBusy] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
-  const visibleSessionTaken = sessionTaken + (hostMember ? 1 : 0);
+  const visibleSessionTaken = sessionTaken;
 
   useEffect(() => {
     if (!sessionDate || (role !== 'approved' && role !== 'host')) return;
@@ -920,9 +920,9 @@ function StudyBody({
             <div className="mt-3 max-w-lg">
               <MemberList
                 title="Attending this session"
-                description={role === 'approved' ? 'The host will attend.' : undefined}
+                description={role === 'approved' ? 'Host and co-host attendance is shown live.' : undefined}
                 empty="No one has joined this session yet."
-                    requests={uniqueMembers(hostMember ? [hostMember, ...attendingMembers] : attendingMembers)}
+                    requests={uniqueMembers(attendingMembers)}
                 showPhone
                     coHostIds={coHostIds}
               />
