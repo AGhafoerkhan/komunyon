@@ -728,7 +728,14 @@ function StudyBody({
                 {study.hostName}
                 <span className="font-normal text-muted"> · {study.hostAge}</span>
               </p>
-              <p className="text-xs text-muted">{role === 'host' ? 'You are hosting' : 'Host'}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted">{role === 'host' ? 'You are hosting' : 'Host'}</p>
+                {role === 'host' ? (
+                  <button type="button" disabled className="text-xs text-muted underline decoration-1 underline-offset-2 opacity-60">
+                    + Co-host
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
           <p className="mt-5 max-w-2xl text-sm leading-relaxed break-words whitespace-pre-wrap">{study.description}</p>
