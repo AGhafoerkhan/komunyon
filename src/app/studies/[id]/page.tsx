@@ -602,7 +602,6 @@ function StudyBody({
       // The current viewer's uid is supplied by the parent through the role-specific action below.
       await saveSessionAttendance(study.id, sessionDate, viewerId, next);
       setSessionJoined(next);
-      setSessionTaken((current) => Math.max(0, current + (next ? 1 : -1)));
     } finally {
       setAttendanceBusy(false);
     }
