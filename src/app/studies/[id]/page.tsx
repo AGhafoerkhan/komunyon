@@ -28,7 +28,7 @@ import {
   leaveStudy,
   loadJoinRequests,
   loadCoHostIds,
-  loadCoHostEditPermission,
+  subscribeCoHostEditPermission,
   loadPeople,
   removeMember,
   requestToJoin,
@@ -213,7 +213,7 @@ export default function StudyPage() {
       setCanEditStudy(study?.hostId === user?.uid);
       return;
     }
-    void loadCoHostEditPermission(study.id, user.uid).then(setCanEditStudy).catch(() => setCanEditStudy(false));
+    return subscribeCoHostEditPermission(study.id, user.uid, setCanEditStudy, () => setCanEditStudy(false));
   }, [study, user]);
 
   useEffect(() => {

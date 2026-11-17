@@ -8,7 +8,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
 import { Alert, LoadingScreen, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { getPrivateDetails, getStudy, loadCoHostEditPermission, updateStudy } from '@/lib/studies';
+import { getPrivateDetails, getStudy, subscribeCoHostEditPermission, updateStudy } from '@/lib/studies';
 import { loadProfile } from '@/lib/users';
 import type { BibleStudy, PrivateStudyDetails } from '@/types';
 
@@ -36,8 +36,7 @@ export default function EditStudyPage() {
         if (nextStudy && nextStudy.hostId === user.uid) {
           setDetails(await getPrivateDetails(studyId));
           setCanEdit(true);
-        } else if (nextStudy && (await loadCoHostEditPermission(studyId, user.uid))) {
-          setCanEdit(true);
+        } else if (nextStudy) {
           setHostProfile(await loadProfile(nextStudy.hostId));
           setDetails(await getPrivateDetails(studyId));
         }
@@ -56,6 +55,23 @@ export default function EditStudyPage() {
       active = false;
     };
   }, [studyId, user]);
+
+  useEffect(() => {
+    if (!study || !user || study.hostId === user.uid) return;
+    setPermissionChecked(false);
+    return subscribeCoHostEditPermission(
+      study.id,
+      user.uid,
+      (allowed) => {
+        setCanEdit(allowed);
+        setPermissionChecked(true);
+      },
+      () => {
+        setCanEdit(false);
+        setPermissionChecked(true);
+      },
+    );
+  }, [study, user]);
 
   useEffect(() => {
     if (study && user && permissionChecked && study.hostId !== user.uid && !canEdit) {

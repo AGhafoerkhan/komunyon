@@ -314,6 +314,19 @@ export async function loadCoHostEditPermission(studyId: string, uid: string): Pr
   return snapshot.exists() && snapshot.data().permissions?.canEdit === true;
 }
 
+export function subscribeCoHostEditPermission(
+  studyId: string,
+  uid: string,
+  onData: (canEdit: boolean) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    doc(getFirebase().db, 'studies', studyId, 'managers', uid),
+    (snapshot) => onData(snapshot.exists() && snapshot.data().permissions?.canEdit === true),
+    onError,
+  );
+}
+
 export async function deleteStudy(studyId: string): Promise<void> {
   const { db } = getFirebase();
   await deleteStudyPhotos(studyId);
