@@ -8,9 +8,11 @@ import { AppShell } from '@/components/TopBar';
 import { Button, FormError, LoadingScreen, Spinner, pageTitleClass } from '@/components/ui';
 import { claimAccountDeletion, eraseOwnAccount, finishAccountDeletion } from '@/lib/account';
 import { actionError } from '@/lib/errors';
+import { useTheme } from '@/components/ThemeProvider';
 
 export default function ProfilePage() {
   const { user, profile, signOutUser } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +51,27 @@ export default function ProfilePage() {
         </p>
         <ProfileForm mode="edit" initial={profile} />
         <DeviceNotices />
+        <section className="mt-8 rounded-lg border border-line bg-card p-4 shadow-sm transition-all duration-300">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-serif text-xl">Appearance</h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted">Choose a light or dark view for Komunyon.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={theme === 'dark'}
+              onClick={toggleTheme}
+              className="relative inline-flex h-10 w-[4.5rem] shrink-0 items-center rounded-full border border-line bg-sand p-1 transition-colors duration-300 focus-visible:outline-offset-4"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              <span className={`inline-flex size-8 items-center justify-center rounded-full bg-card text-sm shadow-sm transition-transform duration-300 ${theme === 'dark' ? 'translate-x-8' : ''}`}>
+                {theme === 'dark' ? '☾' : '☀'}
+              </span>
+            </button>
+          </div>
+          <p className="mt-3 text-xs text-muted" aria-live="polite">{theme === 'dark' ? 'Dark mode on' : 'Light mode on'}</p>
+        </section>
         <section className="mt-10 border-t border-line pt-6">
           <h2 className="font-serif text-xl">Account</h2>
           <p className="mt-1 text-sm leading-relaxed text-muted">Sign out of Komunyon on this device.</p>

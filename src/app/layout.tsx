@@ -4,6 +4,7 @@ import { AuthProvider } from '@/components/AuthProvider';
 import { NoticePermission } from '@/components/DeviceNotices';
 import { PwaRegister } from '@/components/PwaRegister';
 import { RouteGuard } from '@/components/RouteGuard';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 
 const figtree = Figtree({
@@ -51,11 +52,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${figtree.variable} ${fraunces.variable}`}>
       <body className="font-sans antialiased">
-        <AuthProvider>
-          <PwaRegister />
-          <NoticePermission />
-          <RouteGuard>{children}</RouteGuard>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <PwaRegister />
+            <NoticePermission />
+            <RouteGuard>{children}</RouteGuard>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
