@@ -8,6 +8,7 @@ import { actionError } from '@/lib/errors';
 import { LIMITS } from '@/lib/limits';
 import { COUNTRIES, citiesIn } from '@/lib/places';
 import { CHECK_AGAIN, validateProfile, type ProfileField } from '@/lib/validate';
+import { PhotoLightbox } from '@/components/PhotoLightbox';
 
 export function ProfileForm({
   mode,
@@ -51,6 +52,7 @@ export function ProfileForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const listedCities = citiesIn(country);
 
   useEffect(() => {
@@ -134,7 +136,7 @@ export function ProfileForm({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-4">
-        <Avatar src={preview} name={fullName || 'Profile'} size={72} />
+        <Avatar src={preview} name={fullName || 'Profile'} size={72} onOpen={() => setPhotoOpen(true)} />
         <div className="min-w-0 flex-1 text-sm leading-relaxed text-muted">
           <p className="font-medium text-ink">{fullName || 'Your profile'}{age ? ` · ${age}` : ''}</p>
           <p className="mt-1 text-xs" aria-label="Profile activity">
@@ -155,6 +157,7 @@ export function ProfileForm({
           </label>
         </div>
       </div>
+      {photoOpen ? <PhotoLightbox src={preview} name={fullName || 'Profile'} onClose={() => setPhotoOpen(false)} /> : null}
 
       <Field
         label="Full name"
