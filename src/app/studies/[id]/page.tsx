@@ -813,9 +813,9 @@ function StudyBody({
               {planningOpen ? (
                 <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
                   {futureDates.map((date) => (
-                    <li key={date} className="flex items-center justify-between gap-3 py-2">
+                    <li key={date} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 py-2">
                       <span className="min-w-0">{formatDdMmYyyy(date)} · {study.time}</span>
-                      <span className="ml-auto shrink-0 text-muted tabular-nums">
+                      <span className="shrink-0 text-right text-muted tabular-nums">
                         {sessionCounts[date] ?? 0} / {study.maxCapacity} · {spotsLabel(sessionCounts[date] ?? 0, study.maxCapacity)}
                         <button
                           type="button"
