@@ -27,7 +27,7 @@ import {
   deleteStudy,
   leaveStudy,
   loadJoinRequests,
-  loadCoHostIds,
+  subscribeCoHostIds,
   subscribeCoHostEditPermission,
   loadPeople,
   removeMember,
@@ -250,7 +250,7 @@ export default function StudyPage() {
       setCoHostIds([]);
       return;
     }
-    void loadCoHostIds(study.id).then(setCoHostIds).catch(() => setCoHostIds([]));
+    return subscribeCoHostIds(study.id, setCoHostIds, () => setCoHostIds([]));
   }, [study, user]);
 
   const closeConfirm = useCallback(() => {
