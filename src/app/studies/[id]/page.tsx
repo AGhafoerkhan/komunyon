@@ -12,7 +12,7 @@ import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { loadSessionAttendance, setSessionAttendance as saveSessionAttendance, subscribeSessionAttendance } from '@/lib/attendance';
+import { setSessionAttendance as saveSessionAttendance, subscribeSessionAttendance } from '@/lib/attendance';
 import { normalizePhone } from '@/lib/validate';
 import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
 import { upcomingSession } from '@/lib/format';
@@ -582,18 +582,15 @@ function StudyBody({
 }) {
   const taken = study.approvedUserIds.length;
   const full = taken >= study.maxCapacity;
-  const ratio = study.maxCapacity === 0 ? 0 : Math.min(100, (taken / study.maxCapacity) * 100);
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
   const sessionDate = upcomingSession(study);
   const [sessionJoined, setSessionJoined] = useState(false);
-  const [sessionTaken, setSessionTaken] = useState(study.approvedUserIds.length);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
 
   useEffect(() => {
     if (!sessionDate || (role !== 'approved' && role !== 'host')) return;
     const unsubscribe = subscribeSessionAttendance(study.id, sessionDate, viewerId, setSessionJoined, () => undefined);
-    void loadSessionAttendance(study.id, sessionDate).then((records) => setSessionTaken(records.filter((record) => record.joined).length));
     return unsubscribe;
   }, [role, sessionDate, study, viewerId]);
 
@@ -650,7 +647,7 @@ function StudyBody({
             </div>
           </div>
           <p className="mt-5 max-w-2xl text-sm leading-relaxed break-words whitespace-pre-wrap">{study.description}</p>
-          <dl className="mt-6 grid max-w-lg grid-cols-1 gap-4 text-sm min-[28rem]:grid-cols-2">
+          <dl className="mt-6 grid max-w-lg grid-cols-1 gap-4 text-sm min-[28rem]:grid-cols-3">
             <div>
               <dt className="text-muted">When</dt>
               <dd className="mt-1 font-medium">{formatSchedule(study)}</dd>
@@ -665,21 +662,22 @@ function StudyBody({
                 <span className="font-normal text-muted"> · {spotsLabel(taken, study.maxCapacity)}</span>
               </dd>
             </div>
-          </dl>
-          {role === 'approved' && sessionDate ? (
-            <div className="mt-4 max-w-lg rounded-md border border-line bg-card p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span>{sessionJoined ? 'You are attending this session.' : 'You are not attending this session.'}</span>
-                <Button size="sm" variant="secondary" onClick={() => void toggleAttendance()} disabled={attendanceBusy}>
-                  {sessionJoined ? 'Leave session' : 'Attend session'}
-                </Button>
-              </div>
-              <p className="mt-2 text-xs text-muted">{sessionTaken} / {study.maxCapacity} joined · future sessions stay open by default.</p>
+            <div>
+              <dt className="text-muted">Attendance</dt>
+              <dd className="mt-1 font-medium tabular-nums">
+                {role === 'approved' && sessionDate ? (
+                  <button
+                    type="button"
+                    className="text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
+                    onClick={() => void toggleAttendance()}
+                    disabled={attendanceBusy}
+                  >
+                    {sessionJoined ? 'Leave' : 'Join'}
+                  </button>
+                ) : role === 'host' ? 'Your study' : '—'}
+              </dd>
             </div>
-          ) : null}
-          <div className="mt-3 h-1.5 max-w-lg overflow-hidden rounded-full bg-sand">
-            <div className="h-full rounded-full bg-canal" style={{ width: `${ratio}%` }} />
-          </div>
+          </dl>
         </article>
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20">
