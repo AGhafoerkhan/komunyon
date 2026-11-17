@@ -8,7 +8,7 @@ import type { BibleStudy } from '@/types';
 export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: string }) {
   const taken = study.approvedUserIds.length;
   const hosting = study.hostId === viewerId;
-  const joined = hosting || study.approvedUserIds.includes(viewerId);
+  const joined = !hosting && study.approvedUserIds.includes(viewerId);
 
   return (
     <Link
