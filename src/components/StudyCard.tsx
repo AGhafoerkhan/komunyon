@@ -94,7 +94,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
         <FormatBadge format={study.format} />
       </div>
       <h2 className="h-12 shrink-0 overflow-hidden font-serif text-xl leading-snug break-words">{study.title}</h2>
-      <div className="flex h-6 shrink-0 items-start overflow-hidden">
+      <div className="-mt-2 flex h-6 shrink-0 items-start overflow-hidden">
         <TagList tags={study.tags} />
       </div>
       <div className="h-10 shrink-0 overflow-hidden text-sm text-muted">
