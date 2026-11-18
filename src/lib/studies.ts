@@ -383,6 +383,10 @@ export function subscribeCoHostManagerPermission(
   );
 }
 
+export function subscribeCoHostPermissionManagerPermission(studyId: string, uid: string, onData: (allowed: boolean) => void, onError: (error: unknown) => void): Unsubscribe {
+  return onSnapshot(doc(getFirebase().db, 'studies', studyId, 'managers', uid), (snapshot) => onData(snapshot.exists() && snapshot.data().permissions?.canManageCoHostPermissions === true), onError);
+}
+
 export function subscribeCoHostSessionPermission(studyId: string, uid: string, onData: (allowed: boolean) => void, onError: (error: unknown) => void): Unsubscribe {
   return onSnapshot(doc(getFirebase().db, 'studies', studyId, 'managers', uid), (snapshot) => onData(snapshot.exists() && snapshot.data().permissions?.canManageSessions === true), onError);
 }

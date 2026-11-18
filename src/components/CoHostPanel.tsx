@@ -11,7 +11,7 @@ import { searchProfiles } from '@/lib/users';
 import { useAuth } from '@/components/AuthProvider';
 import type { BibleStudy, JoinRequest, UserProfile } from '@/types';
 
-export function CoHostPanel({ study }: { study: BibleStudy }) {
+export function CoHostPanel({ study, canManagePermissions = false }: { study: BibleStudy; canManagePermissions?: boolean }) {
   const { user } = useAuth();
   const [people, setPeople] = useState<JoinRequest[]>([]);
   const [term, setTerm] = useState('');
@@ -119,12 +119,14 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
                   <Button size="sm" variant="secondary" disabled={busy !== null} onClick={() => void toggle({ uid: person.userId, fullName: person.fullName, photoURL: person.photoURL } as UserProfile)}>
                     Remove
                   </Button>
-                  <Link
-                    href={`/studies/${study.id}/admin?uid=${encodeURIComponent(person.userId)}`}
-                    className={buttonClass('secondary', 'sm')}
-                  >
-                    Admin
-                  </Link>
+                  {canManagePermissions ? (
+                    <Link
+                      href={`/studies/${study.id}/admin?uid=${encodeURIComponent(person.userId)}`}
+                      className={buttonClass('secondary', 'sm')}
+                    >
+                      Admin
+                    </Link>
+                  ) : null}
                 </li>
                 {adminUid === person.userId ? (
                   <li className="border-b border-line pb-3 text-sm">

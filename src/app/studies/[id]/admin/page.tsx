@@ -20,6 +20,7 @@ export default function CoHostAdminPage() {
   const [canEdit, setCanEdit] = useState(false);
   const [canManageParticipants, setCanManageParticipants] = useState(false);
   const [canManageCoHosts, setCanManageCoHosts] = useState(false);
+  const [canManageCoHostPermissions, setCanManageCoHostPermissions] = useState(false);
   const [canManageSessions, setCanManageSessions] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -31,10 +32,12 @@ export default function CoHostAdminPage() {
     void Promise.all([
       getStudy(studyId),
       getDoc(doc(getFirebase().db, 'studies', studyId, 'managers', uid)),
+      getDoc(doc(getFirebase().db, 'studies', studyId, 'managers', user.uid)),
     ])
-      .then(([study, manager]) => {
+      .then(([study, manager, actorManager]) => {
         if (!active) return;
-        if (!study || study.hostId !== user.uid || !study.approvedUserIds.includes(uid)) {
+        const canManagePermissions = actorManager.exists() && actorManager.data().permissions?.canManageCoHostPermissions === true;
+        if (!study || (study.hostId !== user.uid && !canManagePermissions) || !study.approvedUserIds.includes(uid)) {
           setError('Only the primary host can manage an approved co-host.');
           setLoaded(true);
           return;
@@ -43,6 +46,7 @@ export default function CoHostAdminPage() {
         setCanEdit(manager.exists() && manager.data().permissions?.canEdit === true);
         setCanManageParticipants(manager.exists() && manager.data().permissions?.canManageParticipants === true);
         setCanManageCoHosts(manager.exists() && manager.data().permissions?.canManageCoHosts === true);
+        setCanManageCoHostPermissions(manager.exists() && manager.data().permissions?.canManageCoHostPermissions === true);
         setCanManageSessions(manager.exists() && manager.data().permissions?.canManageSessions === true);
         setLoaded(true);
       })
@@ -63,10 +67,12 @@ export default function CoHostAdminPage() {
     setError(null);
     try {
       const study = await getStudy(studyId);
-      if (!study || study.hostId !== user.uid) throw new Error('Only the primary host can manage co-host access.');
+      const actorManager = await getDoc(doc(getFirebase().db, 'studies', studyId, 'managers', user.uid));
+      const canManagePermissions = actorManager.exists() && actorManager.data().permissions?.canManageCoHostPermissions === true;
+      if (!study || (study.hostId !== user.uid && !canManagePermissions)) throw new Error('You do not have permission to manage co-host access.');
       await setDoc(doc(getFirebase().db, 'studies', studyId, 'managers', uid), {
         uid,
-        permissions: { canEdit, canManageParticipants, canManageCoHosts, canManageSessions },
+        permissions: { canEdit, canManageParticipants, canManageCoHosts, canManageCoHostPermissions, canManageSessions },
         updatedAt: new Date().toISOString(),
       }, { merge: true });
     } catch (failure) {
@@ -141,6 +147,16 @@ export default function CoHostAdminPage() {
               <button type="button" role="switch" aria-checked={canManageCoHosts} aria-label="Can manage co-hosts" onClick={() => setCanManageCoHosts((current) => !current)} className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canManageCoHosts ? 'border-canal bg-canal' : 'border-line bg-sand'}`}>
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageCoHosts ? 'translate-x-6' : 'translate-x-0'}`} />
                 <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHosts ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageCoHosts ? 'ON' : 'OFF'}</span>
+              </button>
+            </div>
+            <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
+              <span>
+                <span className="block font-medium">Can manage co-host permissions</span>
+                <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to change permissions for other co-hosts.</span>
+              </span>
+              <button type="button" role="switch" aria-checked={canManageCoHostPermissions} aria-label="Can manage co-host permissions" onClick={() => setCanManageCoHostPermissions((current) => !current)} className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canManageCoHostPermissions ? 'border-canal bg-canal' : 'border-line bg-sand'}`}>
+                <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageCoHostPermissions ? 'translate-x-6' : 'translate-x-0'}`} />
+                <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHostPermissions ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageCoHostPermissions ? 'ON' : 'OFF'}</span>
               </button>
             </div>
             <Button className="mt-6" onClick={() => void save()} disabled={saving}>
