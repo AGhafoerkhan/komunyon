@@ -945,7 +945,7 @@ function StudyBody({
               />
             </div>
           ) : null}
-          {study.format === 'recurring' && hostTeamMember ? (
+          {false && study.format === 'recurring' && hostTeamMember ? (
             <div className="mt-4 max-w-lg">
               <button
                 type="button"
@@ -977,7 +977,7 @@ function StudyBody({
               ) : null}
             </div>
           ) : null}
-          {study.format === 'recurring' && (role === 'host' || canManageSessions || (role === 'approved' && !coHostIds.includes(viewerId))) ? (
+          {study.format === 'recurring' && (role === 'host' || role === 'approved') ? (
             <div className="mt-4 max-w-lg">
               <button
                 type="button"
@@ -985,16 +985,12 @@ function StudyBody({
                 onClick={() => setPlanningOpen((open) => !open)}
                 aria-expanded={planningOpen}
               >
-                {planningOpen
-                  ? 'Hide future sessions'
-                  : role === 'host' || canManageSessions
-                    ? 'Plan future sessions'
-                    : 'Plan future attendance'}
+                {planningOpen ? 'Hide future sessions' : 'Plan future sessions'}
               </button>
               {planningOpen ? (
                 <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
                   {futureDates.map((date) => (
-                    <li key={date} className="grid grid-cols-3 items-center gap-3 py-2">
+                    <li key={date} className="grid grid-cols-4 items-center gap-3 py-2">
                       <span className="min-w-0">{formatDdMmYyyy(date)} · {study.time}</span>
                       <span className="w-full text-left text-muted tabular-nums">
                         {sessionCounts[date] ?? 0} / {study.maxCapacity} · {spotsLabel(sessionCounts[date] ?? 0, study.maxCapacity)}
@@ -1008,6 +1004,14 @@ function StudyBody({
                           ⓘ
                         </button>
                       </span>
+                      <button
+                        type="button"
+                        className={`w-full text-left underline underline-offset-2 disabled:opacity-50 ${plannedSessions[date] ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
+                        onClick={() => void togglePlannedSession(date)}
+                        disabled={planningBusy !== null || (!plannedSessions[date] && !hostTeamMember && hostAvailability[date] !== true) || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
+                      >
+                        {plannedSessions[date] ? 'Cancel' : !hostTeamMember && hostAvailability[date] !== true ? 'No host' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
+                      </button>
                       {role === 'host' || canManageSessions ? (
                         <button
                           type="button"
@@ -1018,14 +1022,7 @@ function StudyBody({
                           {hostAvailability[date] !== true ? 'Join attendance first' : study.skippedDates.includes(date) ? 'Proceed' : 'Cancel'}
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          className={`w-full text-left underline underline-offset-2 disabled:opacity-50 ${plannedSessions[date] ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
-                          onClick={() => void togglePlannedSession(date)}
-                          disabled={planningBusy !== null || (!plannedSessions[date] && hostAvailability[date] === false) || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
-                        >
-                          {plannedSessions[date] ? 'Cancel' : hostAvailability[date] === false ? 'No host' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
-                        </button>
+                        <span className="text-muted">—</span>
                       )}
                     </li>
                   ))}
