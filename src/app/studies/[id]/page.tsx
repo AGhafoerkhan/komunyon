@@ -1153,7 +1153,7 @@ function StudyBody({
         </aside>
       </div>
 
-      {role === 'approved' ? (
+      {role === 'approved' && !canManageParticipants ? (
         <div className="mt-8">
           {!rosterReady ? <p className="mb-4 text-sm text-muted">Loading the group…</p> : null}
           <MemberList
@@ -1198,12 +1198,14 @@ function StudyBody({
             )}
           />
           <MemberList
-            title="Approved group members"
+            title="People in this study"
             description="Removing someone hides the address from them and frees a spot."
             empty="No approved members yet."
-            requests={approvedMembers}
+            requests={uniqueMembers(hostMember ? [hostMember, ...approvedMembers] : approvedMembers)}
             rowId={(request) => `member-${request.userId}`}
             onPhoto={openPhoto}
+            coHostIds={coHostIds}
+            hostId={study.hostId}
             renderActions={(request) => (
               request.userId === viewerId ? null : (
                 <Button size="sm" variant="secondary" onClick={() => onAskRemove(request)} disabled={busy !== null}>
