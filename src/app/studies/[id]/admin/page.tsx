@@ -1,6 +1,7 @@
 'use client';
 
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
@@ -147,6 +148,9 @@ export default function CoHostAdminPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-lg">
+        <Link href={'/studies/' + studyId} className="text-sm text-muted underline decoration-1 underline-offset-2 hover:text-ink">
+          ← Back to study
+        </Link>
         <p className="text-sm text-muted">Co-host admin access</p>
         <h1 className={`mt-2 ${pageTitleClass}`}>{name}</h1>
         {error ? <div className="mt-5"><Alert>{error}</Alert></div> : !isPrimaryHost && !Object.values(grantableAllowed).some(Boolean) ? (
