@@ -1100,7 +1100,7 @@ function StudyBody({
           ) : null}
         </article>
 
-        <aside className="flex flex-col gap-3 lg:sticky lg:top-20">
+        <aside className="flex flex-col gap-3 lg:sticky lg:top-20 lg:h-fit lg:self-start">
           {role === 'host' || role === 'approved' ? (
             <div className="h-[260px] shrink-0 overflow-y-auto rounded-lg border border-line bg-card p-4">
               <h2 className="text-sm font-medium">Exact address</h2>
