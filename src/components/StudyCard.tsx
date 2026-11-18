@@ -77,7 +77,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
 
   return (
     <div
-      className="flex h-[332px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
+      className="relative flex h-[332px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
     >
       <Link href={`/studies/${study.id}`} className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex h-10 shrink-0 items-start justify-between gap-3">
@@ -109,7 +109,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
       <p className={`h-10 shrink-0 overflow-hidden text-sm leading-relaxed line-clamp-2 ${canceledDate ? 'text-canal' : 'text-clay'}`}>
         {canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || '\u00a0'}
       </p>
-      <p className="mt-auto shrink-0 text-sm tabular-nums">
+          <p className="mt-auto shrink-0 pr-20 text-sm tabular-nums">
         <span className="font-medium text-ink">
           {sessionDate ? sessionTaken : taken} / {study.maxCapacity}
         </span>
@@ -122,7 +122,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
       {joined && sessionDate ? (
         <button
           type="button"
-          className={`self-end text-sm underline underline-offset-2 disabled:opacity-50 ${sessionJoined ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
+          className={`absolute bottom-4 right-4 text-sm underline underline-offset-2 disabled:opacity-50 ${sessionJoined ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
           onClick={(event) => void toggleCardAttendance(event)}
           disabled={attendanceBusy || (!sessionJoined && sessionTaken >= study.maxCapacity)}
         >
