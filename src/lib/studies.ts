@@ -276,8 +276,15 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
       pendingUserIds: [],
       approvedUserIds: [],
       invitedUserIds: [],
+      skippedDates: [],
     });
     await setDoc(privateRef(ref.id), privateFields(draft, now));
+    const dates = draft.format === 'recurring' && draft.dayOfWeek !== null
+      ? upcomingSessions(draft.dayOfWeek, draft.time, 8)
+      : draft.date
+        ? [draft.date]
+        : [];
+    await Promise.all(dates.map((date) => setSessionAttendance(ref.id, date, host.uid, true, draft.maxCapacity)));
     await syncStorageAccess(ref.id);
   } catch (error) {
     await deleteDoc(ref).catch(() => undefined);
