@@ -159,6 +159,10 @@ export default function ProfilePage() {
                 <summary className="cursor-pointer text-sm font-medium">How do I install Komunyon on iPhone?</summary>
                 <p className="mt-2 text-sm leading-relaxed text-muted">Open Komunyon in Safari, tap Share, choose Add to Home Screen, and tap Add.</p>
               </details>
+              <details className="py-3">
+                <summary className="cursor-pointer text-sm font-medium">How do I install Komunyon on Android?</summary>
+                <p className="mt-2 text-sm leading-relaxed text-muted">Open Komunyon in Chrome, tap the three-dot menu, choose Install app or Add to Home screen, and confirm.</p>
+              </details>
             </div>
           </div>
         </details>
