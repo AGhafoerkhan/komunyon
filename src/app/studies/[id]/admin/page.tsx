@@ -182,20 +182,24 @@ export default function CoHostAdminPage() {
             {canManageCoHostPermissions ? (
               <div className="mt-4 ml-4 border-l-2 border-canal pl-4">
                 <p className="text-sm font-medium">Permissions this co-host may grant</p>
-                <div className="mt-2 divide-y divide-line">
-                  {([
+                {Object.values(grantableAllowed).some(Boolean) ? (
+                  <div className="mt-2 divide-y divide-line">
+                    {([
                     ['canEdit', 'Can edit this study'],
                     ['canManageParticipants', 'Can manage participants'],
                     ['canManageSessions', 'Can manage sessions'],
                     ['canManageCoHosts', 'Can manage co-hosts'],
                     ['canManageCoHostPermissions', 'Can manage co-host permissions'],
-                  ] as const).filter(([key]) => grantableAllowed[key]).map(([key, label]) => (
-                    <label key={key} className="flex items-center justify-between gap-4 py-2 text-sm">
-                      <span>{label}</span>
-                      <input type="checkbox" checked={grantable[key]} disabled={!grantableAllowed[key] && !grantable[key]} onChange={(event) => setGrantable((current) => ({ ...current, [key]: event.target.checked }))} />
-                    </label>
-                  ))}
-                </div>
+                    ] as const).filter(([key]) => grantableAllowed[key]).map(([key, label]) => (
+                      <label key={key} className="flex items-center justify-between gap-4 py-2 text-sm">
+                        <span>{label}</span>
+                        <input type="checkbox" checked={grantable[key]} disabled={!grantableAllowed[key] && !grantable[key]} onChange={(event) => setGrantable((current) => ({ ...current, [key]: event.target.checked }))} />
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm leading-relaxed text-muted">Ask an admin to grant you permission to manage co-host access.</p>
+                )}
               </div>
             ) : null}
             <Button className="mt-6" onClick={() => void save()} disabled={saving}>
