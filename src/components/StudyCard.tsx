@@ -145,14 +145,14 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
           >
             {joinRequested ? 'Waiting for approval' : 'Join'}
           </button>
-        ) : joined && sessionDate ? (
+        ) : joined && sessionDate && !sessionJoined ? (
         <button
           type="button"
           className={`absolute bottom-4 right-4 text-sm underline underline-offset-2 disabled:opacity-50 ${sessionJoined ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
           onClick={(event) => void toggleCardAttendance(event)}
           disabled={attendanceBusy || (!sessionJoined && sessionTaken >= study.maxCapacity)}
         >
-          {sessionJoined ? 'Leave' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
+            {sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
         </button>
       ) : null}
     </div>
