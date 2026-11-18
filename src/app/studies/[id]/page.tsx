@@ -1161,9 +1161,14 @@ function StudyBody({
                 <div className="rounded-lg border border-line bg-card p-4">
                   <p className="text-sm leading-relaxed text-muted">When enabled, approved members can see each other’s phone numbers and WhatsApp links.</p>
                   {role === 'host' || canEditStudy ? (
-                    <button type="button" role="switch" aria-checked={study.showMemberContacts} onClick={() => void toggleMemberContacts()} disabled={contactVisibilityBusy} className={'mt-4 flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm ' + (study.showMemberContacts ? 'border-canal bg-canal/10' : 'border-line bg-card')}>
+                    <button type="button" role="switch" aria-checked={study.showMemberContacts} aria-label="Members can contact each other" onClick={() => void toggleMemberContacts()} disabled={contactVisibilityBusy} className={'mt-4 flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm ' + (study.showMemberContacts ? 'border-canal bg-canal/10' : 'border-line bg-card')}>
                       <span>Members can contact each other</span>
-                      <span className="font-medium">{study.showMemberContacts ? 'ON' : 'OFF'}</span>
+                      <span className={'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ' + (study.showMemberContacts ? 'border-canal bg-canal' : 'border-line bg-sand')}>
+                        <span className={'size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ' + (study.showMemberContacts ? 'translate-x-6' : 'translate-x-0')} />
+                        <span className={'absolute inset-0 flex items-center text-[10px] font-medium ' + (study.showMemberContacts ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted')}>
+                          {study.showMemberContacts ? 'ON' : 'OFF'}
+                        </span>
+                      </span>
                     </button>
                   ) : (
                     <p className="mt-4 text-sm font-medium">{study.showMemberContacts ? 'Members can contact each other.' : 'Members cannot see each other’s contact details.'}</p>
