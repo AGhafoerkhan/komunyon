@@ -8,9 +8,11 @@ import { actionError } from '@/lib/errors';
 import { getFirebase } from '@/lib/firebase';
 import { loadPeople } from '@/lib/studies';
 import { searchProfiles } from '@/lib/users';
+import { useAuth } from '@/components/AuthProvider';
 import type { BibleStudy, JoinRequest, UserProfile } from '@/types';
 
 export function CoHostPanel({ study }: { study: BibleStudy }) {
+  const { user } = useAuth();
   const [people, setPeople] = useState<JoinRequest[]>([]);
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<UserProfile[]>([]);
@@ -20,6 +22,7 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
   const [adminUid, setAdminUid] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const visibleAssignedIds = coHostIds.filter((id) => id !== user?.uid);
 
   useEffect(() => {
     let active = true;
@@ -104,11 +107,11 @@ export function CoHostPanel({ study }: { study: BibleStudy }) {
       <div className="px-4 py-3">
         {error ? <p className="mb-3 text-sm text-clay">{error}</p> : null}
         <input className={fieldClass} value={term} onChange={(event) => setTerm(event.target.value)} placeholder="Search an approved participant" aria-label="Search an approved participant" autoComplete="off" />
-        {coHostIds.length > 0 ? (
+        {visibleAssignedIds.length > 0 ? (
           <div className="mt-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted">Assigned co-hosts</p>
             <ul className="mt-2">
-              {people.filter((person) => coHostIds.includes(person.userId)).map((person) => (
+              {people.filter((person) => visibleAssignedIds.includes(person.userId)).map((person) => (
                 <div key={person.userId}>
                 <li className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
                   <Avatar src={person.photoURL} name={person.fullName} size={36} />
