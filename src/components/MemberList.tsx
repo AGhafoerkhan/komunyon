@@ -14,6 +14,7 @@ export function MemberList({
   onPhoto,
   showPhone = true,
   coHostIds = [],
+  hostId,
   rowId,
 }: {
   title: string;
@@ -24,6 +25,7 @@ export function MemberList({
   onPhoto?: (src: string, name: string) => void;
   showPhone?: boolean;
   coHostIds?: string[];
+  hostId?: string;
   rowId?: (request: JoinRequest) => string;
 }) {
   return (
@@ -55,7 +57,8 @@ export function MemberList({
                 <div className="min-w-0">
                   <p className="text-sm font-medium break-words">
                     {request.fullName}
-                    {coHostIds.includes(request.userId) ? <span className="font-normal text-canal"> · Co-host</span> : null}
+                    {hostId === request.userId ? <span className="font-normal text-canal"> · Host</span> : null}
+                    {hostId !== request.userId && coHostIds.includes(request.userId) ? <span className="font-normal text-canal"> · Co-host</span> : null}
                     {request.profileMissing ? null : <span className="font-normal text-muted"> · {request.age}</span>}
                   </p>
                   {request.place ? <p className="mt-0.5 text-xs text-muted">{request.place}</p> : null}

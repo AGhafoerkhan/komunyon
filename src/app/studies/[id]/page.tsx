@@ -955,6 +955,7 @@ function StudyBody({
                     requests={uniqueMembers(attendingMembers)}
                 showPhone
                     coHostIds={coHostIds}
+                    hostId={study.hostId}
               />
             </div>
           ) : null}
@@ -1162,6 +1163,7 @@ function StudyBody({
             requests={uniqueMembers(hostMember ? [hostMember, ...approvedMembers] : approvedMembers)}
             showPhone={false}
             coHostIds={coHostIds}
+            hostId={study.hostId}
             onPhoto={openPhoto}
           />
         </div>
