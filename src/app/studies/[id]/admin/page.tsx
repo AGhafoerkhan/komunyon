@@ -148,7 +148,7 @@ export default function CoHostAdminPage() {
           <div className="mt-5"><Alert>Ask an admin to grant you permission to manage co-host access.</Alert></div>
         ) : (
           <section className="mt-6 rounded-lg border border-line bg-card p-4">
-            <div className="flex items-center justify-between gap-4">
+            {grantableAllowed.canEdit ? <div className="flex items-center justify-between gap-4">
               <span>
                 <span className="block font-medium">Can edit this study</span>
                 <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to use the Edit study page and manage history files.</span>
@@ -166,8 +166,8 @@ export default function CoHostAdminPage() {
                   {canEdit ? 'ON' : 'OFF'}
                 </span>
               </button>
-            </div>
-            <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
+            </div> : null}
+            {grantableAllowed.canManageParticipants ? <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
               <span>
                 <span className="block font-medium">Can manage participants</span>
                 <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to approve and manage participants.</span>
@@ -185,8 +185,8 @@ export default function CoHostAdminPage() {
                   {canManageParticipants ? 'ON' : 'OFF'}
                 </span>
               </button>
-            </div>
-            <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
+            </div> : null}
+            {grantableAllowed.canManageSessions ? <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
               <span>
                 <span className="block font-medium">Can manage sessions</span>
                 <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to proceed or cancel future sessions.</span>
@@ -195,8 +195,8 @@ export default function CoHostAdminPage() {
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageSessions ? 'translate-x-6' : 'translate-x-0'}`} />
                 <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageSessions ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageSessions ? 'ON' : 'OFF'}</span>
               </button>
-            </div>
-            <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
+            </div> : null}
+            {grantableAllowed.canManageCoHosts ? <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
               <span>
                 <span className="block font-medium">Can manage co-hosts</span>
                 <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to assign, remove, and manage co-host access.</span>
@@ -205,8 +205,8 @@ export default function CoHostAdminPage() {
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageCoHosts ? 'translate-x-6' : 'translate-x-0'}`} />
                 <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHosts ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageCoHosts ? 'ON' : 'OFF'}</span>
               </button>
-            </div>
-            <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
+            </div> : null}
+            {grantableAllowed.canManageCoHostPermissions ? <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
               <span>
                 <span className="block font-medium">Can manage co-host permissions</span>
                 <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to change permissions for OTHER co-hosts.</span>
@@ -215,8 +215,8 @@ export default function CoHostAdminPage() {
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageCoHostPermissions ? 'translate-x-6' : 'translate-x-0'}`} />
                 <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHostPermissions ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageCoHostPermissions ? 'ON' : 'OFF'}</span>
               </button>
-            </div>
-            {canManageCoHostPermissions ? (
+            </div> : null}
+            {canManageCoHostPermissions && grantableAllowed.canManageCoHostPermissions ? (
               <div className="mt-4 ml-4 border-l-2 border-canal pl-4">
                 <p className="text-sm font-medium">Permissions {name} may grant</p>
                 {Object.values(grantableAllowed).some(Boolean) ? (
