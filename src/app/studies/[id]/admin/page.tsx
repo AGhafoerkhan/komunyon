@@ -112,25 +112,6 @@ export default function CoHostAdminPage() {
                 </span>
               </button>
             </div>
-            {canManageCoHostPermissions ? (
-              <div className="mt-5 border-t border-line pt-4">
-                <p className="text-sm font-medium">Permissions this co-host may grant</p>
-                <div className="mt-2 divide-y divide-line">
-                  {([
-                    ['canEdit', 'Can edit this study'],
-                    ['canManageParticipants', 'Can manage participants'],
-                    ['canManageSessions', 'Can manage sessions'],
-                    ['canManageCoHosts', 'Can manage co-hosts'],
-                    ['canManageCoHostPermissions', 'Can manage co-host permissions'],
-                  ] as const).map(([key, label]) => (
-                    <label key={key} className="flex items-center justify-between gap-4 py-2 text-sm">
-                      <span>{label}</span>
-                      <input type="checkbox" checked={grantable[key]} onChange={(event) => setGrantable((current) => ({ ...current, [key]: event.target.checked }))} />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ) : null}
             <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
               <span>
                 <span className="block font-medium">Can manage participants</span>
@@ -180,6 +161,25 @@ export default function CoHostAdminPage() {
                 <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHostPermissions ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageCoHostPermissions ? 'ON' : 'OFF'}</span>
               </button>
             </div>
+            {canManageCoHostPermissions ? (
+              <div className="mt-4 ml-4 border-l-2 border-canal pl-4">
+                <p className="text-sm font-medium">Permissions this co-host may grant</p>
+                <div className="mt-2 divide-y divide-line">
+                  {([
+                    ['canEdit', 'Can edit this study'],
+                    ['canManageParticipants', 'Can manage participants'],
+                    ['canManageSessions', 'Can manage sessions'],
+                    ['canManageCoHosts', 'Can manage co-hosts'],
+                    ['canManageCoHostPermissions', 'Can manage co-host permissions'],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center justify-between gap-4 py-2 text-sm">
+                      <span>{label}</span>
+                      <input type="checkbox" checked={grantable[key]} onChange={(event) => setGrantable((current) => ({ ...current, [key]: event.target.checked }))} />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <Button className="mt-6" onClick={() => void save()} disabled={saving}>
               {saving ? 'Saving…' : 'Save access'}
             </Button>
