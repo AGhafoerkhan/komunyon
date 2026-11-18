@@ -9,6 +9,7 @@ import { Alert, Button, LoadingScreen, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { getFirebase } from '@/lib/firebase';
 import { getStudy } from '@/lib/studies';
+import { loadProfile } from '@/lib/users';
 
 export default function CoHostAdminPage() {
   const params = useParams();
@@ -33,10 +34,11 @@ export default function CoHostAdminPage() {
     let active = true;
     void Promise.all([
       getStudy(studyId),
+      loadProfile(uid),
       getDoc(doc(getFirebase().db, 'studies', studyId, 'managers', uid)),
       getDoc(doc(getFirebase().db, 'studies', studyId, 'managers', user.uid)),
     ])
-      .then(([study, manager, actorManager]) => {
+      .then(([study, profile, manager, actorManager]) => {
         if (!active) return;
         const canManagePermissions = actorManager.exists() && actorManager.data().permissions?.canManageCoHostPermissions === true;
         if (!study || (study.hostId !== user.uid && (!canManagePermissions || uid === user.uid)) || !study.approvedUserIds.includes(uid)) {
@@ -52,7 +54,7 @@ export default function CoHostAdminPage() {
           canManageCoHosts: study.hostId === user.uid || actorGrantable?.canManageCoHosts === true,
           canManageCoHostPermissions: study.hostId === user.uid || actorGrantable?.canManageCoHostPermissions === true,
         });
-        setName(study.approvedUserIds.includes(uid) ? 'Assigned co-host' : 'Co-host');
+        setName(profile?.fullName || 'Assigned co-host');
         setCanEdit(manager.exists() && manager.data().permissions?.canEdit === true);
         setCanManageParticipants(manager.exists() && manager.data().permissions?.canManageParticipants === true);
         setCanManageCoHosts(manager.exists() && manager.data().permissions?.canManageCoHosts === true);
@@ -181,7 +183,7 @@ export default function CoHostAdminPage() {
             </div>
             {canManageCoHostPermissions ? (
               <div className="mt-4 ml-4 border-l-2 border-canal pl-4">
-                <p className="text-sm font-medium">Permissions this co-host may grant</p>
+                <p className="text-sm font-medium">Permissions {name} may grant</p>
                 {Object.values(grantableAllowed).some(Boolean) ? (
                   <div className="mt-2 divide-y divide-line">
                     {([
