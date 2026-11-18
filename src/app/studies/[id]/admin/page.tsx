@@ -31,6 +31,10 @@ export default function CoHostAdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!Object.values(grantable).some(Boolean)) setCanManageCoHostPermissions(false);
+  }, [grantable]);
+
+  useEffect(() => {
     if (!user || !studyId || !uid) return;
     let active = true;
     let stopManagers: Array<() => void> = [];
