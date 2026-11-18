@@ -28,6 +28,15 @@ export function MemberList({
   hostId?: string;
   rowId?: (request: JoinRequest) => string;
 }) {
+  const orderedRequests = [...requests].sort((left, right) => {
+    const priority = (request: JoinRequest) => {
+      if (hostId === request.userId) return 0;
+      if (coHostIds.includes(request.userId)) return 1;
+      return 2;
+    };
+    return priority(left) - priority(right) || left.fullName.localeCompare(right.fullName);
+  });
+
   return (
     <section className="rounded-lg border border-line bg-card">
       <div className="border-b border-line px-4 py-3">
@@ -41,7 +50,7 @@ export function MemberList({
         <p className="px-4 py-6 text-sm text-muted">{empty}</p>
       ) : (
         <ul>
-          {requests.map((request) => (
+          {orderedRequests.map((request) => (
             <li
               key={request.userId}
               id={rowId?.(request)}
