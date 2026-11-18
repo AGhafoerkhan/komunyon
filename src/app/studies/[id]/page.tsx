@@ -918,7 +918,6 @@ function StudyBody({
                     >
                       {sessionCanceled ? 'Proceed' : 'Cancel'}
                     </button>
-                    {sessionCanceled && !sessionJoined ? <span className="text-xs font-normal text-muted">Join attendance first</span> : null}
                   </span>
                 ) : role === 'approved' && sessionDate && !sessionCanceled ? (
                   <button
@@ -1026,7 +1025,7 @@ function StudyBody({
                           onClick={() => void toggleHostPlannedSession(date)}
                           disabled={planningBusy !== null || hostAvailability[date] !== true}
                         >
-                          {hostAvailability[date] !== true ? 'Join attendance first' : study.skippedDates.includes(date) ? 'Proceed' : 'Cancel'}
+                      {study.skippedDates.includes(date) ? 'Proceed' : 'Cancel'}
                         </button>
                       ) : (
                         <span className="text-muted">—</span>
