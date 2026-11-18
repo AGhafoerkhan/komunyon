@@ -21,6 +21,7 @@ export default function CoHostAdminPage() {
   const [canManageParticipants, setCanManageParticipants] = useState(false);
   const [canManageCoHosts, setCanManageCoHosts] = useState(false);
   const [canManageCoHostPermissions, setCanManageCoHostPermissions] = useState(false);
+  const [grantable, setGrantable] = useState({ canEdit: false, canManageParticipants: false, canManageSessions: false, canManageCoHosts: false, canManageCoHostPermissions: false });
   const [canManageSessions, setCanManageSessions] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -47,6 +48,7 @@ export default function CoHostAdminPage() {
         setCanManageParticipants(manager.exists() && manager.data().permissions?.canManageParticipants === true);
         setCanManageCoHosts(manager.exists() && manager.data().permissions?.canManageCoHosts === true);
         setCanManageCoHostPermissions(manager.exists() && manager.data().permissions?.canManageCoHostPermissions === true);
+        setGrantable({ canEdit: manager.data()?.permissions?.grantable?.canEdit === true, canManageParticipants: manager.data()?.permissions?.grantable?.canManageParticipants === true, canManageSessions: manager.data()?.permissions?.grantable?.canManageSessions === true, canManageCoHosts: manager.data()?.permissions?.grantable?.canManageCoHosts === true, canManageCoHostPermissions: manager.data()?.permissions?.grantable?.canManageCoHostPermissions === true });
         setCanManageSessions(manager.exists() && manager.data().permissions?.canManageSessions === true);
         setLoaded(true);
       })
@@ -72,7 +74,7 @@ export default function CoHostAdminPage() {
       if (!study || (study.hostId !== user.uid && !canManagePermissions)) throw new Error('You do not have permission to manage co-host access.');
       await setDoc(doc(getFirebase().db, 'studies', studyId, 'managers', uid), {
         uid,
-        permissions: { canEdit, canManageParticipants, canManageCoHosts, canManageCoHostPermissions, canManageSessions },
+        permissions: { canEdit, canManageParticipants, canManageCoHosts, canManageCoHostPermissions, canManageSessions, grantable },
         updatedAt: new Date().toISOString(),
       }, { merge: true });
     } catch (failure) {
@@ -110,6 +112,25 @@ export default function CoHostAdminPage() {
                 </span>
               </button>
             </div>
+            {canManageCoHostPermissions ? (
+              <div className="mt-5 border-t border-line pt-4">
+                <p className="text-sm font-medium">Permissions this co-host may grant</p>
+                <div className="mt-2 divide-y divide-line">
+                  {([
+                    ['canEdit', 'Can edit this study'],
+                    ['canManageParticipants', 'Can manage participants'],
+                    ['canManageSessions', 'Can manage sessions'],
+                    ['canManageCoHosts', 'Can manage co-hosts'],
+                    ['canManageCoHostPermissions', 'Can manage co-host permissions'],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center justify-between gap-4 py-2 text-sm">
+                      <span>{label}</span>
+                      <input type="checkbox" checked={grantable[key]} onChange={(event) => setGrantable((current) => ({ ...current, [key]: event.target.checked }))} />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
               <span>
                 <span className="block font-medium">Can manage participants</span>
