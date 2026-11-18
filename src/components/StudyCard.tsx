@@ -112,7 +112,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
       </div>
       <div className="h-[6.5rem] shrink-0 overflow-hidden">
         <h2 className="h-12 overflow-hidden font-serif text-xl leading-snug break-words">{study.title}</h2>
-        <div className="-mt-1 flex h-6 items-start overflow-hidden">
+        <div className="mt-1 flex h-6 items-start overflow-hidden">
           <TagList tags={study.tags} />
         </div>
         <div className="mt-1 text-sm text-muted">
