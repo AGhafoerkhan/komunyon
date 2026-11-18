@@ -93,16 +93,18 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
         </div>
         <FormatBadge format={study.format} />
       </div>
-      <h2 className="h-12 shrink-0 overflow-hidden font-serif text-xl leading-snug break-words">{study.title}</h2>
-      <div className="-mt-2 flex h-6 shrink-0 items-start overflow-hidden">
-        <TagList tags={study.tags} />
-      </div>
-      <div className="h-10 shrink-0 overflow-hidden text-sm text-muted">
-        {canceledDate ? (
-          <p>{formatDdMmYyyy(canceledDate)} · {study.time} · <span className="text-clay">Canceled</span></p>
-        ) : (
-          <p>{formatSchedule(study)}</p>
-        )}
+      <div className="h-[6.5rem] shrink-0 overflow-hidden">
+        <h2 className="h-12 overflow-hidden font-serif text-xl leading-snug break-words">{study.title}</h2>
+        <div className="-mt-1 flex h-6 items-start overflow-hidden">
+          <TagList tags={study.tags} />
+        </div>
+        <div className="mt-1 text-sm text-muted">
+          {canceledDate ? (
+            <p>{formatDdMmYyyy(canceledDate)} · {study.time} · <span className="text-clay">Canceled</span></p>
+          ) : (
+            <p>{formatSchedule(study)}</p>
+          )}
+        </div>
       </div>
       <p className={`h-10 shrink-0 overflow-hidden text-sm leading-relaxed line-clamp-2 ${canceledDate ? 'text-canal' : 'text-clay'}`}>
         {canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || '\u00a0'}
