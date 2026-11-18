@@ -1238,7 +1238,7 @@ function StudyBody({
             empty="No one else is approved yet."
             studyId={study.id}
             requests={uniqueMembers(hostMember ? [hostMember, ...approvedMembers] : approvedMembers)}
-            showPhone={false}
+            showPhone={study.showMemberContacts}
             coHostIds={coHostIds}
             hostId={study.hostId}
             onPhoto={openPhoto}
