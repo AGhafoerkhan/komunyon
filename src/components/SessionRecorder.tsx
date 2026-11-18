@@ -23,8 +23,20 @@ export function SessionRecorder({ studyId, date, uid }: { studyId: string; date:
   async function start() {
     setError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          sampleRate: 48000,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      const opusType = 'audio/webm;codecs=opus';
+      const recorder = new MediaRecorder(stream, {
+        ...(MediaRecorder.isTypeSupported(opusType) ? { mimeType: opusType } : {}),
+        audioBitsPerSecond: 128000,
+      });
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
