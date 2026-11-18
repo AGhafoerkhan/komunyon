@@ -24,6 +24,7 @@ export default function CoHostAdminPage() {
   const [canManageCoHostPermissions, setCanManageCoHostPermissions] = useState(false);
   const [grantable, setGrantable] = useState({ canEdit: false, canManageParticipants: false, canManageSessions: false, canManageCoHosts: false, canManageCoHostPermissions: false });
   const [grantableAllowed, setGrantableAllowed] = useState({ canEdit: true, canManageParticipants: true, canManageSessions: true, canManageCoHosts: true, canManageCoHostPermissions: true });
+  const [isPrimaryHost, setIsPrimaryHost] = useState(false);
   const [canManageSessions, setCanManageSessions] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -47,6 +48,7 @@ export default function CoHostAdminPage() {
           return;
         }
         const actorGrantable = actorManager.data()?.permissions?.grantable;
+        setIsPrimaryHost(study.hostId === user.uid);
         setGrantableAllowed({
           canEdit: study.hostId === user.uid || actorGrantable?.canEdit === true,
           canManageParticipants: study.hostId === user.uid || actorGrantable?.canManageParticipants === true,
@@ -111,7 +113,9 @@ export default function CoHostAdminPage() {
       <div className="mx-auto max-w-lg">
         <p className="text-sm text-muted">Co-host admin access</p>
         <h1 className={`mt-2 ${pageTitleClass}`}>{name}</h1>
-        {error ? <div className="mt-5"><Alert>{error}</Alert></div> : (
+        {error ? <div className="mt-5"><Alert>{error}</Alert></div> : !isPrimaryHost && !Object.values(grantableAllowed).some(Boolean) ? (
+          <div className="mt-5"><Alert>Ask an admin to grant you permission to manage co-host access.</Alert></div>
+        ) : (
           <section className="mt-6 rounded-lg border border-line bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <span>
