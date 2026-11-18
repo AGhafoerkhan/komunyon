@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Avatar, FormatBadge, TagList } from '@/components/ui';
-import { loadSessionAttendance } from '@/lib/attendance';
+import { loadSessionAttendance, setSessionAttendance, subscribeSessionAttendance, subscribeSessionAttendanceList } from '@/lib/attendance';
 import { cancellationNote, formatDdMmYyyy, formatSchedule, spotsLabel, upcomingSession, upcomingSessions } from '@/lib/format';
 import type { BibleStudy } from '@/types';
 
@@ -24,6 +24,8 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
   const canceledDate = firstScheduledDate && study.skippedDates.includes(firstScheduledDate) ? firstScheduledDate : null;
   const displayedHostName = cardHostName(study.hostName);
   const [sessionTaken, setSessionTaken] = useState(taken);
+  const [sessionJoined, setSessionJoined] = useState(false);
+  const [attendanceBusy, setAttendanceBusy] = useState(false);
 
   useEffect(() => {
     if (!sessionDate || (!hosting && !joined)) {
@@ -43,11 +45,41 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
     };
   }, [hosting, joined, sessionDate, study.id, taken]);
 
+  useEffect(() => {
+    if (!sessionDate || !joined) return;
+    const unsubscribeUser = subscribeSessionAttendance(study.id, sessionDate, viewerId, setSessionJoined, () => undefined);
+    const unsubscribeList = subscribeSessionAttendanceList(
+      study.id,
+      sessionDate,
+      (records) => setSessionTaken(records.filter((record) => record.joined).length),
+      () => undefined,
+    );
+    return () => {
+      unsubscribeUser();
+      unsubscribeList();
+    };
+  }, [joined, sessionDate, study.id, viewerId]);
+
+  async function toggleCardAttendance(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!sessionDate || !joined || attendanceBusy) return;
+    const next = !sessionJoined;
+    if (next && sessionTaken >= study.maxCapacity) return;
+    setAttendanceBusy(true);
+    try {
+      await setSessionAttendance(study.id, sessionDate, viewerId, next, study.maxCapacity);
+      setSessionJoined(next);
+    } finally {
+      setAttendanceBusy(false);
+    }
+  }
+
   return (
-    <Link
-      href={`/studies/${study.id}`}
+    <div
       className="flex h-[332px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
     >
+      <Link href={`/studies/${study.id}`} className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex h-10 shrink-0 items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar src={study.hostPhotoURL} name={study.hostName} size={40} />
@@ -84,6 +116,17 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
         {hosting ? <span className="text-canal"> · Your study</span> : null}
         {joined && !canceledDate ? <span className="text-canal"> · Joined</span> : null}
       </p>
-    </Link>
+      </Link>
+      {joined && sessionDate ? (
+        <button
+          type="button"
+          className={`self-end text-sm underline underline-offset-2 disabled:opacity-50 ${sessionJoined ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
+          onClick={(event) => void toggleCardAttendance(event)}
+          disabled={attendanceBusy || (!sessionJoined && sessionTaken >= study.maxCapacity)}
+        >
+          {sessionJoined ? 'Leave' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
+        </button>
+      ) : null}
+    </div>
   );
 }
