@@ -213,6 +213,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canManageParticipants == true;
     }
 
+    function isCoHostManager(studyId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canManageCoHosts == true;
+    }
+
     function hostPreserved() {
       return request.resource.data.hostId == resource.data.hostId
         && request.resource.data.createdAt == resource.data.createdAt;
@@ -526,7 +532,7 @@ service cloud.firestore {
             || studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid]));
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && studyDoc(studyId).hostId == request.auth.uid
+          && (studyDoc(studyId).hostId == request.auth.uid || isCoHostManager(studyId))
           && studyDoc(studyId).approvedUserIds.hasAny([uid])
           && request.resource.data.keys().hasOnly(['uid', 'createdAt', 'permissions', 'updatedAt'])
           && request.resource.data.uid == uid
@@ -534,16 +540,18 @@ service cloud.firestore {
           && (!request.resource.data.keys().hasAny(['updatedAt']) || request.resource.data.updatedAt is string)
           && (!request.resource.data.keys().hasAny(['permissions'])
             || (request.resource.data.permissions is map
-              && request.resource.data.permissions.keys().hasOnly(['canEdit', 'canManageParticipants', 'canManageSessions'])
+              && request.resource.data.permissions.keys().hasOnly(['canEdit', 'canManageParticipants', 'canManageCoHosts', 'canManageSessions'])
               && (!request.resource.data.permissions.keys().hasAny(['canEdit'])
                 || request.resource.data.permissions.canEdit is bool)
               && (!request.resource.data.permissions.keys().hasAny(['canManageParticipants'])
                 || request.resource.data.permissions.canManageParticipants is bool)
+              && (!request.resource.data.permissions.keys().hasAny(['canManageCoHosts'])
+                || request.resource.data.permissions.canManageCoHosts is bool)
               && (!request.resource.data.permissions.keys().hasAny(['canManageSessions'])
                 || request.resource.data.permissions.canManageSessions is bool)));
         allow delete: if studyExists(studyId)
           && signedIn()
-          && studyDoc(studyId).hostId == request.auth.uid;
+          && (studyDoc(studyId).hostId == request.auth.uid || isCoHostManager(studyId));
       }
 
       match /sessions/{date} {

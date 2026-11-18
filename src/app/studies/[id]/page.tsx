@@ -30,6 +30,7 @@ import {
   subscribeCoHostIds,
   subscribeCoHostEditPermission,
   subscribeCoHostParticipantPermission,
+  subscribeCoHostManagerPermission,
   subscribeCoHostSessionPermission,
   loadPeople,
   removeMember,
@@ -78,6 +79,7 @@ export default function StudyPage() {
   const [coHostIds, setCoHostIds] = useState<string[]>([]);
   const [canEditStudy, setCanEditStudy] = useState(false);
   const [canManageParticipants, setCanManageParticipants] = useState(false);
+  const [canManageCoHosts, setCanManageCoHosts] = useState(false);
   const [canManageSessions, setCanManageSessions] = useState(false);
   const [rosterReady, setRosterReady] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -231,6 +233,14 @@ export default function StudyPage() {
 
   useEffect(() => {
     if (!study || !user || study.hostId === user.uid) {
+      setCanManageCoHosts(study?.hostId === user?.uid);
+      return;
+    }
+    return subscribeCoHostManagerPermission(study.id, user.uid, setCanManageCoHosts, () => setCanManageCoHosts(false));
+  }, [study, user]);
+
+  useEffect(() => {
+    if (!study || !user || study.hostId === user.uid) {
       setCanManageParticipants(study?.hostId === user?.uid);
       return;
     }
@@ -376,6 +386,7 @@ export default function StudyPage() {
           hostMember={hostMember}
           canEditStudy={canEditStudy}
           canManageParticipants={canManageParticipants}
+          canManageCoHosts={canManageCoHosts}
           canManageSessions={canManageSessions}
           role={roleFor(study, user.uid)}
           details={details}
@@ -639,6 +650,7 @@ function StudyBody({
   hostMember,
   canEditStudy,
   canManageParticipants,
+  canManageCoHosts,
   canManageSessions,
   role,
   details,
@@ -665,6 +677,7 @@ function StudyBody({
   hostMember: JoinRequest | null;
   canEditStudy: boolean;
   canManageParticipants: boolean;
+  canManageCoHosts: boolean;
   canManageSessions: boolean;
   role: Role;
   details: PrivateStudyDetails | null;
@@ -1187,10 +1200,11 @@ function StudyBody({
         </div>
       ) : null}
 
-      {role === 'host' || canManageParticipants ? (
+      {role === 'host' || canManageParticipants || canManageCoHosts ? (
         <div className="mt-8 grid gap-4">
-          <InvitePeople study={study} />
-          <CoHostPanel study={study} />
+          {role === 'host' || canManageParticipants ? <InvitePeople study={study} /> : null}
+          {role === 'host' || canManageCoHosts ? <CoHostPanel study={study} /> : null}
+          {role === 'host' || canManageParticipants ? <>
           {!rosterReady ? <p className="text-sm text-muted">Loading requests…</p> : null}
           {full ? (
             <p className="text-sm text-muted">
@@ -1232,6 +1246,7 @@ function StudyBody({
               )
             )}
           />
+          </> : null}
         </div>
       ) : null}
       {photo ? <PhotoLightbox src={photo.src} name={photo.name} onClose={() => setPhoto(null)} /> : null}
