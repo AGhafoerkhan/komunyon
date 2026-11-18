@@ -31,7 +31,8 @@ export default function CoHostAdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!Object.values(grantable).some(Boolean)) setCanManageCoHostPermissions(false);
+    const hasGrantablePermission = Object.values(grantable).some(Boolean);
+    setCanManageCoHostPermissions(hasGrantablePermission);
   }, [grantable]);
 
   useEffect(() => {
@@ -220,7 +221,7 @@ export default function CoHostAdminPage() {
                 <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHostPermissions ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageCoHostPermissions ? 'ON' : 'OFF'}</span>
               </button>
             </div> : null}
-            {canManageCoHostPermissions && grantableAllowed.canManageCoHostPermissions ? (
+            {(isPrimaryHost || canManageCoHostPermissions || grantableAllowed.canManageCoHostPermissions) ? (
               <div className="mt-4 ml-4 border-l-2 border-canal pl-4">
                 <p className="text-sm font-medium">Permissions {name} may grant</p>
                 {Object.values(grantableAllowed).some(Boolean) ? (
