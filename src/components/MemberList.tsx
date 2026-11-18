@@ -46,7 +46,7 @@ export function MemberList({
           && permissions.canManageSessions === true
           && permissions.canManageCoHosts === true
           && permissions.canManageCoHostPermissions === true;
-        labels[item.id] = fullCoHost ? ['Co-host'] : [
+        labels[item.id] = fullCoHost ? ['Moderator', 'Inviter', 'Planner'] : [
           permissions.canEdit === true ? 'Moderator' : '',
           permissions.canManageParticipants === true ? 'Inviter' : '',
           permissions.canManageSessions === true ? 'Planner' : '',
