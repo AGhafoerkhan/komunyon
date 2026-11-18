@@ -172,7 +172,7 @@ export default function CoHostAdminPage() {
             <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
               <span>
                 <span className="block font-medium">Can manage co-host permissions</span>
-                <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to change permissions for other co-hosts.</span>
+                <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to change permissions for OTHER co-hosts.</span>
               </span>
               <button type="button" role="switch" aria-checked={canManageCoHostPermissions} aria-label="Can manage co-host permissions" onClick={() => setCanManageCoHostPermissions((current) => !current)} className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canManageCoHostPermissions ? 'border-canal bg-canal' : 'border-line bg-sand'}`}>
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageCoHostPermissions ? 'translate-x-6' : 'translate-x-0'}`} />
