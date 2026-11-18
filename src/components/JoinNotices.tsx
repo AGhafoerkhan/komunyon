@@ -15,6 +15,7 @@ import {
   loadJoinNotices,
   subscribeDepartures,
   subscribeHostedStudies,
+  subscribeParticipantManagedStudies,
   subscribeInvitedStudies,
   subscribeRemovalNotices,
   type HostNotice,
@@ -44,30 +45,38 @@ export function JoinNotices() {
   useEffect(() => {
     if (!user) return;
     let active = true;
-    const unsubscribe = subscribeHostedStudies(
-      user.uid,
-      (studies) => {
-        if (!active) return;
-        setHosted(studies);
+    const mergeResponsibilities = (next: BibleStudy[]) => {
+      setHosted((current) => {
+        const merged = new Map([...current, ...next].map((study) => [study.id, study]));
+        const studies = [...merged.values()];
         void loadJoinNotices(studies)
-          .then((next) => {
-            if (!active) return;
-            setRequests(next);
+          .then((notices) => {
+            setRequests(notices);
             setRequestsReady(true);
           })
           .catch(() => {
-            if (!active) return;
             setRequests([]);
             setRequestsReady(true);
           });
-      },
+        return studies;
+      });
+    };
+    const unsubscribe = subscribeHostedStudies(
+      user.uid,
+      (studies) => { if (active) mergeResponsibilities(studies); },
       () => {
         if (active) setRequests([]);
       },
     );
+    const unsubscribeManaged = subscribeParticipantManagedStudies(
+      user.uid,
+      (studies) => { if (active) mergeResponsibilities(studies); },
+      () => undefined,
+    );
     return () => {
       active = false;
       unsubscribe();
+      unsubscribeManaged();
     };
   }, [user]);
 

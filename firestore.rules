@@ -290,6 +290,28 @@ service cloud.firestore {
         && validPublicStudy(request.resource.data);
     }
 
+    function managerApprovesMember(studyId) {
+      return signedIn()
+        && isParticipantManager(studyId)
+        && onlyTouched(['pendingUserIds', 'approvedUserIds', 'updatedAt'])
+        && request.resource.data.pendingUserIds is list
+        && request.resource.data.approvedUserIds is list
+        && resource.data.pendingUserIds.hasAll(request.resource.data.pendingUserIds)
+        && request.resource.data.approvedUserIds.hasAll(resource.data.approvedUserIds)
+        && resource.data.pendingUserIds.size() == request.resource.data.pendingUserIds.size() + 1
+        && request.resource.data.approvedUserIds.size() == resource.data.approvedUserIds.size() + 1
+        && request.resource.data.approvedUserIds.size() <= resource.data.maxCapacity
+        && validPublicStudy(request.resource.data);
+    }
+
+    function managerDeclinesMember(studyId) {
+      return signedIn()
+        && isParticipantManager(studyId)
+        && onlyTouched(['pendingUserIds', 'updatedAt'])
+        && selfRemovedFrom(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
+        && validPublicStudy(request.resource.data);
+    }
+
     function selfAcceptsInvite() {
       return signedIn()
         && request.auth.uid != resource.data.hostId
@@ -467,6 +489,8 @@ service cloud.firestore {
         || selfLeavesGroup()
         || managerRemovesMember(studyId)
         || managerManagesSessions(studyId)
+        || managerApprovesMember(studyId)
+        || managerDeclinesMember(studyId)
         || selfAcceptsInvite()
         || selfDeclinesInvite()
         || (

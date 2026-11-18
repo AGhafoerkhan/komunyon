@@ -138,6 +138,21 @@ export function subscribeHostedStudies(
   );
 }
 
+export function subscribeParticipantManagedStudies(
+  uid: string,
+  onData: (studies: BibleStudy[]) => void,
+  onError: (error: unknown) => void,
+) {
+  const managedQuery = query(collection(getFirebase().db, 'studies'), where('approvedUserIds', 'array-contains', uid));
+  return onSnapshot(managedQuery, (snapshot) => {
+    void Promise.all(snapshot.docs.map(async (item) => {
+      const manager = await getDoc(doc(getFirebase().db, 'studies', item.id, 'managers', uid));
+      if (!manager.exists() || manager.data().permissions?.canManageParticipants !== true) return null;
+      return parseBibleStudy(item.id, item.data());
+    })).then((studies) => onData(studies.filter((study): study is BibleStudy => study !== null))).catch(onError);
+  }, onError);
+}
+
 export function subscribeApprovedStudies(
   uid: string,
   onData: (studies: BibleStudy[]) => void,
