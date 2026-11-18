@@ -1,7 +1,10 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/ui';
+import { getFirebase } from '@/lib/firebase';
 import { normalizePhone } from '@/lib/validate';
 import type { JoinRequest } from '@/types';
 
@@ -16,6 +19,7 @@ export function MemberList({
   coHostIds = [],
   hostId,
   rowId,
+  studyId,
 }: {
   title: string;
   description?: string;
@@ -27,7 +31,30 @@ export function MemberList({
   coHostIds?: string[];
   hostId?: string;
   rowId?: (request: JoinRequest) => string;
+  studyId?: string;
 }) {
+  const [roleLabels, setRoleLabels] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    if (!studyId) return;
+    return onSnapshot(collection(getFirebase().db, 'studies', studyId, 'managers'), (snapshot) => {
+      const labels: Record<string, string[]> = {};
+      snapshot.docs.forEach((item) => {
+        const permissions = item.data().permissions ?? {};
+        const fullCoHost = permissions.canEdit === true
+          && permissions.canManageParticipants === true
+          && permissions.canManageSessions === true
+          && permissions.canManageCoHosts === true
+          && permissions.canManageCoHostPermissions === true;
+        labels[item.id] = fullCoHost ? ['Co-host'] : [
+          permissions.canEdit === true ? 'Moderator' : '',
+          permissions.canManageParticipants === true ? 'Inviter' : '',
+          permissions.canManageSessions === true ? 'Planner' : '',
+        ].filter(Boolean);
+      });
+      setRoleLabels(labels);
+    }, () => setRoleLabels({}));
+  }, [studyId]);
   const orderedRequests = [...requests].sort((left, right) => {
     const priority = (request: JoinRequest) => {
       if (hostId === request.userId) return 0;
@@ -70,6 +97,7 @@ export function MemberList({
                     {hostId !== request.userId && coHostIds.includes(request.userId) ? <span className="font-normal text-canal"> · Co-host</span> : null}
                     {request.profileMissing ? null : <span className="font-normal text-muted"> · {request.age}</span>}
                   </p>
+                  {hostId !== request.userId && roleLabels[request.userId]?.length && !roleLabels[request.userId].includes('Co-host') ? <p className="text-xs text-canal">{roleLabels[request.userId].join(' · ')}</p> : null}
                   {request.place ? <p className="mt-0.5 text-xs text-muted">{request.place}</p> : null}
                   {showPhone && request.phone ? <PhoneLink phone={request.phone} /> : null}
                   {request.profileMissing || request.bio.length === 0 ? null : (

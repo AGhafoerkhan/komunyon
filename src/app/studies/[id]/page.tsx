@@ -996,6 +996,7 @@ function StudyBody({
                 title={`Attending this session · ${formatDdMmYyyy(attendingDate)}`}
                 description={role === 'approved' ? 'Host and co-host attendance is shown live.' : undefined}
                 empty="No one has joined this session yet."
+                    studyId={study.id}
                     requests={uniqueMembers(attendingMembers)}
                 showPhone
                     coHostIds={coHostIds}
@@ -1206,6 +1207,7 @@ function StudyBody({
             title="People in this study"
             description="Everyone approved to share this gathering. Open a photo to see it full size."
             empty="No one else is approved yet."
+            studyId={study.id}
             requests={uniqueMembers(hostMember ? [hostMember, ...approvedMembers] : approvedMembers)}
             showPhone={false}
             coHostIds={coHostIds}
@@ -1230,6 +1232,7 @@ function StudyBody({
             title="Pending requests"
             description="Photo, name, age, and bio. Approving shares the address."
             empty="No pending requests."
+            studyId={study.id}
             requests={pendingRequests}
             rowId={(request) => `request-${request.userId}`}
             onPhoto={openPhoto}
@@ -1248,6 +1251,7 @@ function StudyBody({
             title="People in this study"
             description="Everyone in this study. Open a photo to see it full size."
             empty="No approved members yet."
+            studyId={study.id}
             requests={uniqueMembers(hostMember ? [hostMember, ...approvedMembers] : approvedMembers)}
             rowId={(request) => `member-${request.userId}`}
             onPhoto={openPhoto}
