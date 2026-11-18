@@ -104,7 +104,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
           <p>{formatSchedule(study)}</p>
         )}
       </div>
-      <p className="h-10 shrink-0 overflow-hidden text-sm leading-relaxed text-clay line-clamp-2">
+      <p className={`h-10 shrink-0 overflow-hidden text-sm leading-relaxed line-clamp-2 ${canceledDate ? 'text-canal' : 'text-clay'}`}>
         {canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || '\u00a0'}
       </p>
       <p className="mt-auto shrink-0 text-sm tabular-nums">
