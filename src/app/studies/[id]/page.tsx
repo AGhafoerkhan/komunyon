@@ -46,6 +46,13 @@ import type { BibleStudy, JoinRequest, PrivateStudyDetails } from '@/types';
 
 type Role = 'host' | 'approved' | 'invited' | 'pending' | 'visitor';
 
+function visibleHostName(fullName: string, role: Role): string {
+  if (role === 'host' || role === 'approved') return fullName;
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return parts[0] ?? fullName;
+  return (parts[0][0]?.toUpperCase() ?? '') + ' ' + parts[parts.length - 1];
+}
+
 function uniqueMembers(members: JoinRequest[]): JoinRequest[] {
   return [...new Map(members.map((member) => [member.userId, member])).values()];
 }
@@ -739,6 +746,7 @@ function StudyBody({
   const openPhoto = (src: string, name: string) => setPhoto({ src, name });
   const visibleSessionTaken = sessionTaken;
   const hostTeamMember = role === 'host' || coHostIds.includes(viewerId);
+  const displayedHostName = visibleHostName(study.hostName, role);
 
 
   useEffect(() => {
@@ -908,7 +916,7 @@ function StudyBody({
             />
             <div>
               <p className="text-sm font-medium">
-                {study.hostName}
+                {displayedHostName}
                 <span className="font-normal text-muted"> · {study.hostAge}</span>
               </p>
               <div className="flex items-center gap-2">
