@@ -1,6 +1,6 @@
 'use client';
 
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
@@ -33,6 +33,7 @@ export default function CoHostAdminPage() {
   useEffect(() => {
     if (!user || !studyId || !uid) return;
     let active = true;
+    let stopManagers: Array<() => void> = [];
     void Promise.all([
       getStudy(studyId),
       loadProfile(uid),
@@ -63,6 +64,35 @@ export default function CoHostAdminPage() {
         setCanManageCoHostPermissions(manager.exists() && manager.data().permissions?.canManageCoHostPermissions === true);
         setGrantable({ canEdit: manager.data()?.permissions?.grantable?.canEdit === true, canManageParticipants: manager.data()?.permissions?.grantable?.canManageParticipants === true, canManageSessions: manager.data()?.permissions?.grantable?.canManageSessions === true, canManageCoHosts: manager.data()?.permissions?.grantable?.canManageCoHosts === true, canManageCoHostPermissions: manager.data()?.permissions?.grantable?.canManageCoHostPermissions === true });
         setCanManageSessions(manager.exists() && manager.data().permissions?.canManageSessions === true);
+        stopManagers = [
+          onSnapshot(doc(getFirebase().db, 'studies', studyId, 'managers', uid), (snapshot) => {
+            if (!active) return;
+            const permissions = snapshot.data()?.permissions;
+            setCanEdit(permissions?.canEdit === true);
+            setCanManageParticipants(permissions?.canManageParticipants === true);
+            setCanManageCoHosts(permissions?.canManageCoHosts === true);
+            setCanManageCoHostPermissions(permissions?.canManageCoHostPermissions === true);
+            setCanManageSessions(permissions?.canManageSessions === true);
+            setGrantable({
+              canEdit: permissions?.grantable?.canEdit === true,
+              canManageParticipants: permissions?.grantable?.canManageParticipants === true,
+              canManageSessions: permissions?.grantable?.canManageSessions === true,
+              canManageCoHosts: permissions?.grantable?.canManageCoHosts === true,
+              canManageCoHostPermissions: permissions?.grantable?.canManageCoHostPermissions === true,
+            });
+          }),
+          onSnapshot(doc(getFirebase().db, 'studies', studyId, 'managers', user.uid), (snapshot) => {
+            if (!active) return;
+            const actorPermissions = snapshot.data()?.permissions;
+            setGrantableAllowed({
+              canEdit: study.hostId === user.uid || actorPermissions?.grantable?.canEdit === true,
+              canManageParticipants: study.hostId === user.uid || actorPermissions?.grantable?.canManageParticipants === true,
+              canManageSessions: study.hostId === user.uid || actorPermissions?.grantable?.canManageSessions === true,
+              canManageCoHosts: study.hostId === user.uid || actorPermissions?.grantable?.canManageCoHosts === true,
+              canManageCoHostPermissions: study.hostId === user.uid || actorPermissions?.grantable?.canManageCoHostPermissions === true,
+            });
+          }),
+        ];
         setLoaded(true);
       })
       .catch((failure: unknown) => {
@@ -73,6 +103,7 @@ export default function CoHostAdminPage() {
       });
     return () => {
       active = false;
+      stopManagers.forEach((stop) => stop());
     };
   }, [studyId, uid, user]);
 
