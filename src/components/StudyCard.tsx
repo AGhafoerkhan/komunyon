@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Avatar, FormatBadge, TagList } from '@/components/ui';
 import { loadSessionAttendance } from '@/lib/attendance';
-import { cancellationNote, formatSchedule, spotsLabel, upcomingSession } from '@/lib/format';
+import { cancellationNote, formatDdMmYyyy, formatSchedule, spotsLabel, upcomingSession, upcomingSessions } from '@/lib/format';
 import type { BibleStudy } from '@/types';
 
 export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: string }) {
@@ -12,6 +12,10 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
   const hosting = study.hostId === viewerId;
   const joined = !hosting && study.approvedUserIds.includes(viewerId);
   const sessionDate = upcomingSession(study);
+  const firstScheduledDate = study.format === 'recurring' && study.dayOfWeek !== null
+    ? upcomingSessions(study.dayOfWeek, study.time, 1)[0] ?? null
+    : study.date;
+  const canceledDate = firstScheduledDate && study.skippedDates.includes(firstScheduledDate) ? firstScheduledDate : null;
   const [sessionTaken, setSessionTaken] = useState(taken);
 
   useEffect(() => {
@@ -54,9 +58,18 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
       <div className="flex h-6 shrink-0 items-start overflow-hidden">
         <TagList tags={study.tags} />
       </div>
-      <p className="h-5 shrink-0 overflow-hidden text-sm break-words text-muted">{formatSchedule(study)}</p>
+      <div className="h-10 shrink-0 overflow-hidden text-sm text-muted">
+        {canceledDate ? (
+          <>
+            <p>{formatDdMmYyyy(canceledDate)} · {study.time}</p>
+            <p className="text-clay">Canceled</p>
+          </>
+        ) : (
+          <p>{formatSchedule(study)}</p>
+        )}
+      </div>
       <p className="h-10 shrink-0 overflow-hidden text-sm leading-relaxed text-clay line-clamp-2">
-        {cancellationNote(study) || '\u00a0'}
+        {canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || '\u00a0'}
       </p>
       <p className="mt-auto shrink-0 text-sm tabular-nums">
         <span className="font-medium text-ink">
@@ -65,7 +78,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
         <span className="text-muted"> · {spotsLabel(sessionDate ? sessionTaken : taken, study.maxCapacity)}</span>
         {hosting && !study.isPublic ? <span className="text-muted"> · Private</span> : null}
         {hosting ? <span className="text-canal"> · Your study</span> : null}
-        {joined ? <span className="text-canal"> · Joined</span> : null}
+        {joined && !canceledDate ? <span className="text-canal"> · Joined</span> : null}
       </p>
     </Link>
   );
