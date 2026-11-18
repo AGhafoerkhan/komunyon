@@ -144,7 +144,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
         <h2 className="font-serif text-2xl">Files</h2>
         {images.length > 0 ? (
           <section className="mt-6">
-            <h3 className="text-sm font-medium">images</h3>
+            <h3 className="text-sm font-medium">Images</h3>
             <ul className={cardGrid}>
               {images.map((file) => (
                 <li key={file.path} className="relative min-w-0 rounded-lg border border-line bg-card p-2">
@@ -161,7 +161,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
         ) : null}
         {recordings.length > 0 ? (
           <section className="mt-6">
-            <h3 className="text-sm font-medium">recording</h3>
+            <h3 className="text-sm font-medium">Recordings</h3>
             <ul className={cardGrid}>
               {recordings.map((file) => (
                 <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col rounded-lg border border-line bg-card p-3">
@@ -179,7 +179,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
         ) : null}
         {texts.length > 0 ? (
           <section className="mt-6">
-            <h3 className="text-sm font-medium">text file</h3>
+            <h3 className="text-sm font-medium">Transcripts</h3>
             <ul className={cardGrid}>
               {texts.map((file) => (
               <li key={file.path} className="relative min-h-28 min-w-0 rounded-lg border border-line bg-card p-3">
