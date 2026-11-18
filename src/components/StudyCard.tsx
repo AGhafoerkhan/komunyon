@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Avatar, FormatBadge, TagList } from '@/components/ui';
 import { loadSessionAttendance, setSessionAttendance, subscribeSessionAttendance, subscribeSessionAttendanceList } from '@/lib/attendance';
 import { cancellationNote, formatDdMmYyyy, formatSchedule, spotsLabel, upcomingSession, upcomingSessions } from '@/lib/format';
+import { requestToJoin } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
 function cardHostName(fullName: string): string {
@@ -17,6 +18,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
   const taken = study.approvedUserIds.length;
   const hosting = study.hostId === viewerId;
   const joined = !hosting && study.approvedUserIds.includes(viewerId);
+  const pending = !hosting && study.pendingUserIds.includes(viewerId);
   const sessionDate = upcomingSession(study);
   const firstScheduledDate = study.format === 'recurring' && study.dayOfWeek !== null
     ? upcomingSessions(study.dayOfWeek, study.time, 1)[0] ?? null
@@ -26,6 +28,8 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
   const [sessionTaken, setSessionTaken] = useState(taken);
   const [sessionJoined, setSessionJoined] = useState(false);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
+  const [joinBusy, setJoinBusy] = useState(false);
+  const [joinRequested, setJoinRequested] = useState(pending);
 
   useEffect(() => {
     if (!sessionDate || (!hosting && !joined)) {
@@ -75,6 +79,19 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
     }
   }
 
+  async function requestCardJoin(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (hosting || joined || joinRequested || joinBusy) return;
+    setJoinBusy(true);
+    try {
+      await requestToJoin(study.id, viewerId);
+      setJoinRequested(true);
+    } finally {
+      setJoinBusy(false);
+    }
+  }
+
   return (
     <div
       className="relative flex h-[332px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
@@ -119,7 +136,16 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
         {joined && !canceledDate ? <span className="text-canal"> · Joined</span> : null}
       </p>
       </Link>
-      {joined && sessionDate ? (
+        {!hosting && !joined ? (
+          <button
+            type="button"
+            className="absolute bottom-4 right-4 text-sm text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
+            onClick={(event) => void requestCardJoin(event)}
+            disabled={joinBusy || joinRequested}
+          >
+            {joinRequested ? 'Waiting for approval' : 'Join'}
+          </button>
+        ) : joined && sessionDate ? (
         <button
           type="button"
           className={`absolute bottom-4 right-4 text-sm underline underline-offset-2 disabled:opacity-50 ${sessionJoined ? 'text-clay decoration-black decoration-dashed' : 'text-canal decoration-1'}`}
