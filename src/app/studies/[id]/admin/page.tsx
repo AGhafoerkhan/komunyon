@@ -23,7 +23,7 @@ export default function CoHostAdminPage() {
   const [canManageCoHosts, setCanManageCoHosts] = useState(false);
   const [canManageCoHostPermissions, setCanManageCoHostPermissions] = useState(false);
   const [grantable, setGrantable] = useState({ canEdit: false, canManageParticipants: false, canManageSessions: false, canManageCoHosts: false, canManageCoHostPermissions: false });
-  const [grantableAllowed, setGrantableAllowed] = useState({ canEdit: true, canManageParticipants: true, canManageSessions: true, canManageCoHosts: true, canManageCoHostPermissions: true });
+  const [grantableAllowed, setGrantableAllowed] = useState({ canEdit: false, canManageParticipants: false, canManageSessions: false, canManageCoHosts: false, canManageCoHostPermissions: false });
   const [isPrimaryHost, setIsPrimaryHost] = useState(false);
   const [canManageSessions, setCanManageSessions] = useState(false);
   const [loaded, setLoaded] = useState(false);
