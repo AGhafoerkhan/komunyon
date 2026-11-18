@@ -699,6 +699,7 @@ function StudyBody({
   const [sessionJoined, setSessionJoined] = useState(false);
   const [sessionTaken, setSessionTaken] = useState(0);
   const [showAttending, setShowAttending] = useState(false);
+  const [attendingDate, setAttendingDate] = useState<string | null>(null);
   const [attendingMembers, setAttendingMembers] = useState<JoinRequest[]>([]);
   const [planningOpen, setPlanningOpen] = useState(false);
   const [personalPlanningOpen, setPersonalPlanningOpen] = useState(false);
@@ -734,15 +735,15 @@ function StudyBody({
   }, [coHostIds, role, sessionDate, study, viewerId]);
 
   useEffect(() => {
-    if (!showAttending || !sessionDate || (role !== 'approved' && role !== 'host' && !coHostIds.includes(viewerId))) {
+    if (!showAttending || !attendingDate || (role !== 'approved' && role !== 'host' && !coHostIds.includes(viewerId))) {
       return;
     }
     let active = true;
-    const unsubscribe = subscribeSessionAttendanceList(study.id, sessionDate, (records) => {
+    const unsubscribe = subscribeSessionAttendanceList(study.id, attendingDate, (records) => {
       const ids = records.filter((record) => record.joined).map((record) => record.uid);
       setHostAvailability((current) => ({
         ...current,
-        [sessionDate]: records.some((record) => record.joined && [study.hostId, ...coHostIds].includes(record.uid)),
+        [attendingDate]: records.some((record) => record.joined && [study.hostId, ...coHostIds].includes(record.uid)),
       }));
       void loadPeople(study.id, ids).then((people) => {
         if (active) setAttendingMembers(people);
@@ -754,7 +755,7 @@ function StudyBody({
       active = false;
       unsubscribe();
     };
-  }, [coHostIds, role, sessionDate, showAttending, study, viewerId]);
+  }, [attendingDate, coHostIds, role, showAttending, study, viewerId]);
 
   const futureDates = study.format === 'recurring' && study.dayOfWeek !== null
     ? upcomingSessions(study.dayOfWeek, study.time, 8).filter((date) => role === 'host' || canManageSessions || !study.skippedDates.includes(date))
@@ -838,8 +839,9 @@ function StudyBody({
 
   async function toggleAttending(date = sessionDate) {
     if (!date || (role !== 'approved' && role !== 'host' && !coHostIds.includes(viewerId))) return;
-    const next = !showAttending;
+    const next = !(showAttending && attendingDate === date);
     setShowAttending(next);
+    setAttendingDate(next ? date : null);
     if (!next) return;
     const records = await loadSessionAttendance(study.id, date);
     const ids = records.filter((record) => record.joined).map((record) => record.uid);
@@ -955,10 +957,10 @@ function StudyBody({
               </dd>
             </div>
           </dl>
-          {sessionDate && !sessionCanceled && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && showAttending ? (
+          {attendingDate && !study.skippedDates.includes(attendingDate) && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && showAttending ? (
             <div className="mt-3 max-w-lg">
               <MemberList
-                title="Attending this session"
+                title={`Attending this session · ${formatDdMmYyyy(attendingDate)}`}
                 description={role === 'approved' ? 'Host and co-host attendance is shown live.' : undefined}
                 empty="No one has joined this session yet."
                     requests={uniqueMembers(attendingMembers)}
