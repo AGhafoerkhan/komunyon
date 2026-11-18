@@ -109,6 +109,7 @@ export interface StudyDraft {
   maxCapacity: number;
   area: string;
   isPublic: boolean;
+  showMemberContacts: boolean;
   /** Recurring sessions, as `YYYY-MM-DD`, that will not meet. */
   skippedDates: string[];
   exactAddress: string;

@@ -60,7 +60,7 @@ function publicFields(host: UserProfile, draft: StudyDraft, createdAt: string, u
     maxCapacity: draft.maxCapacity,
     area: draft.area,
     isPublic: draft.isPublic,
-    showMemberContacts: false,
+    showMemberContacts: draft.showMemberContacts,
     skippedDates,
     createdAt,
     updatedAt,
