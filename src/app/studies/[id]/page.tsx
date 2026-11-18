@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { CoHostPanel } from '@/components/CoHostPanel';
 import { InvitePeople } from '@/components/InvitePeople';
 import { MemberList } from '@/components/MemberList';
+import { SessionRecorder } from '@/components/SessionRecorder';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { useAuth } from '@/components/AuthProvider';
 import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
@@ -985,9 +986,7 @@ function StudyBody({
           </dl>
           {role === 'host' || canEditStudy ? (
             <div className="mt-5 max-w-lg">
-              <Button variant="secondary" className="w-full" onClick={() => undefined}>
-                Record session
-              </Button>
+              {scheduledDate ? <SessionRecorder studyId={study.id} date={scheduledDate} uid={viewerId} /> : null}
             </div>
           ) : null}
           {attendingDate && !study.skippedDates.includes(attendingDate) && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && showAttending ? (
