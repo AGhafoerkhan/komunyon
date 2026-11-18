@@ -1102,7 +1102,7 @@ function StudyBody({
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20">
           {role === 'host' || role === 'approved' ? (
-            <div className="h-[260px] overflow-y-auto rounded-lg border border-line bg-card p-4">
+            <div className="h-[260px] shrink-0 overflow-y-auto rounded-lg border border-line bg-card p-4">
               <h2 className="text-sm font-medium">Exact address</h2>
               {detailsState === 'loading' ? <p className="mt-2 text-sm text-muted">Loading the address…</p> : null}
               {detailsState === 'ready' && details ? (
@@ -1161,7 +1161,7 @@ function StudyBody({
           ) : null}
 
           {role === 'visitor' ? (
-            <div className="flex flex-col gap-2">
+            <div className="shrink-0">
               <Button className="w-full" onClick={onRequest} disabled={full || busy !== null}>
                 Request to join
               </Button>
