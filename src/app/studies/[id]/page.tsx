@@ -969,7 +969,7 @@ function StudyBody({
                         onClick={() => void togglePlannedSession(date)}
                         disabled={planningBusy !== null || (!plannedSessions[date] && hostAvailability[date] === false && !hostTeamMember) || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
                       >
-                        {plannedSessions[date] ? 'Cancel' : !hostTeamMember && hostAvailability[date] === false ? 'No host' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
+                        {plannedSessions[date] ? 'Leave' : !hostTeamMember && hostAvailability[date] === false ? 'No host' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
                       </button>
                     </li>
                   ))}
@@ -1010,7 +1010,7 @@ function StudyBody({
                         onClick={() => void togglePlannedSession(date)}
                         disabled={planningBusy !== null || (!plannedSessions[date] && !hostTeamMember && hostAvailability[date] !== true) || (!plannedSessions[date] && (sessionCounts[date] ?? 0) >= study.maxCapacity)}
                       >
-                        {plannedSessions[date] ? 'Cancel' : !hostTeamMember && hostAvailability[date] !== true ? 'No host' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
+                        {plannedSessions[date] ? 'Leave' : !hostTeamMember && hostAvailability[date] !== true ? 'No host' : sessionCounts[date] >= study.maxCapacity ? 'Full' : 'Join'}
                       </button>
                       {role === 'host' || canManageSessions ? (
                         <button
