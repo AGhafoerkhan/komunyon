@@ -189,7 +189,7 @@ export default function CoHostAdminPage() {
                     ['canManageSessions', 'Can manage sessions'],
                     ['canManageCoHosts', 'Can manage co-hosts'],
                     ['canManageCoHostPermissions', 'Can manage co-host permissions'],
-                  ] as const).map(([key, label]) => (
+                  ] as const).filter(([key]) => grantableAllowed[key]).map(([key, label]) => (
                     <label key={key} className="flex items-center justify-between gap-4 py-2 text-sm">
                       <span>{label}</span>
                       <input type="checkbox" checked={grantable[key]} disabled={!grantableAllowed[key] && !grantable[key]} onChange={(event) => setGrantable((current) => ({ ...current, [key]: event.target.checked }))} />
