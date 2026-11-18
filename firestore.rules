@@ -556,15 +556,20 @@ service cloud.firestore {
             || (request.resource.data.permissions is map
               && request.resource.data.permissions.keys().hasOnly(['canEdit', 'canManageParticipants', 'canManageCoHosts', 'canManageCoHostPermissions', 'canManageSessions', 'grantable'])
               && (!request.resource.data.permissions.keys().hasAny(['canEdit'])
-                || request.resource.data.permissions.canEdit is bool)
+                || (request.resource.data.permissions.canEdit is bool
+                  && (request.resource.data.permissions.canEdit == false || canGrantPermission(studyId, 'canEdit'))))
               && (!request.resource.data.permissions.keys().hasAny(['canManageParticipants'])
-                || request.resource.data.permissions.canManageParticipants is bool)
+                || (request.resource.data.permissions.canManageParticipants is bool
+                  && (request.resource.data.permissions.canManageParticipants == false || canGrantPermission(studyId, 'canManageParticipants'))))
               && (!request.resource.data.permissions.keys().hasAny(['canManageCoHosts'])
-                || request.resource.data.permissions.canManageCoHosts is bool)
+                || (request.resource.data.permissions.canManageCoHosts is bool
+                  && (request.resource.data.permissions.canManageCoHosts == false || canGrantPermission(studyId, 'canManageCoHosts'))))
               && (!request.resource.data.permissions.keys().hasAny(['canManageCoHostPermissions'])
-                || request.resource.data.permissions.canManageCoHostPermissions is bool)
+                || (request.resource.data.permissions.canManageCoHostPermissions is bool
+                  && (request.resource.data.permissions.canManageCoHostPermissions == false || canGrantPermission(studyId, 'canManageCoHostPermissions'))))
               && (!request.resource.data.permissions.keys().hasAny(['canManageSessions'])
-                || request.resource.data.permissions.canManageSessions is bool)
+                || (request.resource.data.permissions.canManageSessions is bool
+                  && (request.resource.data.permissions.canManageSessions == false || canGrantPermission(studyId, 'canManageSessions'))))
               && (!request.resource.data.permissions.keys().hasAny(['grantable'])
                 || (request.resource.data.permissions.grantable is map
                   && request.resource.data.permissions.grantable.keys().hasOnly(['canEdit', 'canManageParticipants', 'canManageSessions', 'canManageCoHosts', 'canManageCoHostPermissions'])
