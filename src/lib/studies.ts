@@ -60,6 +60,7 @@ function publicFields(host: UserProfile, draft: StudyDraft, createdAt: string, u
     maxCapacity: draft.maxCapacity,
     area: draft.area,
     isPublic: draft.isPublic,
+    showMemberContacts: false,
     skippedDates,
     createdAt,
     updatedAt,
@@ -317,6 +318,10 @@ export async function updateStudy(studyId: string, host: UserProfile, draft: Stu
   await updateDoc(studyRef(studyId), publicFields(host, draft, createdAt, now));
   await setDoc(privateRef(studyId), privateFields(draft, now));
   await syncStorageAccess(studyId);
+}
+
+export async function setMemberContactVisibility(studyId: string, visible: boolean): Promise<void> {
+  await updateDoc(studyRef(studyId), { showMemberContacts: visible, updatedAt: nowIso() });
 }
 
 export async function setSessionCanceled(studyId: string, date: string, canceled: boolean): Promise<void> {

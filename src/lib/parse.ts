@@ -92,6 +92,7 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
     maxCapacity: data.maxCapacity,
     area: data.area,
     isPublic: data.isPublic !== false,
+    showMemberContacts: data.showMemberContacts === true,
     pendingUserIds: data.pendingUserIds,
     approvedUserIds: data.approvedUserIds,
     invitedUserIds: isStringArray(data.invitedUserIds) ? data.invitedUserIds : [],

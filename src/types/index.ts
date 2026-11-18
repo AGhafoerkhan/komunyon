@@ -57,6 +57,7 @@ export interface BibleStudy {
   area: string;
   /** False hides the study from everyone except the host. */
   isPublic: boolean;
+  showMemberContacts: boolean;
   pendingUserIds: string[];
   approvedUserIds: string[];
   /** People the host invited. They can read the study, not the address, until they accept. */

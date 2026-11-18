@@ -89,6 +89,7 @@ service cloud.firestore {
         'maxCapacity',
         'area',
         'isPublic',
+        'showMemberContacts',
         'pendingUserIds',
         'approvedUserIds',
         'invitedUserIds',
@@ -178,6 +179,7 @@ service cloud.firestore {
         && data.area is string
         && isHagueArea(data.area)
         && (!data.keys().hasAny(['isPublic']) || data.isPublic is bool)
+        && (!data.keys().hasAny(['showMemberContacts']) || data.showMemberContacts is bool)
         && data.pendingUserIds is list
         && data.pendingUserIds.size() <= 200
         && data.approvedUserIds is list
