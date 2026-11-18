@@ -246,6 +246,8 @@ service cloud.firestore {
       return signedIn()
         && request.auth.uid != resource.data.hostId
         && !resource.data.approvedUserIds.hasAny([request.auth.uid])
+        && (!exists(/databases/$(database)/documents/studies/$(studyId)/notices/$(request.auth.uid))
+          || get(/databases/$(database)/documents/studies/$(studyId)/notices/$(request.auth.uid)).data.type != 'removed')
         && resource.data.approvedUserIds.size() < resource.data.maxCapacity
         && onlyTouched(['pendingUserIds', 'updatedAt'])
         && selfAddedTo(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
