@@ -267,7 +267,7 @@ function RecordingPlayer({ src }: { src: string }) {
       <audio
         ref={audioRef}
         src={src}
-        preload="none"
+        preload="metadata"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => {
@@ -279,6 +279,10 @@ function RecordingPlayer({ src }: { src: string }) {
           if (audio) setProgress(audio.currentTime);
         }}
         onLoadedMetadata={() => {
+          const audio = audioRef.current;
+          if (audio && Number.isFinite(audio.duration)) setDuration(audio.duration);
+        }}
+        onDurationChange={() => {
           const audio = audioRef.current;
           if (audio && Number.isFinite(audio.duration)) setDuration(audio.duration);
         }}
@@ -301,8 +305,17 @@ function RecordingPlayer({ src }: { src: string }) {
           setProgress(next);
         }}
       />
+      <span className="shrink-0 text-xs tabular-nums text-muted">
+        {formatAudioTime(progress)} / {formatAudioTime(duration)}
+      </span>
     </div>
   );
+}
+
+function formatAudioTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const total = Math.floor(seconds);
+  return String(Math.floor(total / 60)) + ':' + String(total % 60).padStart(2, '0');
 }
 
 function FileTools({
