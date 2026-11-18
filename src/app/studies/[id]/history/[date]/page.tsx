@@ -11,7 +11,7 @@ import { actionError } from '@/lib/errors';
 import { formatDdMmYyyy, historySessions } from '@/lib/format';
 import { isIsoDate } from '@/lib/guards';
 import { listAnchoredSessionDates } from '@/lib/sessions';
-import { subscribeStudy } from '@/lib/studies';
+import { subscribeCoHostEditPermission, subscribeStudy } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
 export default function StudySessionPage() {
@@ -23,6 +23,7 @@ export default function StudySessionPage() {
   const [loaded, setLoaded] = useState(false);
   const [anchored, setAnchored] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     if (!studyId) return;
@@ -38,6 +39,14 @@ export default function StudySessionPage() {
       },
     );
   }, [studyId]);
+
+  useEffect(() => {
+    if (!study || !user || study.hostId === user.uid) {
+      setCanEdit(study?.hostId === user?.uid);
+      return;
+    }
+    return subscribeCoHostEditPermission(study.id, user.uid, setCanEdit, () => setCanEdit(false));
+  }, [study, user]);
 
   const allowed = Boolean(study && user && (study.hostId === user.uid || study.approvedUserIds.includes(user.uid)));
 
@@ -81,7 +90,7 @@ export default function StudySessionPage() {
         <p className="mt-6 text-sm text-muted">This date is not a session of this study.</p>
       ) : null}
       {study && allowed && known ? (
-        <SessionRecord studyId={study.id} date={date} isHost={study.hostId === user.uid} />
+        <SessionRecord studyId={study.id} date={date} isHost={study.hostId === user.uid || canEdit} />
       ) : null}
     </AppShell>
   );

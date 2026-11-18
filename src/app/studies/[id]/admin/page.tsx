@@ -86,7 +86,7 @@ export default function CoHostAdminPage() {
             <div className="flex items-center justify-between gap-4">
               <span>
                 <span className="block font-medium">Can edit this study</span>
-                <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to use the Edit study page.</span>
+                <span className="mt-1 block text-sm leading-relaxed text-muted">Allow this co-host to edit study details, schedule, and history files.</span>
               </span>
               <button
                 type="button"

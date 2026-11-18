@@ -551,7 +551,7 @@ service cloud.firestore {
 
         allow create, update: if studyExists(studyId)
           && signedIn()
-          && studyDoc(studyId).hostId == request.auth.uid
+          && (studyDoc(studyId).hostId == request.auth.uid || isManagerEditor(studyId))
           && date.matches('^\\d{4}-\\d{2}-\\d{2}$')
           && request.resource.data.keys().hasOnly(['description', 'updatedAt'])
           && request.resource.data.description is string
@@ -561,7 +561,7 @@ service cloud.firestore {
 
         allow delete: if studyExists(studyId)
           && signedIn()
-          && studyDoc(studyId).hostId == request.auth.uid;
+          && (studyDoc(studyId).hostId == request.auth.uid || isManagerEditor(studyId));
 
         match /attendees/{uid} {
           allow read: if studyExists(studyId) && canReadPrivate(studyDoc(studyId));

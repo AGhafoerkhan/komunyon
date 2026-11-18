@@ -8,7 +8,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
 import { Alert, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
-import { subscribeStudy } from '@/lib/studies';
+import { subscribeCoHostEditPermission, subscribeStudy } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
 export default function StudyHistoryPage() {
@@ -18,6 +18,7 @@ export default function StudyHistoryPage() {
   const [study, setStudy] = useState<BibleStudy | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     if (!studyId) return;
@@ -33,6 +34,14 @@ export default function StudyHistoryPage() {
       },
     );
   }, [studyId]);
+
+  useEffect(() => {
+    if (!study || !user || study.hostId === user.uid) {
+      setCanEdit(study?.hostId === user?.uid);
+      return;
+    }
+    return subscribeCoHostEditPermission(study.id, user.uid, setCanEdit, () => setCanEdit(false));
+  }, [study, user]);
 
   if (!user) return null;
 
