@@ -1199,7 +1199,7 @@ function StudyBody({
           />
           <MemberList
             title="People in this study"
-            description="Removing someone hides the address from them and frees a spot."
+            description="Everyone in this study. Open a photo to see it full size."
             empty="No approved members yet."
             requests={uniqueMembers(hostMember ? [hostMember, ...approvedMembers] : approvedMembers)}
             rowId={(request) => `member-${request.userId}`}
