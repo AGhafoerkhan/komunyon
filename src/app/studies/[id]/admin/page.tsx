@@ -38,7 +38,7 @@ export default function CoHostAdminPage() {
       .then(([study, manager, actorManager]) => {
         if (!active) return;
         const canManagePermissions = actorManager.exists() && actorManager.data().permissions?.canManageCoHostPermissions === true;
-        if (!study || (study.hostId !== user.uid && !canManagePermissions) || !study.approvedUserIds.includes(uid)) {
+        if (!study || (study.hostId !== user.uid && (!canManagePermissions || uid === user.uid)) || !study.approvedUserIds.includes(uid)) {
           setError('Only the primary host can manage an approved co-host.');
           setLoaded(true);
           return;
@@ -71,7 +71,7 @@ export default function CoHostAdminPage() {
       const study = await getStudy(studyId);
       const actorManager = await getDoc(doc(getFirebase().db, 'studies', studyId, 'managers', user.uid));
       const canManagePermissions = actorManager.exists() && actorManager.data().permissions?.canManageCoHostPermissions === true;
-      if (!study || (study.hostId !== user.uid && !canManagePermissions)) throw new Error('You do not have permission to manage co-host access.');
+      if (!study || (study.hostId !== user.uid && (!canManagePermissions || uid === user.uid))) throw new Error('You do not have permission to manage co-host access.');
       await setDoc(doc(getFirebase().db, 'studies', studyId, 'managers', uid), {
         uid,
         permissions: { canEdit, canManageParticipants, canManageCoHosts, canManageCoHostPermissions, canManageSessions, grantable },
