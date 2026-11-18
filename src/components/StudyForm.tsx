@@ -262,7 +262,7 @@ export function StudyForm({
 
       <section className="flex items-center justify-between gap-4 rounded-lg border border-line bg-card px-4 py-4">
         <div className="min-w-0">
-          <h2 className="font-serif text-xl">Group rules</h2>
+          <h2 className="font-serif text-xl">Participants can see each other’s numbers</h2>
           <p className="mt-1 text-sm leading-relaxed text-muted">When enabled, approved members can see each other’s phone numbers and WhatsApp links.</p>
         </div>
         <button type="button" role="switch" aria-checked={draft.showMemberContacts} aria-label="Members can contact each other" onClick={() => patch({ showMemberContacts: !draft.showMemberContacts })} className="inline-flex h-11 w-16 shrink-0 items-center justify-center">
