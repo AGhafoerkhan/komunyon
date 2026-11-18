@@ -988,7 +988,14 @@ function StudyBody({
                 {planningOpen ? 'Hide future sessions' : 'Plan future sessions'}
               </button>
               {planningOpen ? (
-                <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
+                <div className="mt-3 border-y border-line text-sm">
+                  <div className="grid grid-cols-4 gap-3 border-b border-line py-2 text-xs font-medium uppercase tracking-wide text-muted">
+                    <span>Date</span>
+                    <span>Spots</span>
+                    <span>Attending</span>
+                    <span>Session</span>
+                  </div>
+                  <ul className="divide-y divide-line">
                   {futureDates.map((date) => (
                     <li key={date} className="grid grid-cols-4 items-center gap-3 py-2">
                       <span className="min-w-0">{formatDdMmYyyy(date)} · {study.time}</span>
@@ -1026,7 +1033,8 @@ function StudyBody({
                       )}
                     </li>
                   ))}
-                </ul>
+                  </ul>
+                </div>
               ) : null}
             </div>
           ) : null}
