@@ -94,7 +94,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
 
   return (
     <div
-      className="relative flex h-[332px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
+      className="relative flex h-[320px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
     >
       <Link href={`/studies/${study.id}`} className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex h-10 shrink-0 items-start justify-between gap-3">
