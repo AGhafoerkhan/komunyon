@@ -957,6 +957,13 @@ function StudyBody({
               </dd>
             </div>
           </dl>
+          {role === 'host' || canEditStudy ? (
+            <div className="mt-5 max-w-lg">
+              <Button variant="secondary" className="w-full" onClick={() => undefined}>
+                Record session
+              </Button>
+            </div>
+          ) : null}
           {attendingDate && !study.skippedDates.includes(attendingDate) && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && showAttending ? (
             <div className="mt-3 max-w-lg">
               <MemberList
