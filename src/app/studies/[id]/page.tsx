@@ -83,6 +83,7 @@ export default function StudyPage() {
   const [removed, setRemoved] = useState(false);
   const [leftBySelf, setLeftBySelf] = useState(false);
   const [heardRemoval, setHeardRemoval] = useState(false);
+  const [removalActor, setRemovalActor] = useState<string | null>(null);
   const [removalsChecked, setRemovalsChecked] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [hostPhone, setHostPhone] = useState<string | null>(null);
@@ -127,7 +128,11 @@ export default function StudyPage() {
     return subscribeRemovalNotices(
       user.uid,
       (notices) => {
-        if (notices.some((notice) => notice.studyId === studyId)) setHeardRemoval(true);
+        const notice = notices.find((item) => item.studyId === studyId);
+        if (notice) {
+          setHeardRemoval(true);
+          setRemovalActor(notice.fullName);
+        }
         setRemovalsChecked(true);
       },
       () => setRemovalsChecked(true),
@@ -348,7 +353,11 @@ export default function StudyPage() {
         </div>
       ) : showRemoved ? (
         <div id="removed" className="mt-6 max-w-xl scroll-mt-24">
-          <p className="font-serif text-3xl">The host removed you from this study.</p>
+          <p className="font-serif text-3xl">
+            {removalActor && study && removalActor !== study.hostName
+              ? `${removalActor} removed you from this study.`
+              : 'The host removed you from this study.'}
+          </p>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             {study ? `${study.title} is no longer yours to open. ` : null}
             You no longer have the address.
