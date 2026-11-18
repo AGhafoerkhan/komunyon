@@ -569,10 +569,15 @@ service cloud.firestore {
                 || (request.resource.data.permissions.grantable is map
                   && request.resource.data.permissions.grantable.keys().hasOnly(['canEdit', 'canManageParticipants', 'canManageSessions', 'canManageCoHosts', 'canManageCoHostPermissions'])
                   && request.resource.data.permissions.grantable.canEdit is bool
+                  && (request.resource.data.permissions.grantable.canEdit == false || canGrantPermission(studyId, 'canEdit'))
                   && request.resource.data.permissions.grantable.canManageParticipants is bool
+                  && (request.resource.data.permissions.grantable.canManageParticipants == false || canGrantPermission(studyId, 'canManageParticipants'))
                   && request.resource.data.permissions.grantable.canManageSessions is bool
+                  && (request.resource.data.permissions.grantable.canManageSessions == false || canGrantPermission(studyId, 'canManageSessions'))
                   && request.resource.data.permissions.grantable.canManageCoHosts is bool
-                  && request.resource.data.permissions.grantable.canManageCoHostPermissions is bool))));
+                  && (request.resource.data.permissions.grantable.canManageCoHosts == false || canGrantPermission(studyId, 'canManageCoHosts'))
+                  && request.resource.data.permissions.grantable.canManageCoHostPermissions is bool
+                  && (request.resource.data.permissions.grantable.canManageCoHostPermissions == false || canGrantPermission(studyId, 'canManageCoHostPermissions'))))));
         allow update: if studyExists(studyId)
           && signedIn()
           && (studyDoc(studyId).hostId == request.auth.uid || (isCoHostPermissionManager(studyId) && uid != request.auth.uid))

@@ -22,6 +22,7 @@ export default function CoHostAdminPage() {
   const [canManageCoHosts, setCanManageCoHosts] = useState(false);
   const [canManageCoHostPermissions, setCanManageCoHostPermissions] = useState(false);
   const [grantable, setGrantable] = useState({ canEdit: false, canManageParticipants: false, canManageSessions: false, canManageCoHosts: false, canManageCoHostPermissions: false });
+  const [grantableAllowed, setGrantableAllowed] = useState({ canEdit: true, canManageParticipants: true, canManageSessions: true, canManageCoHosts: true, canManageCoHostPermissions: true });
   const [canManageSessions, setCanManageSessions] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,6 +44,14 @@ export default function CoHostAdminPage() {
           setLoaded(true);
           return;
         }
+        const actorGrantable = actorManager.data()?.permissions?.grantable;
+        setGrantableAllowed({
+          canEdit: study.hostId === user.uid || actorGrantable?.canEdit === true,
+          canManageParticipants: study.hostId === user.uid || actorGrantable?.canManageParticipants === true,
+          canManageSessions: study.hostId === user.uid || actorGrantable?.canManageSessions === true,
+          canManageCoHosts: study.hostId === user.uid || actorGrantable?.canManageCoHosts === true,
+          canManageCoHostPermissions: study.hostId === user.uid || actorGrantable?.canManageCoHostPermissions === true,
+        });
         setName(study.approvedUserIds.includes(uid) ? 'Assigned co-host' : 'Co-host');
         setCanEdit(manager.exists() && manager.data().permissions?.canEdit === true);
         setCanManageParticipants(manager.exists() && manager.data().permissions?.canManageParticipants === true);
@@ -72,9 +81,18 @@ export default function CoHostAdminPage() {
       const actorManager = await getDoc(doc(getFirebase().db, 'studies', studyId, 'managers', user.uid));
       const canManagePermissions = actorManager.exists() && actorManager.data().permissions?.canManageCoHostPermissions === true;
       if (!study || (study.hostId !== user.uid && (!canManagePermissions || uid === user.uid))) throw new Error('You do not have permission to manage co-host access.');
+      const actorGrantable = actorManager.data()?.permissions?.grantable;
+      const allowed = (permission: keyof typeof grantable) => study.hostId === user.uid || actorGrantable?.[permission] === true;
+      const safeGrantable = {
+        canEdit: grantable.canEdit && allowed('canEdit'),
+        canManageParticipants: grantable.canManageParticipants && allowed('canManageParticipants'),
+        canManageSessions: grantable.canManageSessions && allowed('canManageSessions'),
+        canManageCoHosts: grantable.canManageCoHosts && allowed('canManageCoHosts'),
+        canManageCoHostPermissions: grantable.canManageCoHostPermissions && allowed('canManageCoHostPermissions'),
+      };
       await setDoc(doc(getFirebase().db, 'studies', studyId, 'managers', uid), {
         uid,
-        permissions: { canEdit, canManageParticipants, canManageCoHosts, canManageCoHostPermissions, canManageSessions, grantable },
+        permissions: { canEdit, canManageParticipants, canManageCoHosts, canManageCoHostPermissions, canManageSessions, grantable: safeGrantable },
         updatedAt: new Date().toISOString(),
       }, { merge: true });
     } catch (failure) {
@@ -174,7 +192,7 @@ export default function CoHostAdminPage() {
                   ] as const).map(([key, label]) => (
                     <label key={key} className="flex items-center justify-between gap-4 py-2 text-sm">
                       <span>{label}</span>
-                      <input type="checkbox" checked={grantable[key]} onChange={(event) => setGrantable((current) => ({ ...current, [key]: event.target.checked }))} />
+                      <input type="checkbox" checked={grantable[key]} disabled={!grantableAllowed[key] && !grantable[key]} onChange={(event) => setGrantable((current) => ({ ...current, [key]: event.target.checked }))} />
                     </label>
                   ))}
                 </div>
