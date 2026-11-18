@@ -212,6 +212,8 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
           title="Download this file?"
           body={'Do you want to download ' + (fileTitle(pendingDownload.label) || 'this file') + '?'}
           confirmLabel="Download"
+          cancelVariant="danger"
+          confirmVariant="primary"
           busy={false}
           error={null}
           onConfirm={() => {

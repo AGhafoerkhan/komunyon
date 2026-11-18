@@ -1,4 +1,4 @@
-import { deleteObject, getDownloadURL, getMetadata, listAll, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getBlob, getDownloadURL, getMetadata, listAll, ref, uploadBytes } from 'firebase/storage';
 import { jpegBlob } from '@/lib/avatar';
 import { firebaseErrorCode } from '@/lib/errors';
 import { getFirebase } from '@/lib/firebase';
@@ -140,9 +140,7 @@ export async function uploadSessionFile(studyId: string, date: string, uid: stri
 }
 
 export async function downloadSessionFile(file: SessionFile, date: string): Promise<void> {
-  const response = await fetch(file.url);
-  if (!response.ok) throw new Error('This file could not be downloaded.');
-  const blob = await response.blob();
+  const blob = await getBlob(ref(getFirebase().storage, file.path));
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

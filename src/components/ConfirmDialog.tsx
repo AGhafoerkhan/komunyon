@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef } from 'react';
 import { Alert, Button, Spinner } from '@/components/ui';
 
+type DialogButtonVariant = 'primary' | 'secondary' | 'danger';
+
 export function ConfirmDialog({
   title,
   body,
@@ -11,6 +13,8 @@ export function ConfirmDialog({
   error,
   onConfirm,
   onClose,
+  cancelVariant = 'secondary',
+  confirmVariant = 'danger',
 }: {
   title: string;
   body: string;
@@ -19,6 +23,8 @@ export function ConfirmDialog({
   error: string | null;
   onConfirm: () => void;
   onClose: () => void;
+  cancelVariant?: DialogButtonVariant;
+  confirmVariant?: DialogButtonVariant;
 }) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -65,10 +71,10 @@ export function ConfirmDialog({
           </div>
         ) : null}
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button variant="secondary" className="w-full sm:w-auto" onClick={onClose} disabled={busy}>
+          <Button variant={cancelVariant} className="w-full sm:w-auto" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button variant="danger" className="w-full sm:w-auto" onClick={onConfirm} disabled={busy}>
+          <Button variant={confirmVariant} className="w-full sm:w-auto" onClick={onConfirm} disabled={busy}>
             {busy ? <Spinner /> : null}
             {confirmLabel}
           </Button>
