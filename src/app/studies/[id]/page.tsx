@@ -1074,7 +1074,9 @@ function StudyBody({
                       {study.skippedDates.includes(date) ? 'Proceed' : 'Cancel'}
                         </button>
                       ) : (
-                        <span className="text-muted">—</span>
+                        <span className={study.skippedDates.includes(date) ? 'text-clay' : 'text-canal'}>
+                          {study.skippedDates.includes(date) ? 'Canceled' : 'Ongoing'}
+                        </span>
                       )}
                     </li>
                   ))}
