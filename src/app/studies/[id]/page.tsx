@@ -64,7 +64,7 @@ export default function StudyPage() {
   const params = useParams();
   const studyId = typeof params.id === 'string' ? params.id : '';
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [study, setStudy] = useState<BibleStudy | null>(null);
   const [details, setDetails] = useState<PrivateStudyDetails | null>(null);
   const [detailsState, setDetailsState] = useState<'hidden' | 'loading' | 'ready'>('hidden');
@@ -416,7 +416,7 @@ export default function StudyPage() {
               });
               return;
             }
-            void run(`remove:${confirm.userId}`, () => removeMember(study, confirm.userId));
+            void run(`remove:${confirm.userId}`, () => removeMember(study, confirm.userId, profile?.fullName || study.hostName));
           }}
         />
       ) : null}

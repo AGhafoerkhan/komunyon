@@ -458,14 +458,14 @@ export async function declineMember(studyId: string, uid: string): Promise<void>
   });
 }
 
-export async function removeMember(study: BibleStudy, uid: string): Promise<void> {
+export async function removeMember(study: BibleStudy, uid: string, actorName = study.hostName): Promise<void> {
   const { db } = getFirebase();
   const notice = doc(db, 'studies', study.id, 'notices', uid);
   await setDoc(notice, {
     type: 'removed',
     userId: uid,
     studyTitle: study.title,
-    hostName: study.hostName,
+    hostName: actorName,
     createdAt: nowIso(),
   });
   try {
