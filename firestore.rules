@@ -242,7 +242,7 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
     }
 
-    function selfRequestsToJoin() {
+    function selfRequestsToJoin(studyId) {
       return signedIn()
         && request.auth.uid != resource.data.hostId
         && !resource.data.approvedUserIds.hasAny([request.auth.uid])
@@ -462,7 +462,7 @@ service cloud.firestore {
           && hostPreserved()
           && validPublicStudy(request.resource.data)
         )
-        || selfRequestsToJoin()
+        || selfRequestsToJoin(studyId)
         || selfCancelsRequest()
         || selfLeavesGroup()
         || managerRemovesMember(studyId)
