@@ -752,6 +752,20 @@ function StudyBody({
     : [];
 
   useEffect(() => {
+    if (role !== 'host' || futureDates.length === 0) return;
+    let active = true;
+    void Promise.all(futureDates.map(async (date) => {
+      const records = await loadSessionAttendance(study.id, date);
+      if (active && !records.some((record) => record.uid === viewerId)) {
+        await saveSessionAttendance(study.id, date, viewerId, true, study.maxCapacity);
+      }
+    })).catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [futureDates.join(','), role, study.id, study.maxCapacity, viewerId]);
+
+  useEffect(() => {
     if ((role !== 'approved' && role !== 'host') || futureDates.length === 0) return;
     const unsubscribes = futureDates.map((date) => subscribeSessionAttendanceList(study.id, date, (records) => {
       setPlannedSessions((current) => ({ ...current, [date]: records.some((record) => record.uid === viewerId && record.joined) }));
