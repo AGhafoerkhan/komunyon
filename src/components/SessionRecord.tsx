@@ -22,6 +22,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<SessionFile | null>(null);
   const [pendingRemove, setPendingRemove] = useState<SessionFile | null>(null);
+  const [pendingDownload, setPendingDownload] = useState<SessionFile | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -148,7 +149,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
             <ul className={cardGrid}>
               {images.map((file) => (
                 <li key={file.path} className="relative min-w-0 rounded-lg border border-line bg-card p-2">
-                  <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
+                  <FileTools file={file} isHost={isHost} busy={busy} onDownload={(next) => setPendingDownload(next)} onRemove={() => setPendingRemove(file)} />
                   <button type="button" onClick={() => setOpen(file)} className="block w-full" aria-label="View session photo">
                     {/* Download URLs are tokenized and are not a fixed remote pattern. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -165,7 +166,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
             <ul className={cardGrid}>
               {recordings.map((file) => (
                 <li key={file.path} className="relative flex min-h-28 min-w-0 flex-col rounded-lg border border-line bg-card p-3">
-                  <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
+                  <FileTools file={file} isHost={isHost} busy={busy} onDownload={(next) => setPendingDownload(next)} onRemove={() => setPendingRemove(file)} />
                   <p title={fileTitle(file.label)} className="absolute top-3.5 left-3 max-w-[calc(100%-4.75rem)] truncate text-sm font-medium text-ink">
                     {fileTitle(file.label) || 'Recording'}
                   </p>
@@ -183,7 +184,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
             <ul className={cardGrid}>
               {texts.map((file) => (
               <li key={file.path} className="relative min-h-28 min-w-0 rounded-lg border border-line bg-card p-3">
-                <FileTools file={file} isHost={isHost} busy={busy} onDownload={download} onRemove={() => setPendingRemove(file)} />
+                  <FileTools file={file} isHost={isHost} busy={busy} onDownload={(next) => setPendingDownload(next)} onRemove={() => setPendingRemove(file)} />
                 <p title={fileTitle(file.label)} className="absolute top-3.5 left-3 max-w-[calc(100%-4.75rem)] truncate text-sm font-medium text-ink">
                   {fileTitle(file.label) || 'Text file'}
                 </p>
@@ -206,6 +207,20 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
       </div>
       {error ? <p className="mt-3 text-sm text-clay">{error}</p> : null}
       {open ? <PhotoLightbox src={open.url} name={formatDdMmYyyy(date)} onClose={() => setOpen(null)} /> : null}
+      {pendingDownload ? (
+        <ConfirmDialog
+          title="Download this file?"
+          body={'Do you want to download ' + (fileTitle(pendingDownload.label) || 'this file') + '?'}
+          confirmLabel="Download"
+          busy={false}
+          error={null}
+          onConfirm={() => {
+            void download(pendingDownload);
+            setPendingDownload(null);
+          }}
+          onClose={() => setPendingDownload(null)}
+        />
+      ) : null}
       {pendingRemove ? (
         <ConfirmDialog
           title="Are you sure?"
