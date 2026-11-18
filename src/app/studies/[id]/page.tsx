@@ -942,11 +942,9 @@ function StudyBody({
               </dd>
             </div>
             <div>
-              <dt className="text-muted">{role === 'host' ? 'Session' : 'Attendance'}</dt>
+              <dt className="text-muted">{role === 'host' || coHostIds.includes(viewerId) ? 'Session' : 'Attendance'}</dt>
               <dd className="mt-1 font-medium tabular-nums">
-                {sessionCanceled && role !== 'host' && !canManageSessions ? (
-                  '—'
-                ) : (role === 'host' || canManageSessions) && scheduledDate ? (
+                {(role === 'host' || canManageSessions) && scheduledDate ? (
                   <span className="inline-flex items-center gap-2">
                     <button
                       type="button"
@@ -966,6 +964,8 @@ function StudyBody({
                   >
                     {sessionJoined ? 'Cancel' : role === 'approved' && !hostAvailability[sessionDate] ? 'No host' : sessionTaken >= study.maxCapacity ? 'Full' : 'Join'}
                   </button>
+                ) : scheduledDate ? (
+                  sessionCanceled ? 'Canceled' : 'Ongoing'
                 ) : '—'}
               </dd>
             </div>
