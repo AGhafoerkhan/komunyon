@@ -7,6 +7,12 @@ import { loadSessionAttendance } from '@/lib/attendance';
 import { cancellationNote, formatDdMmYyyy, formatSchedule, spotsLabel, upcomingSession, upcomingSessions } from '@/lib/format';
 import type { BibleStudy } from '@/types';
 
+function cardHostName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return parts[0] ?? fullName;
+  return `${parts[0][0]?.toUpperCase() ?? ''} ${parts[parts.length - 1]}`;
+}
+
 export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: string }) {
   const taken = study.approvedUserIds.length;
   const hosting = study.hostId === viewerId;
@@ -16,6 +22,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
     ? upcomingSessions(study.dayOfWeek, study.time, 1)[0] ?? null
     : study.date;
   const canceledDate = firstScheduledDate && study.skippedDates.includes(firstScheduledDate) ? firstScheduledDate : null;
+  const displayedHostName = cardHostName(study.hostName);
   const [sessionTaken, setSessionTaken] = useState(taken);
 
   useEffect(() => {
@@ -46,7 +53,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
           <Avatar src={study.hostPhotoURL} name={study.hostName} size={40} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">
-              {study.hostName}
+              {displayedHostName}
               <span className="font-normal text-muted"> · {study.hostAge}</span>
             </p>
             <p className="truncate text-xs text-muted">{study.area}</p>
