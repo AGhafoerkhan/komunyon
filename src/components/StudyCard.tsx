@@ -60,10 +60,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
       </div>
       <div className="h-10 shrink-0 overflow-hidden text-sm text-muted">
         {canceledDate ? (
-          <>
-            <p>{formatDdMmYyyy(canceledDate)} · {study.time}</p>
-            <p className="text-clay">Canceled</p>
-          </>
+          <p>{formatDdMmYyyy(canceledDate)} · {study.time} · <span className="text-clay">Canceled</span></p>
         ) : (
           <p>{formatSchedule(study)}</p>
         )}
