@@ -22,7 +22,10 @@ export function actionError(error: unknown, context?: IssueContext): string {
         if (typeof navigator !== 'undefined' && !navigator.onLine) return OFFLINE_AUTH_MESSAGE;
     }
   }
-  captureClientIssue(error, context ?? {
+  const embeddedContext = typeof error === 'object' && error !== null && 'issueContext' in error
+    ? (error as { issueContext?: IssueContext }).issueContext
+    : undefined;
+  captureClientIssue(error, context ?? embeddedContext ?? {
     action: 'handled application operation',
     operation: 'error caught and passed to actionError',
   });

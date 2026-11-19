@@ -175,7 +175,7 @@ service cloud.firestore {
     function validTagList(tags) {
       return tags is list
         && tags.size() >= 1
-        && tags.size() <= 4
+        && tags.size() <= 5
         && tags.size() == tags.toSet().size()
         && tags.hasOnly(['bible-study', 'prayer', 'worship', 'prayer-worship', 'communion', 'event', 'dinner']);
     }

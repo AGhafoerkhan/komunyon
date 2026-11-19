@@ -19,11 +19,12 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { deleteStudyPhotos } from '@/lib/photos';
 import { getFirebase } from '@/lib/firebase';
-import { actionError } from '@/lib/errors';
+import { actionError, firebaseErrorCode } from '@/lib/errors';
 import { normalizeTime } from '@/lib/guards';
 import { upcomingSession, upcomingSessions } from '@/lib/format';
 import { sortTags } from '@/lib/tags';
 import { setSessionAttendance } from '@/lib/attendance';
+import { normalizePhone } from '@/lib/validate';
 import { parseBibleStudy, parsePrivateDetails, parseUserProfile } from '@/lib/parse';
 import type { BibleStudy, JoinRequest, PrivateStudyDetails, StudyDraft, UserProfile } from '@/types';
 
@@ -79,8 +80,8 @@ function privateFields(draft: StudyDraft, updatedAt: string) {
 
 async function writeMemberContact(studyId: string, uid: string, phone: string, place: string): Promise<void> {
   await setDoc(doc(getFirebase().db, 'studies', studyId, 'memberContacts', uid), {
-    phone,
-    place,
+    phone: normalizePhone(phone) ?? '',
+    place: place.slice(0, 240),
     updatedAt: nowIso(),
   });
 }
@@ -457,23 +458,42 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
   const { db } = getFirebase();
   const ref = doc(collection(db, 'studies'));
   const now = nowIso();
+  let failedOperation = 'write public event document';
+  let failedTarget = `studies/${ref.id}`;
   try {
     await setDoc(ref, {
       ...publicFields(host, draft, now, now),
       approvedCount: 0,
       skippedDates: [],
     });
+    failedOperation = 'write private address and entry notes';
+    failedTarget = `studies/${ref.id}/private/details`;
     await setDoc(privateRef(ref.id), privateFields(draft, now));
     const dates = draft.format === 'recurring' && draft.dayOfWeek !== null
       ? upcomingSessions(draft.dayOfWeek, draft.time, 8)
       : draft.date
         ? [draft.date]
         : [];
+    failedOperation = 'initialize host attendance';
+    failedTarget = `studies/${ref.id}/sessions/*/attendees/${host.uid}`;
     await Promise.all(dates.map((date) => setSessionAttendance(ref.id, date, host.uid, true, draft.maxCapacity)));
+    failedOperation = 'write host contact for group members';
+    failedTarget = `studies/${ref.id}/memberContacts/${host.uid}`;
     await writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', '));
   } catch (error) {
     await httpsCallable(getFirebase().functions, 'deleteHostedStudy')({ studyId: ref.id }).catch(() => undefined);
-    throw error;
+    const failure = new Error(error instanceof Error ? error.message : 'Event creation failed.', { cause: error });
+    failure.name = 'StudyCreationError';
+    Object.assign(failure, {
+      code: firebaseErrorCode(error) ?? '',
+      rawError: error,
+      issueContext: {
+        action: 'host an event',
+        operation: failedOperation,
+        target: failedTarget,
+      },
+    });
+    throw failure;
   }
   return ref.id;
 }
