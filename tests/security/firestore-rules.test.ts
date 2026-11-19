@@ -105,6 +105,15 @@ async function callMembership(token: string, data: Record<string, unknown>): Pro
   return { ok: response.ok, body: await response.json() };
 }
 
+async function callDeleteStudy(token: string, studyId: string): Promise<{ ok: boolean; body: any }> {
+  const response = await fetch(`http://127.0.0.1:5001/${projectId}/europe-west4/deleteHostedStudy`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ data: { studyId } }),
+  });
+  return { ok: response.ok, body: await response.json() };
+}
+
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId,
@@ -182,6 +191,11 @@ describe('co-host participant permissions', () => {
       approvedUserIds: [],
       invitedUserIds: [],
     });
+    await seed(`studies/${studyId}/private/details`, {
+      exactAddress: 'Sample Street 1',
+      entryNotes: 'Ring the bell',
+      updatedAt: createdAt,
+    });
 
     const requestResult = await callMembership(requester.token, { studyId, action: 'request' });
     expect(requestResult.ok).toBe(true);
@@ -191,6 +205,7 @@ describe('co-host participant permissions', () => {
       pendingStatus = pending.data()?.status;
     });
     expect(pendingStatus).toBe('pending');
+    await assertFails(getDoc(doc(db(requester.uid), 'studies', studyId, 'private', 'details')));
 
     const approvalResult = await callMembership(host.token, { studyId, action: 'approve', targetUid: requester.uid });
     expect(approvalResult.ok).toBe(true);
@@ -206,6 +221,48 @@ describe('co-host participant permissions', () => {
     });
     expect(approvedStatus).toBe('approved');
     expect(approvedCount).toBe(1);
+    await assertSucceeds(getDoc(doc(db(requester.uid), 'studies', studyId, 'private', 'details')));
+  });
+
+  it('lets only the host delete a study and recursively removes its private records', async () => {
+    const host = await createAuthUser('delete-host');
+    const visitor = await createAuthUser('delete-visitor');
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [],
+      approvedUserIds: [],
+      invitedUserIds: [],
+    });
+    await seed(`studies/${studyId}/members/legacy-member`, {
+      uid: 'legacy-member', status: 'approved', createdAt, updatedAt: createdAt,
+    });
+    await seed(`studies/${studyId}/sessions/2026-12-01/attendees/${host.uid}`, {
+      uid: host.uid, joined: true, updatedAt: createdAt,
+    });
+    await seed(`studies/${studyId}/private/details`, {
+      exactAddress: 'Sample Street 1', entryNotes: '', updatedAt: createdAt,
+    });
+
+    const denied = await callDeleteStudy(visitor.token, studyId);
+    expect(denied.ok).toBe(false);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      expect((await getDoc(doc(context.firestore(), 'studies', studyId))).exists()).toBe(true);
+    });
+
+    const deleted = await callDeleteStudy(host.token, studyId);
+    expect(deleted.ok).toBe(true);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [study, member, attendee, details] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId)),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', 'legacy-member')),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'sessions', '2026-12-01', 'attendees', host.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'private', 'details')),
+      ]);
+      expect(study.exists()).toBe(false);
+      expect(member.exists()).toBe(false);
+      expect(attendee.exists()).toBe(false);
+      expect(details.exists()).toBe(false);
+    });
   });
 
   it('keeps invitations, acceptance, and leaving functional with matching counts and notices', async () => {
