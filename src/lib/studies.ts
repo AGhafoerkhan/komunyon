@@ -214,19 +214,7 @@ export async function revokeInvite(studyId: string, uid: string): Promise<void> 
 export async function acceptInvite(study: BibleStudy, uid: string): Promise<void> {
   if (study.approvedUserIds.includes(uid)) return;
   if (!study.invitedUserIds.includes(uid)) throw new Error('This invitation is no longer available.');
-  console.info('[Komunyon] Accept invite started', {
-    studyId: study.id,
-    uid,
-    invited: study.invitedUserIds.includes(uid),
-    approvedCount: study.approvedUserIds.length,
-    maxCapacity: study.maxCapacity,
-  });
-  try {
-    await writeMemberNotice(study.id, uid, 'accepted');
-  } catch (error) {
-    console.error('[Komunyon] Accept invite failed at notice write', { studyId: study.id, uid, error });
-    throw error;
-  }
+  await writeMemberNotice(study.id, uid, 'accepted');
   try {
     await updateDoc(studyRef(study.id), {
       invitedUserIds: arrayRemove(uid),
@@ -234,20 +222,12 @@ export async function acceptInvite(study: BibleStudy, uid: string): Promise<void
       ...(study.pendingUserIds.includes(uid) ? { pendingUserIds: arrayRemove(uid) } : {}),
       updatedAt: nowIso(),
     });
-    console.info('[Komunyon] Accept invite membership update succeeded', { studyId: study.id, uid });
     const firstSession = upcomingSession(study);
     if (firstSession) {
-      try {
-        await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
-        console.info('[Komunyon] Accept invite attendance update succeeded', { studyId: study.id, uid, firstSession });
-      } catch (error) {
-        console.error('[Komunyon] Accept invite failed at attendance update', { studyId: study.id, uid, firstSession, error });
-        throw error;
-      }
+      await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
     }
     await syncStorageAccess(study.id);
   } catch (error) {
-    console.error('[Komunyon] Accept invite failed at membership update', { studyId: study.id, uid, error });
     await deleteDoc(doc(getFirebase().db, 'studies', study.id, 'notices', uid)).catch(() => undefined);
     throw error;
   }
