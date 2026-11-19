@@ -42,6 +42,9 @@ export function actionError(error: unknown): string {
       case 'storage/bucket-not-found':
         return 'Photo storage is not set up yet. In Firebase, open Storage and click Get Started, then try again.';
       case 'firestore/failed-precondition':
+        if (hasMessage(error) && /query requires .*index/i.test(error.message)) {
+          return 'This Firestore query needs an index. The index has been configured; refresh after Firebase finishes building it.';
+        }
         return 'Firestore is not created for this project yet.';
       default:
         return error.code.startsWith('firestore/')
@@ -51,6 +54,10 @@ export function actionError(error: unknown): string {
   }
   if (error instanceof Error && error.message) return error.message;
   return 'Something went wrong. Please try again.';
+}
+
+function hasMessage(error: unknown): error is { code: string; message: string } {
+  return hasCode(error) && 'message' in error && typeof error.message === 'string';
 }
 
 function logActionError(error: unknown): void {
