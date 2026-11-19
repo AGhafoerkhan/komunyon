@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Spinner } from '@/components/ui';
+import { OFFLINE_AUTH_MESSAGE, SIGN_IN_CANCELLED_MESSAGE } from '@/lib/errors';
 
 export default function LoginPage() {
   const { signInWithGoogle, prepareGoogleSignIn, signInError } = useAuth();
@@ -33,7 +34,7 @@ export default function LoginPage() {
         >
           {busy ? <Spinner /> : <GoogleMark />}
         </button>
-        {message === 'Sign-in was cancelled.' ? (
+        {message === SIGN_IN_CANCELLED_MESSAGE || message === OFFLINE_AUTH_MESSAGE ? (
           <p role="alert" className="mt-3 max-w-48 text-center text-sm text-clay">
             {message}
           </p>

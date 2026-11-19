@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Spinner } from '@/components/ui';
-import { actionError } from '@/lib/errors';
+import { OFFLINE_AUTH_MESSAGE, SIGN_IN_CANCELLED_MESSAGE } from '@/lib/errors';
 import { missingFirebaseEnv } from '@/lib/firebase';
 
 const story = [
@@ -41,10 +41,9 @@ const bodyClass = 'mt-4 w-full text-sm leading-relaxed text-[#a7afbe] sm:text-ba
 
 export default function HomePage() {
   const { signInWithGoogle, prepareGoogleSignIn, configured, signInError } = useAuth();
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const missing = missingFirebaseEnv();
-  const message = error || signInError;
+  const message = signInError === SIGN_IN_CANCELLED_MESSAGE || signInError === OFFLINE_AUTH_MESSAGE ? signInError : null;
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -57,11 +56,10 @@ export default function HomePage() {
 
   async function signIn() {
     setBusy(true);
-    setError(null);
     try {
       await signInWithGoogle();
-    } catch (failure) {
-      setError(actionError(failure));
+    } catch {
+      // AuthProvider records the failure once and supplies the safe user message.
     } finally {
       setBusy(false);
     }

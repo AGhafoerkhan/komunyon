@@ -13,7 +13,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
-import { actionError } from '@/lib/errors';
+import { actionError, OFFLINE_AUTH_MESSAGE, SIGN_IN_CANCELLED_MESSAGE } from '@/lib/errors';
 import { loadSessionAttendance, setSessionAttendance as saveSessionAttendance, subscribeSessionAttendance, subscribeSessionAttendanceList } from '@/lib/attendance';
 import { normalizePhone } from '@/lib/validate';
 import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
@@ -361,7 +361,7 @@ export default function StudyPage() {
         <p className="mt-6 text-sm text-muted">Loading study…</p>
       ) : !study && !blocked ? (
         <div className="mt-6">
-          <p className="font-serif text-3xl">This study is no longer listed.</p>
+          <p className="font-serif text-3xl">This study link is invalid or no longer available.</p>
         </div>
       ) : showLeft ? (
         <div id="left" className="mt-6 max-w-xl scroll-mt-24">
@@ -385,8 +385,8 @@ export default function StudyPage() {
         </div>
       ) : blocked ? (
         <div className="mt-6 max-w-xl">
-          <p className="font-serif text-3xl">This study is private.</p>
-          <p className="mt-3 text-sm leading-relaxed text-muted">Ask the host for an invite. The address stays hidden until then.</p>
+          <p className="font-serif text-3xl">This study link isn’t available.</p>
+          <p className="mt-3 text-sm leading-relaxed text-muted">The link may be incorrect, or the study may be private. Check the link or ask the host for access.</p>
         </div>
       ) : study ? (
         <StudyBody
@@ -467,17 +467,16 @@ function GuestStudy({
   missing: boolean;
 }) {
   const { signInWithGoogle, prepareGoogleSignIn, signInError } = useAuth();
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
+  const authMessage = signInError === SIGN_IN_CANCELLED_MESSAGE || signInError === OFFLINE_AUTH_MESSAGE ? signInError : null;
 
   async function signIn() {
     setBusy(true);
-    setError(null);
     try {
       await signInWithGoogle();
-    } catch (failure) {
-      setError(actionError(failure));
+    } catch {
+      // AuthProvider records the failure once and supplies the safe user message.
     } finally {
       setBusy(false);
     }
@@ -516,7 +515,7 @@ function GuestStudy({
               Session capacity: {study.maxCapacity}
             </span>
           </p>
-          {error || signInError ? <FormError>{error || signInError}</FormError> : null}
+          {authMessage ? <FormError>{authMessage}</FormError> : null}
           <Button className="w-full" onPointerDown={prepareGoogleSignIn} onClick={() => void signIn()} disabled={busy}>
             {busy ? <Spinner /> : null}
             Sign in now to join
@@ -525,12 +524,12 @@ function GuestStudy({
       ) : (
         <article className="flex w-full flex-col gap-3 rounded-lg border border-line bg-card p-4">
           <h1 className="font-serif text-xl leading-snug">
-            {blocked ? 'Sign in to open this study.' : missing ? 'This study is no longer listed.' : 'Sign in to open this study.'}
+            {blocked ? 'Sign in to check this study link.' : missing ? 'This study link is invalid or no longer available.' : 'Sign in to open this study.'}
           </h1>
           {blocked ? (
-            <p className="text-sm leading-relaxed text-muted">The host shared a private group. Sign in if they invited you.</p>
+            <p className="text-sm leading-relaxed text-muted">If it still doesn’t open after sign-in, the link may be incorrect or the study may be private.</p>
           ) : null}
-          {error || signInError ? <FormError>{error || signInError}</FormError> : null}
+          {authMessage ? <FormError>{authMessage}</FormError> : null}
           {blocked ? (
             <Button className="w-full" onPointerDown={prepareGoogleSignIn} onClick={() => void signIn()} disabled={busy}>
               {busy ? <Spinner /> : null}
