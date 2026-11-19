@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { getLatestClientIssue, submitIssueReport, type ClientIssue } from '@/lib/issueReports';
+import { getLatestClientIssue, setServerAppVersion, submitIssueReport, type ClientIssue } from '@/lib/issueReports';
 
 const message = 'Something went wrong. Contact support or try again later.';
 
@@ -37,6 +37,7 @@ export function ProblemReporter() {
       .then((response) => response.ok ? response.json() as Promise<{ version?: unknown }> : null)
       .then((result) => {
         if (!active || typeof result?.version !== 'string' || result.version === 'unknown') return;
+        setServerAppVersion(result.version);
         setVersionMismatch(result.version !== clientVersion);
       })
       .catch(() => undefined);

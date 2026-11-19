@@ -66,7 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await completeRedirectSignIn(auth);
       } catch (redirectError: unknown) {
-        if (!cancelled) setSignInError(actionError(redirectError));
+        if (!cancelled) setSignInError(actionError(redirectError, {
+          action: 'finish Google sign-in redirect',
+          operation: 'Firebase Auth getRedirectResult',
+        }));
       }
       if (cancelled) return;
       unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -90,7 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (current !== requestId || cancelled) return;
             setUser(firebaseUser);
             setProfile(null);
-            setError(actionError(loadError));
+            setError(actionError(loadError, {
+              action: 'restore signed-in session',
+              operation: 'load or migrate the current user profile',
+              target: `users/${firebaseUser.uid} and private/contact`,
+            }));
             setLoading(false);
           });
       });
@@ -119,7 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           await signInWithGoogleAccount(getFirebase().auth);
         } catch (signInFailure) {
-          setSignInError(actionError(signInFailure));
+          setSignInError(actionError(signInFailure, {
+            action: 'sign in with Google',
+            operation: 'Firebase Auth popup or redirect flow',
+          }));
           throw signInFailure;
         }
       },

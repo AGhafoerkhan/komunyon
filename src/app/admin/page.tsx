@@ -14,6 +14,9 @@ interface IssueReport {
   id: string;
   reporterUid: string;
   reporterEmail: string;
+  action: string;
+  operation: string;
+  target: string;
   route: string;
   version: string;
   browser: string;
@@ -21,7 +24,14 @@ interface IssueReport {
   errorCode: string;
   errorMessage: string;
   stack: string;
+  callerStack: string;
+  recentActions: string;
   occurredAt: string;
+  online: boolean | null;
+  visibility: string;
+  timezone: string;
+  locale: string;
+  viewport: string;
   reportedAt: Date | null;
   status: IssueStatus;
   adminNotes: string;
@@ -61,6 +71,9 @@ export default function AdminPage() {
           id: item.id,
           reporterUid: asText(data.reporterUid),
           reporterEmail: asText(data.reporterEmail),
+          action: asText(data.action),
+          operation: asText(data.operation),
+          target: asText(data.target),
           route: asText(data.route),
           version: asText(data.version),
           browser: asText(data.browser),
@@ -68,7 +81,14 @@ export default function AdminPage() {
           errorCode: asText(data.errorCode),
           errorMessage: asText(data.errorMessage),
           stack: asText(data.stack),
+          callerStack: asText(data.callerStack),
+          recentActions: asText(data.recentActions),
           occurredAt: asText(data.occurredAt),
+          online: typeof data.online === 'boolean' ? data.online : null,
+          visibility: asText(data.visibility),
+          timezone: asText(data.timezone),
+          locale: asText(data.locale),
+          viewport: asText(data.viewport),
           reportedAt: data.reportedAt && typeof data.reportedAt.toDate === 'function' ? data.reportedAt.toDate() : null,
           status: asStatus(data.status),
           adminNotes: asText(data.adminNotes),
@@ -201,13 +221,25 @@ export default function AdminPage() {
             </div>
 
             <dl className="mt-5 grid gap-3 border-y border-line py-4 text-sm sm:grid-cols-2">
+              <Detail label="Action" value={selected.action || 'Not captured'} />
+              <Detail label="Operation" value={selected.operation || 'Not captured'} />
+              <Detail label="Firestore target" value={selected.target || 'Not captured'} />
               <Detail label="Page" value={selected.route || '—'} />
               <Detail label="App version" value={selected.version || 'unknown'} />
               <Detail label="User ID" value={selected.reporterUid || '—'} />
               <Detail label="Occurred" value={selected.occurredAt || '—'} />
               <Detail label="Browser and device" value={selected.browser || '—'} />
+              <Detail label="Network online" value={selected.online === null ? 'Unknown' : selected.online ? 'Yes' : 'No'} />
+              <Detail label="Tab visibility" value={selected.visibility || '—'} />
+              <Detail label="Locale / timezone" value={`${selected.locale || '—'} / ${selected.timezone || '—'}`} />
+              <Detail label="Viewport" value={selected.viewport || '—'} />
               <Detail label="Reported" value={selected.reportedAt?.toLocaleString() ?? '—'} />
             </dl>
+
+            <section className="mt-5">
+              <h3 className="text-sm font-semibold">Recent app actions</h3>
+              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-sand/60 p-3 text-xs">{selected.recentActions || 'No recent action trail was captured.'}</pre>
+            </section>
 
             <section className="mt-5">
               <h3 className="text-sm font-semibold">Error details</h3>
@@ -216,6 +248,10 @@ export default function AdminPage() {
             <section className="mt-4">
               <h3 className="text-sm font-semibold">Stack trace</h3>
               <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-md bg-sand/60 p-3 text-xs">{selected.stack || 'No stack trace was captured.'}</pre>
+            </section>
+            <section className="mt-4">
+              <h3 className="text-sm font-semibold">Error handling callsite</h3>
+              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-sand/60 p-3 text-xs">{selected.callerStack || 'No callsite was captured.'}</pre>
             </section>
 
             <section className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">

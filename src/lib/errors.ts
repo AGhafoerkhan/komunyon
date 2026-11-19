@@ -1,4 +1,4 @@
-import { captureClientIssue } from '@/lib/issueReports';
+import { captureClientIssue, type IssueContext } from '@/lib/issueReports';
 
 export function firebaseErrorCode(error: unknown): string | null {
   return hasCode(error) ? error.code : null;
@@ -8,7 +8,7 @@ function hasCode(error: unknown): error is { code: string } {
   return typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string';
 }
 
-export function actionError(error: unknown): string {
+export function actionError(error: unknown, context?: IssueContext): string {
   if (hasCode(error)) {
     switch (error.code) {
       case 'auth/popup-closed-by-user':
@@ -17,7 +17,10 @@ export function actionError(error: unknown): string {
         return 'Sign-in was cancelled.';
     }
   }
-  captureClientIssue(error);
+  captureClientIssue(error, context ?? {
+    action: 'handled application operation',
+    operation: 'error caught and passed to actionError',
+  });
   return 'Something went wrong. Contact support or try again later.';
 }
 

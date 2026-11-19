@@ -9,6 +9,7 @@ import { AppShell } from '@/components/TopBar';
 import { Button, FormError, LoadingScreen, Spinner, pageTitleClass } from '@/components/ui';
 import { eraseOwnAccount, hasPendingAccountDeletion } from '@/lib/account';
 import { actionError } from '@/lib/errors';
+import { captureClientIssue } from '@/lib/issueReports';
 import { useTheme } from '@/components/ThemeProvider';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
@@ -28,8 +29,22 @@ export default function ProfilePage() {
     if (!user || hasPendingAccountDeletion()) return;
     const { db } = getFirebase();
     void Promise.all([
-      getDocs(query(collection(db, 'studies'), where('hostId', '==', user.uid))),
-      loadStudyMemberships(user.uid),
+      getDocs(query(collection(db, 'studies'), where('hostId', '==', user.uid))).catch((failure: unknown) => {
+        captureClientIssue(failure, {
+          action: 'open profile activity counters',
+          operation: 'getDocs on studies filtered by hostId',
+          target: `studies where hostId=${user.uid}`,
+        });
+        throw failure;
+      }),
+      loadStudyMemberships(user.uid).catch((failure: unknown) => {
+        captureClientIssue(failure, {
+          action: 'open profile activity counters',
+          operation: 'getDocs on collectionGroup members filtered by uid',
+          target: `collectionGroup(members) where uid=${user.uid}`,
+        });
+        throw failure;
+      }),
     ]).then(([hosted, memberships]) => {
       setActivity({ hosted: hosted.size, joined: memberships.filter((membership) => membership.status === 'approved').length, circles: 0 });
     }).catch(() => {
@@ -51,7 +66,11 @@ export default function ProfilePage() {
       const result = await eraseOwnAccount(currentUser);
       if (result === 'redirect') return;
     } catch (failure) {
-      setError(actionError(failure));
+      setError(actionError(failure, {
+        action: 'delete account from profile settings',
+        operation: 'reauthenticate and remove account/profile data',
+        target: `users/${currentUser.uid} and hosted studies`,
+      }));
       setBusy(false);
     }
   }

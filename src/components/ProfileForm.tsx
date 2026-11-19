@@ -118,7 +118,11 @@ export function ProfileForm({
       );
       setSaved(true);
     } catch (failure) {
-      setFormError(actionError(failure));
+      setFormError(actionError(failure, {
+        action: mode === 'edit' ? 'save profile changes' : 'complete profile setup',
+        operation: 'write private contact data and public user profile; sync hosted study card',
+        target: `users/${user?.uid ?? 'unknown'} and studies where hostId=${user?.uid ?? 'unknown'}`,
+      }));
     } finally {
       setSaving(false);
     }

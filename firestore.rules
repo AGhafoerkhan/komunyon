@@ -440,11 +440,15 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly([
           'reporterUid', 'reporterEmail', 'route', 'version', 'browser',
-          'errorName', 'errorCode', 'errorMessage', 'stack', 'occurredAt',
-          'reportedAt', 'status'
+          'action', 'operation', 'target', 'errorName', 'errorCode', 'errorMessage',
+          'stack', 'callerStack', 'recentActions', 'occurredAt', 'online',
+          'visibility', 'timezone', 'locale', 'viewport', 'reportedAt', 'status'
         ])
         && request.resource.data.reporterUid == request.auth.uid
         && request.resource.data.reporterEmail == request.auth.token.email
+        && (!request.resource.data.keys().hasAny(['action']) || (request.resource.data.action is string && request.resource.data.action.size() <= 160))
+        && (!request.resource.data.keys().hasAny(['operation']) || (request.resource.data.operation is string && request.resource.data.operation.size() <= 240))
+        && (!request.resource.data.keys().hasAny(['target']) || (request.resource.data.target is string && request.resource.data.target.size() <= 400))
         && request.resource.data.route is string
         && request.resource.data.route.size() <= 300
         && request.resource.data.version is string
@@ -459,8 +463,15 @@ service cloud.firestore {
         && request.resource.data.errorMessage.size() <= 2000
         && request.resource.data.stack is string
         && request.resource.data.stack.size() <= 12000
+        && (!request.resource.data.keys().hasAny(['callerStack']) || (request.resource.data.callerStack is string && request.resource.data.callerStack.size() <= 6000))
+        && (!request.resource.data.keys().hasAny(['recentActions']) || (request.resource.data.recentActions is string && request.resource.data.recentActions.size() <= 2400))
         && request.resource.data.occurredAt is string
         && request.resource.data.occurredAt.size() <= 40
+        && (!request.resource.data.keys().hasAny(['online']) || request.resource.data.online is bool)
+        && (!request.resource.data.keys().hasAny(['visibility']) || (request.resource.data.visibility is string && request.resource.data.visibility.size() <= 20))
+        && (!request.resource.data.keys().hasAny(['timezone']) || (request.resource.data.timezone is string && request.resource.data.timezone.size() <= 80))
+        && (!request.resource.data.keys().hasAny(['locale']) || (request.resource.data.locale is string && request.resource.data.locale.size() <= 40))
+        && (!request.resource.data.keys().hasAny(['viewport']) || (request.resource.data.viewport is string && request.resource.data.viewport.size() <= 30))
         && request.resource.data.reportedAt == request.time
         && request.resource.data.status == 'new';
 

@@ -5,17 +5,42 @@ import type { User } from 'firebase/auth';
 
 export interface ClientIssue {
   id: string;
+  action: string;
+  operation: string;
+  target: string;
   route: string;
   version: string;
+  serverVersion: string;
   name: string;
   code: string;
   message: string;
   stack: string;
+  callerStack: string;
+  recentActions: string;
   userAgent: string;
   occurredAt: string;
+  online: boolean;
+  visibility: string;
+  timezone: string;
+  locale: string;
+  viewport: string;
+}
+
+export interface IssueContext {
+  action: string;
+  operation: string;
+  target?: string;
 }
 
 let latestIssue: ClientIssue | null = null;
+let serverAppVersion = 'unknown';
+const recentActions: string[] = [];
+
+export function recordIssueBreadcrumb(action: string): void {
+  if (typeof window === 'undefined') return;
+  recentActions.push(`${new Date().toISOString()} ${redact(action, 100)}`);
+  if (recentActions.length > 12) recentActions.shift();
+}
 let lastFingerprint = '';
 let lastCapturedAt = 0;
 
@@ -38,10 +63,15 @@ function safeError(error: unknown): Pick<ClientIssue, 'name' | 'code' | 'message
   };
 }
 
-export function captureClientIssue(error: unknown): void {
+export function setServerAppVersion(version: string): void {
+  serverAppVersion = version;
+  if (latestIssue) latestIssue.serverVersion = version;
+}
+
+export function captureClientIssue(error: unknown, context?: IssueContext): void {
   if (typeof window === 'undefined') return;
   const details = safeError(error);
-  const fingerprint = `${window.location.pathname}|${details.name}|${details.code}|${details.message}|${details.stack.slice(0, 500)}`;
+  const fingerprint = `${window.location.pathname}|${context?.action ?? ''}|${context?.operation ?? ''}|${context?.target ?? ''}|${details.name}|${details.code}|${details.message}|${details.stack.slice(0, 500)}`;
   const now = Date.now();
   if (fingerprint === lastFingerprint && now - lastCapturedAt < 30_000) return;
   lastFingerprint = fingerprint;
@@ -49,10 +79,21 @@ export function captureClientIssue(error: unknown): void {
   latestIssue = {
     id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${now}-${Math.random().toString(36).slice(2)}`,
     ...details,
+    callerStack: redact(new Error('Issue capture callsite').stack ?? '', 6000),
+    recentActions: recentActions.join('\n').slice(-2400),
+    action: redact(context?.action ?? 'uncaught application error', 160),
+    operation: redact(context?.operation ?? 'browser error handler', 240),
+    target: redact(context?.target ?? '', 400),
     route: window.location.pathname.slice(0, 300),
     version: process.env.NEXT_PUBLIC_APP_VERSION ?? 'unknown',
+    serverVersion: serverAppVersion,
     userAgent: redact(navigator.userAgent || 'unknown', 600),
     occurredAt: new Date().toISOString(),
+    online: navigator.onLine,
+    visibility: document.visibilityState,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone.slice(0, 80),
+    locale: navigator.language.slice(0, 40),
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
   };
   window.dispatchEvent(new Event('komunyon:issue'));
 }
@@ -67,14 +108,24 @@ export async function submitIssueReport(user: User, issue: ClientIssue): Promise
   await addDoc(collection(db, 'issueReports'), {
     reporterUid: user.uid,
     reporterEmail: user.email ?? '',
+    action: issue.action,
+    operation: issue.operation,
+    target: issue.target,
     route: issue.route,
-    version: issue.version,
+    version: `client=${issue.version}; server=${issue.serverVersion}`.slice(0, 100),
     browser: issue.userAgent,
     errorName: issue.name,
     errorCode: issue.code,
     errorMessage: issue.message,
     stack: issue.stack,
+    callerStack: issue.callerStack,
+    recentActions: issue.recentActions,
     occurredAt: issue.occurredAt,
+    online: issue.online,
+    visibility: issue.visibility,
+    timezone: issue.timezone,
+    locale: issue.locale,
+    viewport: issue.viewport,
     reportedAt: serverTimestamp(),
     status: 'new',
   });
