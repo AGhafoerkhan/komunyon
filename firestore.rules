@@ -487,7 +487,11 @@ service cloud.firestore {
     }
 
     match /studies/{studyId} {
-      allow get, list: if canReadStudy(studyId, resource.data);
+      // Authenticated users may confirm that a supplied study ID is missing,
+      // without receiving any fields from an existing private study.
+      allow get: if (signedIn() && !studyExists(studyId))
+        || canReadStudy(studyId, resource.data);
+      allow list: if canReadStudy(studyId, resource.data);
 
       allow create: if signedIn()
         && request.resource.data.hostId == request.auth.uid
