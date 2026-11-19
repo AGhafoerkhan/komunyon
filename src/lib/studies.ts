@@ -515,18 +515,26 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
     });
     failedOperation = 'write private address and entry notes';
     failedTarget = `studies/${ref.id}/private/details`;
-    await setDoc(privateRef(ref.id), privateFields(draft, now));
     const dates = draft.format === 'recurring' && draft.dayOfWeek !== null
       ? upcomingSessions(draft.dayOfWeek, draft.time, 8)
       : draft.date
         ? [draft.date]
         : [];
-    failedOperation = 'initialize host attendance';
-    failedTarget = `studies/${ref.id}/sessions/*/attendees/${host.uid}`;
-    await Promise.all(dates.map((date) => setSessionAttendance(ref.id, date, host.uid, true, draft.maxCapacity)));
-    failedOperation = 'write host contact for group members';
-    failedTarget = `studies/${ref.id}/memberContacts/${host.uid}`;
-    await writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', '));
+    const setup = await Promise.allSettled([
+      setDoc(privateRef(ref.id), privateFields(draft, now)),
+      httpsCallable(getFirebase().functions, 'initializeHostedStudySessions')({ studyId: ref.id, dates }),
+      writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', ')),
+    ]);
+    const failedIndex = setup.findIndex((result) => result.status === 'rejected');
+    if (failedIndex !== -1) {
+      const failedOperations = [
+        ['write private address and entry notes', `studies/${ref.id}/private/details`],
+        ['initialize host attendance', `studies/${ref.id}/sessions/*/attendees/${host.uid}`],
+        ['write host contact for group members', `studies/${ref.id}/memberContacts/${host.uid}`],
+      ] as const;
+      [failedOperation, failedTarget] = failedOperations[failedIndex];
+      throw (setup[failedIndex] as PromiseRejectedResult).reason;
+    }
   } catch (error) {
     await httpsCallable(getFirebase().functions, 'deleteHostedStudy')({ studyId: ref.id }).catch(() => undefined);
     const failure = new Error(error instanceof Error ? error.message : 'Event creation failed.', { cause: error });
