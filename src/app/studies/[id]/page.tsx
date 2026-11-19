@@ -1167,7 +1167,7 @@ function StudyBody({
 
           {role === 'pending' ? (
             <div className="flex flex-col gap-2">
-              <p className="text-sm text-muted">The host has your request.</p>
+              <p className="text-sm text-muted">Your request is awaiting review.</p>
               <Button className="w-full" variant="secondary" onClick={onCancel} disabled={busy !== null}>
                 Cancel request
               </Button>
