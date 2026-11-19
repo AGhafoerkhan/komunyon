@@ -501,42 +501,33 @@ export async function getPrivateDetails(studyId: string): Promise<PrivateStudyDe
   return parsePrivateDetails(snap.data());
 }
 
-export async function createStudy(host: UserProfile, draft: StudyDraft): Promise<string> {
+export async function createStudy(draft: StudyDraft): Promise<string> {
   const { db } = getFirebase();
   const ref = doc(collection(db, 'studies'));
-  const now = nowIso();
-  let failedOperation = 'write public event document';
-  let failedTarget = `studies/${ref.id}`;
+  const dates = draft.format === 'recurring' && draft.dayOfWeek !== null
+    ? upcomingSessions(draft.dayOfWeek, draft.time, 8)
+    : draft.date
+      ? [draft.date]
+      : [];
   try {
-    await setDoc(ref, {
-      ...publicFields(host, draft, now, now),
-      approvedCount: 0,
-      skippedDates: [],
+    await httpsCallable(getFirebase().functions, 'createHostedStudy')({
+      studyId: ref.id,
+      title: draft.title.trim(),
+      description: draft.description.trim(),
+      tags: sortTags(draft.tags),
+      format: draft.format,
+      dayOfWeek: draft.format === 'recurring' ? draft.dayOfWeek : null,
+      date: draft.format === 'one-off' ? draft.date : null,
+      time: normalizeTime(draft.time) ?? draft.time,
+      maxCapacity: draft.maxCapacity,
+      area: draft.area,
+      isPublic: draft.isPublic,
+      showMemberContacts: draft.showMemberContacts,
+      exactAddress: draft.exactAddress.trim(),
+      entryNotes: draft.entryNotes.trim(),
+      dates,
     });
-    failedOperation = 'write private address and entry notes';
-    failedTarget = `studies/${ref.id}/private/details`;
-    const dates = draft.format === 'recurring' && draft.dayOfWeek !== null
-      ? upcomingSessions(draft.dayOfWeek, draft.time, 8)
-      : draft.date
-        ? [draft.date]
-        : [];
-    const setup = await Promise.allSettled([
-      setDoc(privateRef(ref.id), privateFields(draft, now)),
-      httpsCallable(getFirebase().functions, 'initializeHostedStudySessions')({ studyId: ref.id, dates }),
-      writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', ')),
-    ]);
-    const failedIndex = setup.findIndex((result) => result.status === 'rejected');
-    if (failedIndex !== -1) {
-      const failedOperations = [
-        ['write private address and entry notes', `studies/${ref.id}/private/details`],
-        ['initialize host attendance', `studies/${ref.id}/sessions/*/attendees/${host.uid}`],
-        ['write host contact for group members', `studies/${ref.id}/memberContacts/${host.uid}`],
-      ] as const;
-      [failedOperation, failedTarget] = failedOperations[failedIndex];
-      throw (setup[failedIndex] as PromiseRejectedResult).reason;
-    }
   } catch (error) {
-    await httpsCallable(getFirebase().functions, 'deleteHostedStudy')({ studyId: ref.id }).catch(() => undefined);
     const failure = new Error(error instanceof Error ? error.message : 'Event creation failed.', { cause: error });
     failure.name = 'StudyCreationError';
     Object.assign(failure, {
@@ -544,8 +535,8 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
       rawError: error,
       issueContext: {
         action: 'host an event',
-        operation: failedOperation,
-        target: failedTarget,
+        operation: 'create event, private details, host contact and initial attendance atomically',
+        target: `studies/${ref.id}`,
       },
     });
     throw failure;

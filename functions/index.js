@@ -6,6 +6,112 @@ const { getStorage } = require('firebase-admin/storage');
 initializeApp();
 const db = getFirestore();
 
+const HAGUE_AREAS = new Set([
+  'Centrum', 'Scheveningen', 'Statenkwartier', 'Duinoord', 'Zeeheldenkwartier',
+  'Archipelbuurt', 'Bezuidenhout', 'Mariahoeve', 'Haagse Hout', 'Segbroek',
+  'Regentessekwartier', 'Transvaalkwartier', 'Schildersbuurt', 'Laak', 'Binckhorst',
+  'Escamp', 'Moerwijk', 'Loosduinen', 'Ypenburg', 'Leidschenveen',
+]);
+const STUDY_TAGS = new Set(['bible-study', 'prayer-worship', 'communion', 'event', 'dinner']);
+
+exports.createHostedStudy = onCall({ region: 'europe-west4' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to host an event.');
+  const uid = request.auth.uid;
+  const input = request.data || {};
+  const { studyId, title, description, tags, format, dayOfWeek, date, time, maxCapacity, area,
+    isPublic, showMemberContacts, exactAddress, entryNotes, dates } = input;
+  const validDates = (Array.isArray(dates) && dates.length <= 8 && new Set(dates).size === dates.length
+    && dates.every((value) => typeof value === 'string'
+      && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      && Number.isFinite(Date.parse(`${value}T00:00:00.000Z`))
+      && new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value));
+  const validRecurring = format === 'recurring' && Number.isInteger(dayOfWeek) && dayOfWeek >= 0 && dayOfWeek <= 6
+    && date === null && validDates && dates.length === 8
+    && dates.every((value) => new Date(`${value}T00:00:00.000Z`).getUTCDay() === dayOfWeek)
+    && dates.slice(1).every((value, index) => Date.parse(`${value}T00:00:00.000Z`)
+      - Date.parse(`${dates[index]}T00:00:00.000Z`) === 7 * 24 * 60 * 60 * 1000);
+  const validOneOff = format === 'one-off' && dayOfWeek === null && typeof date === 'string'
+    && /^\d{4}-\d{2}-\d{2}$/.test(date) && validDates && dates.length === 1 && dates[0] === date;
+  if (typeof studyId !== 'string' || studyId.length === 0 || studyId.length > 128 || studyId.includes('/')
+    || typeof title !== 'string' || title.trim().length < 6 || title.trim().length > 120
+    || typeof description !== 'string' || description.trim().length < 12 || description.trim().length > 2000
+    || !Array.isArray(tags) || tags.length < 1 || tags.length > 5 || new Set(tags).size !== tags.length
+    || tags.some((tag) => !STUDY_TAGS.has(tag))
+    || (!validRecurring && !validOneOff)
+    || typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)
+    || !Number.isInteger(maxCapacity) || maxCapacity < 1 || maxCapacity > 100
+    || typeof area !== 'string' || !HAGUE_AREAS.has(area)
+    || typeof isPublic !== 'boolean' || typeof showMemberContacts !== 'boolean'
+    || typeof exactAddress !== 'string' || exactAddress.trim().length < 1 || exactAddress.trim().length > 180
+    || typeof entryNotes !== 'string' || entryNotes.trim().length > 1000) {
+    throw new HttpsError('invalid-argument', 'Check the event details and try again.');
+  }
+
+  const studyRef = db.doc(`studies/${studyId}`);
+  const userRef = db.doc(`users/${uid}`);
+  const contactRef = db.doc(`users/${uid}/private/contact`);
+  const privateRef = db.doc(`studies/${studyId}/private/details`);
+  const memberContactRef = db.doc(`studies/${studyId}/memberContacts/${uid}`);
+  const now = new Date().toISOString();
+  await db.runTransaction(async (transaction) => {
+    const [userSnap, contactSnap] = await transaction.getAll(userRef, contactRef);
+    if (!userSnap.exists || userSnap.data().profileCompleted !== true || !contactSnap.exists) {
+      throw new HttpsError('failed-precondition', 'Complete your profile before hosting an event.');
+    }
+    const profile = userSnap.data();
+    const contact = contactSnap.data();
+    const phone = typeof contact.phone === 'string' ? contact.phone : '';
+    const place = [contact.neighbourhood, contact.city, contact.country]
+      .filter((value) => typeof value === 'string' && value.length > 0).join(', ').slice(0, 240);
+    if (typeof profile.fullName !== 'string' || profile.fullName.trim().length === 0 || profile.fullName.length > 80
+      || !Number.isInteger(profile.age) || profile.age < 1 || profile.age > 120
+      || typeof profile.photoURL !== 'string'
+      || !(profile.photoURL.length === 0
+        || (profile.photoURL.length <= 2000 && profile.photoURL.startsWith('https://'))
+        || (profile.photoURL.length <= 24000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(profile.photoURL)))
+      || !/^\+?[0-9]{8,15}$/.test(phone)) {
+      throw new HttpsError('failed-precondition', 'Complete your profile before hosting an event.');
+    }
+
+    transaction.create(studyRef, {
+      hostId: uid,
+      hostName: profile.fullName,
+      hostAge: profile.age,
+      hostPhotoURL: profile.photoURL,
+      title: title.trim(),
+      description: description.trim(),
+      tags,
+      format,
+      dayOfWeek: format === 'recurring' ? dayOfWeek : null,
+      date: format === 'one-off' ? date : null,
+      time,
+      maxCapacity,
+      area,
+      isPublic,
+      showMemberContacts,
+      approvedCount: 0,
+      skippedDates: [],
+      createdAt: now,
+      updatedAt: now,
+    });
+    transaction.create(privateRef, {
+      exactAddress: exactAddress.trim(),
+      entryNotes: entryNotes.trim(),
+      updatedAt: now,
+    });
+    transaction.create(memberContactRef, { phone, place, updatedAt: now });
+    dates.forEach((sessionDate) => {
+      transaction.create(db.doc(`studies/${studyId}/sessions/${sessionDate}/attendees/${uid}`), {
+        uid, joined: true, updatedAt: now,
+      });
+      transaction.create(db.doc(`studies/${studyId}/sessions/${sessionDate}/summary/attendance`), {
+        attendingCount: 1, updatedAt: now,
+      });
+    });
+  });
+  return { studyId };
+});
+
 exports.initializeHostedStudySessions = onCall({ region: 'europe-west4' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to initialize study sessions.');
   const { studyId, dates } = request.data || {};
