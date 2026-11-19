@@ -1,7 +1,16 @@
 import type { NextConfig } from 'next';
 
+const appVersion =
+  process.env.NEXT_PUBLIC_APP_VERSION?.trim()
+  || process.env.VERCEL_GIT_COMMIT_SHA
+  || process.env.GITHUB_SHA
+  || 'local';
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+  },
   async rewrites() {
     const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'continuity-32390.firebaseapp.com';
     const origin = authDomain.includes('firebaseapp.com')
