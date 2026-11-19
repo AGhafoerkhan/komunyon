@@ -75,8 +75,8 @@ export type StudyField =
 export function validateStudyDraft(draft: StudyDraft, minCapacity: number): Partial<Record<StudyField, string>> {
   const errors: Partial<Record<StudyField, string>> = {};
   const title = draft.title.trim();
-  if (title.length === 0 || title.length > LIMITS.titleMax) {
-    errors.title = `Add a title (up to ${LIMITS.titleMax} characters).`;
+  if (title.length < LIMITS.titleMin || title.length > LIMITS.titleMax) {
+    errors.title = `Title must be between ${LIMITS.titleMin} and ${LIMITS.titleMax} characters.`;
   }
   const description = draft.description.trim();
   if (description.length === 0 || description.length > LIMITS.descriptionMax) {

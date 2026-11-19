@@ -6,6 +6,7 @@ export const LIMITS = {
   ageMax: 120,
   bioMax: 800,
   titleMax: 120,
+  titleMin: 10,
   descriptionMax: 2000,
   sessionDescriptionMax: 4000,
   addressMax: 180,
