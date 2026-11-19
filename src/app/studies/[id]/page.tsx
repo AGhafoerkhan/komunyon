@@ -385,8 +385,8 @@ export default function StudyPage() {
         </div>
       ) : blocked ? (
         <div className="mt-6 max-w-xl">
-          <p className="font-serif text-3xl">This study link isn’t available.</p>
-          <p className="mt-3 text-sm leading-relaxed text-muted">The link may be incorrect, or the study may be private. Check the link or ask the host for access.</p>
+          <p className="font-serif text-3xl">This study is private.</p>
+          <p className="mt-3 text-sm leading-relaxed text-muted">Ask the host to invite you. The study details and address stay hidden until then.</p>
         </div>
       ) : study ? (
         <StudyBody
