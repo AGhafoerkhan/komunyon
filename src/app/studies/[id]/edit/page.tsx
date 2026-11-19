@@ -34,11 +34,18 @@ export default function EditStudyPage() {
         if (!active) return;
         setStudy(nextStudy);
         if (nextStudy && nextStudy.hostId === user.uid) {
-          setDetails(await getPrivateDetails(studyId));
+          const nextDetails = await getPrivateDetails(studyId);
+          if (!active) return;
+          setDetails(nextDetails);
           setCanEdit(true);
         } else if (nextStudy) {
-          setHostProfile(await loadProfile(nextStudy.hostId));
-          setDetails(await getPrivateDetails(studyId));
+          const [nextHostProfile, nextDetails] = await Promise.all([
+            loadProfile(nextStudy.hostId),
+            getPrivateDetails(studyId),
+          ]);
+          if (!active) return;
+          setHostProfile(nextHostProfile);
+          setDetails(nextDetails);
         }
         setPermissionChecked(true);
       } catch (failure) {
@@ -124,7 +131,7 @@ export default function EditStudyPage() {
           minCapacity={minCapacity}
           submitLabel="Save changes"
           onSubmit={async (draft) => {
-            await updateStudy(study.id, hostProfile ?? profile, draft);
+            await updateStudy(study.id, hostProfile ?? profile, draft, study.createdAt);
             router.push(`/studies/${study.id}`);
           }}
         />

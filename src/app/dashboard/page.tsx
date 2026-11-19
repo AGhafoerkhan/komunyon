@@ -30,12 +30,10 @@ export default function DashboardPage() {
     let publicStudies: BibleStudy[] = [];
     let hostedStudies: BibleStudy[] = [];
     let memberStudies: BibleStudy[] = [];
-    let publicReady = false;
-    let hostedReady = false;
-    let memberReady = false;
+    let hasFirstResult = false;
 
     const publish = () => {
-      if (!publicReady || !hostedReady || !memberReady) return;
+      if (!hasFirstResult) return;
       const byId = new Map<string, BibleStudy>();
       for (const study of publicStudies) {
         if (study.isPublic) byId.set(study.id, study);
@@ -50,12 +48,12 @@ export default function DashboardPage() {
       user.uid,
       (next) => {
         publicStudies = next;
-        publicReady = true;
+        hasFirstResult = true;
         publish();
       },
       (failure) => {
         setError(actionError(failure));
-        publicReady = true;
+        hasFirstResult = true;
         publish();
       },
     );
@@ -63,12 +61,12 @@ export default function DashboardPage() {
       user.uid,
       (next) => {
         hostedStudies = next;
-        hostedReady = true;
+        hasFirstResult = true;
         publish();
       },
       (failure) => {
         setError(actionError(failure));
-        hostedReady = true;
+        hasFirstResult = true;
         publish();
       },
     );
@@ -76,12 +74,12 @@ export default function DashboardPage() {
       user.uid,
       (next) => {
         memberStudies = next;
-        memberReady = true;
+        hasFirstResult = true;
         publish();
       },
       (failure) => {
         setError(actionError(failure));
-        memberReady = true;
+        hasFirstResult = true;
         publish();
       },
     );

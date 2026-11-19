@@ -5,6 +5,48 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 initializeApp();
 const db = getFirestore();
 
+exports.initializeHostedStudySessions = onCall({ region: 'europe-west4' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to initialize study sessions.');
+  const { studyId, dates } = request.data || {};
+  if (
+    typeof studyId !== 'string' || studyId.length === 0 || studyId.length > 128 || studyId.includes('/') ||
+    !Array.isArray(dates) || dates.length > 8 || dates.some((date) =>
+      typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(Date.parse(`${date}T00:00:00.000Z`)) || new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) !== date
+    ) ||
+    new Set(dates).size !== dates.length
+  ) {
+    throw new HttpsError('invalid-argument', 'Invalid initial session list.');
+  }
+
+  const studyRef = db.doc(`studies/${studyId}`);
+  const sessionRefs = dates.flatMap((date) => [
+    db.doc(`studies/${studyId}/sessions/${date}/attendees/${request.auth.uid}`),
+    db.doc(`studies/${studyId}/sessions/${date}/summary/attendance`),
+  ]);
+  await db.runTransaction(async (transaction) => {
+    const snapshots = await transaction.getAll(studyRef, ...sessionRefs);
+    const studySnap = snapshots[0];
+    if (!studySnap.exists) throw new HttpsError('not-found', 'Study not found.');
+    const study = studySnap.data();
+    if (study.hostId !== request.auth.uid) throw new HttpsError('permission-denied', 'Only the host can initialize study sessions.');
+    if (!Number.isInteger(study.maxCapacity) || study.maxCapacity < 1) throw new HttpsError('failed-precondition', 'Study capacity is invalid.');
+    if (snapshots.slice(1).some((snapshot) => snapshot.exists)) {
+      throw new HttpsError('failed-precondition', 'These study sessions have already been initialized.');
+    }
+
+    const updatedAt = new Date().toISOString();
+    dates.forEach((date, index) => {
+      const attendeeRef = sessionRefs[index * 2];
+      const summaryRef = sessionRefs[index * 2 + 1];
+      transaction.create(attendeeRef, { uid: request.auth.uid, joined: true, updatedAt });
+      transaction.create(summaryRef, { attendingCount: 1, updatedAt });
+    });
+  });
+
+  return { initialized: dates.length };
+});
+
 exports.toggleSessionAttendance = onCall({ region: 'europe-west4' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to manage attendance.');
   const { studyId, date, joined } = request.data || {};

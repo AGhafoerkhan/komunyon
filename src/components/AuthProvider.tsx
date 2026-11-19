@@ -52,12 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!configured) return;
-    if (pathname === '/logout') {
-      setLoading(false);
-      const { auth } = getFirebase();
-      void signOut(auth).catch(() => undefined);
-      return;
-    }
     let requestId = 0;
     let unsubscribe = () => {};
     let cancelled = false;
@@ -109,6 +103,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestId += 1;
       unsubscribe();
     };
+  }, [configured]);
+
+  useEffect(() => {
+    if (!configured || pathname !== '/logout') return;
+    void signOut(getFirebase().auth).catch(() => undefined);
   }, [configured, pathname]);
 
   const value = useMemo<AuthContextValue>(

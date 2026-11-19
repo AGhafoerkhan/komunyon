@@ -33,12 +33,11 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
   const { db } = getFirebase();
   const ref = doc(db, 'users', user.uid);
   const contactRef = doc(db, 'users', user.uid, 'private', 'contact');
-  const snap = await getDoc(ref);
+  const [snap, contactSnap] = await Promise.all([getDoc(ref), getDoc(contactRef)]);
   if (snap.exists()) {
     const profile = parseUserProfile(snap.id, snap.data());
     if (!profile) throw new Error('Your profile could not be read.');
     const stored = snap.data();
-    const contactSnap = await getDoc(contactRef);
     const privateContact = contactSnap.exists() ? contactSnap.data() : {};
     const contact = {
       email: user.email ?? (typeof privateContact.email === 'string' ? privateContact.email : ''),

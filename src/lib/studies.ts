@@ -12,6 +12,7 @@ import {
   query,
   setDoc,
   updateDoc,
+  writeBatch,
   where,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -102,6 +103,17 @@ function memberCollection(studyId: string) {
 
 async function hydrateStudy(study: BibleStudy, viewerUid: string): Promise<BibleStudy> {
   const { db } = getFirebase();
+  const isHost = study.hostId === viewerUid;
+  if (isHost) {
+    const members = await getDocs(memberCollection(study.id));
+    const byStatus: Record<MemberStatus, string[]> = { pending: [], approved: [], invited: [] };
+    members.docs.forEach((item) => {
+      const data = item.data();
+      if (data.uid === item.id && typeof data.status === 'string' && Object.hasOwn(byStatus, data.status)) byStatus[data.status as MemberStatus].push(item.id);
+    });
+    if (members.empty && (study.pendingUserIds.length || study.approvedUserIds.length || study.invitedUserIds.length)) return study;
+    return { ...study, pendingUserIds: byStatus.pending, approvedUserIds: byStatus.approved, invitedUserIds: byStatus.invited };
+  }
   const ownSnapshot = await getDoc(doc(db, 'studies', study.id, 'members', viewerUid)).catch(() => null);
   const ownStatus = ownSnapshot?.exists() ? ownSnapshot.data().status as MemberStatus : null;
   if (study.hostId !== viewerUid && ownStatus !== 'approved') {
@@ -112,7 +124,6 @@ async function hydrateStudy(study: BibleStudy, viewerUid: string): Promise<Bible
       invitedUserIds: ownStatus === 'invited' ? [viewerUid] : [],
     };
   }
-  const isHost = study.hostId === viewerUid;
   const manager = ownStatus === 'approved'
     ? await getDoc(doc(db, 'studies', study.id, 'managers', viewerUid)).catch(() => null)
     : null;
@@ -452,14 +463,18 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
       approvedCount: 0,
       skippedDates: [],
     });
-    await setDoc(privateRef(ref.id), privateFields(draft, now));
+    await Promise.all([
+      setDoc(privateRef(ref.id), privateFields(draft, now)),
+      writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', ')),
+    ]);
     const dates = draft.format === 'recurring' && draft.dayOfWeek !== null
       ? upcomingSessions(draft.dayOfWeek, draft.time, 8)
       : draft.date
         ? [draft.date]
         : [];
-    await Promise.all(dates.map((date) => setSessionAttendance(ref.id, date, host.uid, true, draft.maxCapacity)));
-    await writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', '));
+    if (dates.length > 0) {
+      await httpsCallable(getFirebase().functions, 'initializeHostedStudySessions')({ studyId: ref.id, dates });
+    }
   } catch (error) {
     await deleteDoc(ref).catch(() => undefined);
     throw error;
@@ -467,14 +482,13 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
   return ref.id;
 }
 
-export async function updateStudy(studyId: string, host: UserProfile, draft: StudyDraft): Promise<void> {
-  const existing = await getDoc(studyRef(studyId));
-  if (!existing.exists()) throw new Error('This study no longer exists.');
-  const createdAt = existing.data().createdAt;
+export async function updateStudy(studyId: string, host: UserProfile, draft: StudyDraft, createdAt: string): Promise<void> {
   if (typeof createdAt !== 'string') throw new Error('This study could not be updated.');
   const now = nowIso();
-  await updateDoc(studyRef(studyId), publicFields(host, draft, createdAt, now));
-  await setDoc(privateRef(studyId), privateFields(draft, now));
+  const batch = writeBatch(getFirebase().db);
+  batch.update(studyRef(studyId), publicFields(host, draft, createdAt, now));
+  batch.set(privateRef(studyId), privateFields(draft, now));
+  await batch.commit();
 }
 
 export async function setMemberContactVisibility(studyId: string, visible: boolean): Promise<void> {
