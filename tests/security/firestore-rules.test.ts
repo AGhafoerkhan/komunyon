@@ -273,6 +273,8 @@ describe('co-host participant permissions', () => {
       exactAddress: 'Sample Street 1', entryNotes: '', updatedAt: createdAt,
     });
 
+    await assertFails(deleteDoc(doc(db(host.uid), 'studies', studyId)));
+
     const denied = await callDeleteStudy(visitor.token, studyId);
     expect(denied.ok).toBe(false);
     await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -606,6 +608,44 @@ describe('session attendance and capacity', () => {
     });
   });
 
+  it('rejects direct client writes to attendance records and summary counts', async () => {
+    await seedStudy();
+    await assertFails(setDoc(doc(db('member'), 'studies', studyId, 'sessions', date, 'attendees', 'member'), {
+      uid: 'member', joined: true, updatedAt: createdAt,
+    }));
+    await assertFails(setDoc(doc(db('member'), 'studies', studyId, 'sessions', date, 'summary', 'attendance'), {
+      attendingCount: 999, updatedAt: createdAt,
+    }));
+  });
+
+  it('decrements attendance once when an approved participant leaves a session', async () => {
+    const host = await createAuthUser('leave-session-host');
+    const member = await createAuthUser('leave-session-member');
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [],
+      approvedUserIds: [member.uid],
+      invitedUserIds: [],
+    });
+    await seed(`studies/${studyId}/sessions/${date}/attendees/${member.uid}`, {
+      uid: member.uid, joined: true, updatedAt: createdAt,
+    });
+    await seed(`studies/${studyId}/sessions/${date}/summary/attendance`, {
+      attendingCount: 1, updatedAt: createdAt,
+    });
+
+    expect((await callAttendance(member.token, { studyId, date, joined: false })).ok).toBe(true);
+    expect((await callAttendance(member.token, { studyId, date, joined: false })).ok).toBe(true);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [attendee, summary] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'sessions', date, 'attendees', member.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'sessions', date, 'summary', 'attendance')),
+      ]);
+      expect(attendee.data()?.joined).toBe(false);
+      expect(summary.data()?.attendingCount).toBe(0);
+    });
+  });
+
   it('cancels only when every host-side person is unavailable, and reopens when the host joins', async () => {
     const host = await createAuthUser('availability-host');
     const cohost = await createAuthUser('availability-cohost');
@@ -703,6 +743,27 @@ describe('profile and group contact privacy', () => {
 });
 
 describe('storage membership revocation', () => {
+  it('allows approved members to read session files but blocks pending and unrelated users', async () => {
+    await seedStudy();
+    const filePath = `sessions/${studyId}/2026-12-01/notes.txt`;
+    const bucketUrl = `gs://${projectId}.appspot.com`;
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await uploadString(ref(context.storage(bucketUrl), filePath), 'private session notes', 'raw', {
+        contentType: 'text/plain',
+      });
+    });
+
+    await assertSucceeds(getBytes(ref(testEnv.authenticatedContext('member').storage(bucketUrl), filePath)));
+    await assertFails(getBytes(ref(testEnv.authenticatedContext('invitee').storage(bucketUrl), filePath)));
+    await assertFails(getBytes(ref(testEnv.authenticatedContext('visitor').storage(bucketUrl), filePath)));
+    await assertFails(uploadString(
+      ref(testEnv.authenticatedContext('member').storage(bucketUrl), `sessions/${studyId}/2026-12-01/member-1.txt`),
+      'members cannot upload host session notes',
+      'raw',
+      { contentType: 'text/plain' },
+    ));
+  });
+
   it('revokes access to event files as soon as approval is removed', async () => {
     await seedStudy();
     const filePath = `sessions/${studyId}/2026-12-01/member-1.txt`;

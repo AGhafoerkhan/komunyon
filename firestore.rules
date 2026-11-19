@@ -449,7 +449,8 @@ service cloud.firestore {
           && request.resource.data.updatedAt.size() <= 40
         );
 
-      allow delete: if isHost();
+      // Study deletion must use the host-verified callable so every subcollection is removed.
+      allow delete: if false;
 
       match /members/{uid} {
         allow get: if signedIn() && (
