@@ -201,3 +201,23 @@ exports.changeStudyMembership = onCall({ region: 'europe-west4' }, async (reques
 
   return { success: true };
 });
+
+exports.deleteHostedStudy = onCall({ region: 'europe-west4' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to delete this study.');
+  const { studyId } = request.data || {};
+  if (typeof studyId !== 'string' || studyId.length === 0 || studyId.length > 128 || studyId.includes('/')) {
+    throw new HttpsError('invalid-argument', 'Invalid study ID.');
+  }
+
+  const studyRef = db.doc(`studies/${studyId}`);
+  await db.runTransaction(async (transaction) => {
+    const studySnap = await transaction.get(studyRef);
+    if (!studySnap.exists) throw new HttpsError('not-found', 'Study not found.');
+    if (studySnap.data().hostId !== request.auth.uid) {
+      throw new HttpsError('permission-denied', 'Only the host can delete this study.');
+    }
+  });
+
+  await db.recursiveDelete(studyRef);
+  return { success: true };
+});

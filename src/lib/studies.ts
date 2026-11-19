@@ -13,12 +13,10 @@ import {
   setDoc,
   updateDoc,
   where,
-  writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { deleteStudyPhotos } from '@/lib/photos';
-import { deleteSessionNotes } from '@/lib/sessions';
 import { getFirebase } from '@/lib/firebase';
 import { normalizeTime } from '@/lib/guards';
 import { upcomingSession, upcomingSessions } from '@/lib/format';
@@ -540,20 +538,9 @@ export function subscribeCoHostSessionPermission(studyId: string, uid: string, o
 }
 
 export async function deleteStudy(studyId: string): Promise<void> {
-  const { db } = getFirebase();
+  const { functions } = getFirebase();
   await deleteStudyPhotos(studyId);
-  await deleteSessionNotes(studyId);
-  const childCollections = ['notices', 'members', 'memberContacts', 'managers'];
-  for (const child of childCollections) {
-    const docs = await getDocs(collection(db, 'studies', studyId, child));
-    for (let index = 0; index < docs.docs.length; index += 400) {
-      const batch = writeBatch(db);
-      docs.docs.slice(index, index + 400).forEach((item) => batch.delete(item.ref));
-      await batch.commit();
-    }
-  }
-  await deleteDoc(privateRef(studyId));
-  await deleteDoc(studyRef(studyId));
+  await httpsCallable(functions, 'deleteHostedStudy')({ studyId });
 }
 
 export async function requestToJoin(studyId: string, uid: string): Promise<void> {
