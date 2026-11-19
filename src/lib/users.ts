@@ -45,7 +45,7 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
   logAuthEvent('profile-document-read-completed', { projectId, uid: user.uid, exists: snap.exists() });
   if (snap.exists()) {
     const rawProfile = snap.data();
-    const profile = parseUserProfile(snap.id, rawProfile);
+    const profile = parseUserProfile(snap.id, rawProfile, user.email ?? '');
     if (!profile) {
       const requiredFields = ['email', 'fullName', 'age', 'photoURL', 'bio', 'profileCompleted', 'createdAt', 'updatedAt'] as const;
       const actualTypes = Object.fromEntries(requiredFields.map((field) => [
@@ -56,9 +56,12 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
         email: 'string', fullName: 'string', age: 'integer', photoURL: 'string', bio: 'string',
         profileCompleted: 'boolean', createdAt: 'string', updatedAt: 'string',
       };
-      const invalidFields = requiredFields.filter((field) => field === 'age'
-        ? typeof rawProfile[field] !== 'number' || !Number.isInteger(rawProfile[field])
-        : typeof rawProfile[field] !== expectedTypes[field]);
+      const invalidFields = requiredFields.filter((field) => {
+        if (field === 'email' && rawProfile.email === undefined) return false;
+        return field === 'age'
+          ? typeof rawProfile[field] !== 'number' || !Number.isInteger(rawProfile[field])
+          : typeof rawProfile[field] !== expectedTypes[field];
+      });
       logAuthEvent('profile-schema-invalid', {
         projectId,
         uid: user.uid,
@@ -69,6 +72,13 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
         fieldNames: Object.keys(rawProfile),
       });
       throw new Error('Your profile could not be read.');
+    }
+    if (typeof rawProfile.email !== 'string') {
+      logAuthEvent('profile-email-fallback-used', {
+        projectId,
+        uid: user.uid,
+        source: user.email ? 'firebase-auth' : 'empty-fallback',
+      });
     }
     const tokens = nameTokens(profile.fullName);
     if (profile.profileCompleted && !sameTokens(snap.data().nameTokens, tokens)) {

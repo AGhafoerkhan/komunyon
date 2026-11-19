@@ -26,9 +26,9 @@ function parseTags(value: unknown): StudyTag[] | null {
   return tags;
 }
 
-export function parseUserProfile(id: string, data: unknown): UserProfile | null {
+export function parseUserProfile(id: string, data: unknown, fallbackEmail = ''): UserProfile | null {
   if (!isRecord(data)) return null;
-  if (typeof data.email !== 'string') return null;
+  if (data.email !== undefined && typeof data.email !== 'string') return null;
   if (typeof data.fullName !== 'string') return null;
   if (typeof data.age !== 'number' || !Number.isInteger(data.age)) return null;
   if (typeof data.photoURL !== 'string') return null;
@@ -38,7 +38,7 @@ export function parseUserProfile(id: string, data: unknown): UserProfile | null 
 
   return {
     uid: id,
-    email: data.email,
+    email: typeof data.email === 'string' ? data.email : fallbackEmail,
     fullName: data.fullName,
     age: data.age,
     photoURL: data.photoURL,
