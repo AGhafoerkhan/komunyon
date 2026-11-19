@@ -4,6 +4,7 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 
 export interface ClientIssue {
+  id: string;
   route: string;
   version: string;
   name: string;
@@ -15,6 +16,8 @@ export interface ClientIssue {
 }
 
 let latestIssue: ClientIssue | null = null;
+let lastFingerprint = '';
+let lastCapturedAt = 0;
 
 function redact(value: string, maxLength: number): string {
   return value
@@ -38,7 +41,13 @@ function safeError(error: unknown): Pick<ClientIssue, 'name' | 'code' | 'message
 export function captureClientIssue(error: unknown): void {
   if (typeof window === 'undefined') return;
   const details = safeError(error);
+  const fingerprint = `${window.location.pathname}|${details.name}|${details.code}|${details.message}|${details.stack.slice(0, 500)}`;
+  const now = Date.now();
+  if (fingerprint === lastFingerprint && now - lastCapturedAt < 30_000) return;
+  lastFingerprint = fingerprint;
+  lastCapturedAt = now;
   latestIssue = {
+    id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${now}-${Math.random().toString(36).slice(2)}`,
     ...details,
     route: window.location.pathname.slice(0, 300),
     version: process.env.NEXT_PUBLIC_APP_VERSION ?? 'unknown',
@@ -52,11 +61,9 @@ export function getLatestClientIssue(): ClientIssue | null {
   return latestIssue;
 }
 
-export async function submitIssueReport(user: User): Promise<void> {
-  if (!latestIssue) throw new Error('No issue details are available.');
+export async function submitIssueReport(user: User, issue: ClientIssue): Promise<void> {
   const { getFirebase } = await import('@/lib/firebase');
   const { db } = getFirebase();
-  const issue = latestIssue;
   await addDoc(collection(db, 'issueReports'), {
     reporterUid: user.uid,
     reporterEmail: user.email ?? '',
@@ -71,5 +78,5 @@ export async function submitIssueReport(user: User): Promise<void> {
     reportedAt: serverTimestamp(),
     status: 'new',
   });
-  if (latestIssue === issue) latestIssue = null;
+  if (latestIssue?.id === issue.id) latestIssue = null;
 }

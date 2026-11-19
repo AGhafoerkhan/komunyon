@@ -1,42 +1,50 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { getLatestClientIssue, submitIssueReport } from '@/lib/issueReports';
+import { getLatestClientIssue, submitIssueReport, type ClientIssue } from '@/lib/issueReports';
 
-const message = 'Something went wrong. Report a problem, contact support, or try again later.';
+const message = 'Something went wrong. Contact support or try again later.';
 
 export function ProblemReporter() {
   const { user } = useAuth();
   const [visible, setVisible] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [reported, setReported] = useState(false);
-  const [submitFailed, setSubmitFailed] = useState(false);
+  const inFlight = useRef(new Set<string>());
+  const sent = useRef(new Set<string>());
+
+  const sendAutomatically = useCallback(async (issue: ClientIssue, attempt = 0) => {
+    if (!user || sent.current.has(issue.id) || inFlight.current.has(issue.id)) return;
+    inFlight.current.add(issue.id);
+    try {
+      await submitIssueReport(user, issue);
+      sent.current.add(issue.id);
+    } catch {
+      if (attempt < 3) {
+        window.setTimeout(() => void sendAutomatically(issue, attempt + 1), 1500 * (attempt + 1));
+      }
+    } finally {
+      inFlight.current.delete(issue.id);
+    }
+  }, [user]);
 
   useEffect(() => {
-    const show = () => {
+    const handleIssue = () => {
       setVisible(true);
-      setReported(false);
-      setSubmitFailed(false);
+      const issue = getLatestClientIssue();
+      if (issue) void sendAutomatically(issue);
     };
-    if (getLatestClientIssue()) show();
-    window.addEventListener('komunyon:issue', show);
-    return () => window.removeEventListener('komunyon:issue', show);
-  }, []);
-
-  async function report() {
-    if (!user || busy) return;
-    setBusy(true);
-    setSubmitFailed(false);
-    try {
-      await submitIssueReport(user);
-      setReported(true);
-    } catch {
-      setSubmitFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  }
+    const retryPending = () => {
+      const issue = getLatestClientIssue();
+      if (issue) void sendAutomatically(issue);
+    };
+    if (getLatestClientIssue()) handleIssue();
+    window.addEventListener('komunyon:issue', handleIssue);
+    window.addEventListener('online', retryPending);
+    return () => {
+      window.removeEventListener('komunyon:issue', handleIssue);
+      window.removeEventListener('online', retryPending);
+    };
+  }, [sendAutomatically]);
 
   if (!visible) return null;
 
@@ -46,19 +54,9 @@ export function ProblemReporter() {
       className="fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-[100] mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 rounded-lg border border-clay/40 bg-card px-4 py-3 text-ink shadow-lg"
     >
       <p className="min-w-48 flex-1 text-sm" role="alert">
-        {reported ? 'Problem reported. Contact support or try again later.' : submitFailed ? 'Could not report the problem. Contact support or try again later.' : message}
+        {message}
       </p>
       <div className="flex shrink-0 items-center gap-2">
-        {!reported && user ? (
-          <button
-            type="button"
-            onClick={() => void report()}
-            disabled={busy}
-            className="inline-flex h-9 items-center justify-center rounded-md bg-canal px-3 text-sm font-medium text-white hover:bg-canal-dark disabled:opacity-60"
-          >
-            {busy ? 'Sending…' : 'Report problem'}
-          </button>
-        ) : null}
         <a
           className="inline-flex h-9 items-center justify-center rounded-md px-2 text-sm font-medium text-canal underline underline-offset-2"
           href="mailto:angeloghafoerkhan@gmail.com"

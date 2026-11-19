@@ -18,6 +18,6 @@ export function actionError(error: unknown): string {
     }
   }
   captureClientIssue(error);
-  return 'Something went wrong. Report a problem, contact support, or try again later.';
+  return 'Something went wrong. Contact support or try again later.';
 }
 
