@@ -10,6 +10,7 @@ export function ProblemReporter() {
   const { user } = useAuth();
   const [visible, setVisible] = useState(false);
   const [reported, setReported] = useState(false);
+  const [versionMismatch, setVersionMismatch] = useState(false);
   const inFlight = useRef(new Set<string>());
   const sent = useRef(new Set<string>());
 
@@ -28,6 +29,19 @@ export function ProblemReporter() {
       inFlight.current.delete(issue.id);
     }
   }, [user]);
+
+  useEffect(() => {
+    let active = true;
+    const clientVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? 'local';
+    void fetch('/api/version', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<{ version?: unknown }> : null)
+      .then((result) => {
+        if (!active || typeof result?.version !== 'string' || result.version === 'unknown') return;
+        setVersionMismatch(result.version !== clientVersion);
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const handleIssue = () => {
@@ -57,7 +71,12 @@ export function ProblemReporter() {
       className="fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-[100] mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 rounded-lg border border-clay/40 bg-card px-4 py-3 text-ink shadow-lg"
     >
       <p className="min-w-48 flex-1 text-sm" role="alert">
-        {reported ? 'Your problem has been reported!' : message}
+        {reported ? 'Your problem has been reported!' : (
+          <>
+            {message}
+            {versionMismatch ? <span className="mt-1 block text-xs text-muted">This app may be out of date. Refresh Komunyon and try again.</span> : null}
+          </>
+        )}
       </p>
       <div className="flex shrink-0 items-center gap-2">
         <a
