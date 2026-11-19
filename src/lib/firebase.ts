@@ -2,6 +2,7 @@ import { getApps, initializeApp } from 'firebase/app';
 import {
   browserLocalPersistence,
   browserSessionPersistence,
+  connectAuthEmulator,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
@@ -14,9 +15,9 @@ import {
   type User,
 } from 'firebase/auth';
 import { firebaseErrorCode } from '@/lib/errors';
-import { getFirestore, type Firestore } from 'firebase/firestore';
-import { getStorage, type FirebaseStorage } from 'firebase/storage';
-import { getFunctions, type Functions } from 'firebase/functions';
+import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore';
+import { connectStorageEmulator, getStorage, type FirebaseStorage } from 'firebase/storage';
+import { connectFunctionsEmulator, getFunctions, type Functions } from 'firebase/functions';
 
 export interface FirebaseClient {
   auth: Auth;
@@ -143,12 +144,26 @@ export function getFirebase(): FirebaseClient {
   }
   if (!client) {
     const config = readConfig();
+    const useEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true';
+    if (useEmulators && config.projectId !== 'demo-komunyon') {
+      throw new Error('Firebase emulators may only be used with the demo-komunyon project.');
+    }
     const app = getApps()[0] ?? initializeApp(config);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const functions = getFunctions(app, 'europe-west4');
+    if (useEmulators) {
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+      connectFirestoreEmulator(db, '127.0.0.1', 8080);
+      connectStorageEmulator(storage, '127.0.0.1', 9199);
+      connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+    }
     client = {
-      auth: getAuth(app),
-      db: getFirestore(app),
-      storage: getStorage(app),
-      functions: getFunctions(app, 'europe-west4'),
+      auth,
+      db,
+      storage,
+      functions,
     };
   }
   return client;

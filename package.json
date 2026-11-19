@@ -11,17 +11,19 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test:cards": "playwright test",
+    "test:e2e": "node scripts/test-e2e-emulator.mjs",
     "test:security": "firebase emulators:exec --only auth,firestore,functions,storage --project demo-komunyon \"vitest run tests/security\""
   },
   "dependencies": {
-    "firebase": "^11.10.0",
+    "firebase": "^12.13.0",
     "next": "^15.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/eslintrc": "^3.3.1",
-    "@firebase/rules-unit-testing": "^4.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^22.18.6",

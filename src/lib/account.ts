@@ -7,8 +7,12 @@ import { cancelRequest, declineInvite, deleteStudy, leaveStudy } from '@/lib/stu
 const DELETE_ACCOUNT_KEY = 'komunyon-delete-account';
 let deletionClaimed = false;
 
+export function hasPendingAccountDeletion(): boolean {
+  return sessionStorage.getItem(DELETE_ACCOUNT_KEY) === '1';
+}
+
 export function claimAccountDeletion(): boolean {
-  if (sessionStorage.getItem(DELETE_ACCOUNT_KEY) !== '1' || deletionClaimed) return false;
+  if (!hasPendingAccountDeletion() || deletionClaimed) return false;
   deletionClaimed = true;
   sessionStorage.removeItem(DELETE_ACCOUNT_KEY);
   return true;
@@ -51,9 +55,9 @@ export async function eraseOwnAccount(user: User): Promise<'redirect' | 'done'> 
     sessionStorage.removeItem(DELETE_ACCOUNT_KEY);
     throw error;
   }
-  sessionStorage.removeItem(DELETE_ACCOUNT_KEY);
-  await wipeAccount(user);
-  return 'done';
+  // Unmount app-wide Firestore subscriptions before account cleanup starts.
+  window.location.assign('/account-deletion');
+  return 'redirect';
 }
 
 /** Finish a deletion that already confirmed Google on a full-page redirect. */

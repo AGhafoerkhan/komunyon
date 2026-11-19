@@ -864,7 +864,7 @@ describe('account deletion backend journey', () => {
         ['users', account.uid],
         ['users', account.uid, 'private', 'contact'],
       ] as const;
-      const snapshots = await Promise.all(refs.map((parts) => getDoc(doc(context.firestore(), ...parts))));
+      const snapshots = await Promise.all(refs.map((parts) => getDoc(doc(context.firestore(), parts.join('/')))));
       expect(snapshots.every((snapshot) => !snapshot.exists())).toBe(true);
     });
     await expect(getBytes(ref(testEnv.authenticatedContext(account.uid).storage(bucketUrl), `avatars/${account.uid}`)))

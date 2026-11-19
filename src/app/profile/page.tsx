@@ -6,23 +6,25 @@ import { ProfileForm } from '@/components/ProfileForm';
 import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
 import { Button, FormError, LoadingScreen, Spinner, pageTitleClass } from '@/components/ui';
-import { claimAccountDeletion, eraseOwnAccount, finishAccountDeletion } from '@/lib/account';
+import { eraseOwnAccount, hasPendingAccountDeletion } from '@/lib/account';
 import { actionError } from '@/lib/errors';
 import { useTheme } from '@/components/ThemeProvider';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
 import { loadStudyMemberships } from '@/lib/studies';
+import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
   const { user, profile, signOutUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activity, setActivity] = useState({ hosted: 0, joined: 0, circles: 0 });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || hasPendingAccountDeletion()) return;
     const { db } = getFirebase();
     void Promise.all([
       getDocs(query(collection(db, 'studies'), where('hostId', '==', user.uid))),
@@ -35,14 +37,8 @@ export default function ProfilePage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || !claimAccountDeletion()) return;
-    setBusy(true);
-    setError(null);
-    void finishAccountDeletion(user).catch((failure: unknown) => {
-      setError(actionError(failure));
-      setBusy(false);
-    });
-  }, [user]);
+    if (user && hasPendingAccountDeletion()) router.replace('/account-deletion');
+  }, [router, user]);
 
   if (!profile || !user) return <LoadingScreen />;
   const currentUser = user;
