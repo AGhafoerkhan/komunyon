@@ -208,6 +208,37 @@ describe('study visibility and private address', () => {
     await assertFails(getDoc(doc(db('invitee'), 'studies', studyId, 'private', 'details')));
     await assertFails(getDoc(doc(db('visitor'), 'studies', studyId, 'private', 'details')));
   });
+
+  it('restricts private session notes to current members and study editors', async () => {
+    await seedStudy();
+    await seed(`studies/${studyId}/sessions/2026-12-01`, {
+      description: 'Private notes for the meeting', updatedAt: createdAt,
+    });
+    await managerPermissions('editor', { canEdit: true });
+
+    await assertSucceeds(getDoc(doc(db('host'), 'studies', studyId, 'sessions', '2026-12-01')));
+    await assertSucceeds(getDoc(doc(db('member'), 'studies', studyId, 'sessions', '2026-12-01')));
+    await assertFails(getDoc(doc(db('invitee'), 'studies', studyId, 'sessions', '2026-12-01')));
+    await assertFails(getDoc(doc(db('visitor'), 'studies', studyId, 'sessions', '2026-12-01')));
+    await assertSucceeds(updateDoc(doc(db('editor'), 'studies', studyId, 'sessions', '2026-12-01'), {
+      description: 'Editor updated the notes', updatedAt: createdAt,
+    }));
+    await assertFails(updateDoc(doc(db('member'), 'studies', studyId, 'sessions', '2026-12-01'), {
+      description: 'Participant must not edit notes', updatedAt: createdAt,
+    }));
+  });
+
+  it('allows only the notice owner and host to read a membership notice', async () => {
+    await seedStudy();
+    await seed(`studies/${studyId}/notices/member`, {
+      type: 'removed', userId: 'member', createdAt,
+    });
+
+    await assertSucceeds(getDoc(doc(db('host'), 'studies', studyId, 'notices', 'member')));
+    await assertSucceeds(getDoc(doc(db('member'), 'studies', studyId, 'notices', 'member')));
+    await assertFails(getDoc(doc(db('manager'), 'studies', studyId, 'notices', 'member')));
+    await assertFails(getDoc(doc(db('visitor'), 'studies', studyId, 'notices', 'member')));
+  });
 });
 
 describe('co-host participant permissions', () => {
@@ -743,6 +774,36 @@ describe('profile and group contact privacy', () => {
 });
 
 describe('storage membership revocation', () => {
+  it('allows host and edit co-host uploads but rejects participant uploads', async () => {
+    await seedStudy();
+    await managerPermissions('editor', { canEdit: true });
+    const bucketUrl = `gs://${projectId}.appspot.com`;
+    const hostStorage = testEnv.authenticatedContext('host').storage(bucketUrl);
+    const editorStorage = testEnv.authenticatedContext('editor').storage(bucketUrl);
+    const memberStorage = testEnv.authenticatedContext('member').storage(bucketUrl);
+
+    await assertSucceeds(uploadString(ref(hostStorage, `sessions/${studyId}/2026-12-01/host-1.txt`), 'host notes', 'raw', {
+      contentType: 'text/plain',
+    }));
+    await assertSucceeds(uploadString(ref(editorStorage, `sessions/${studyId}/2026-12-01/editor-1.txt`), 'editor notes', 'raw', {
+      contentType: 'text/plain',
+    }));
+    await assertFails(uploadString(ref(memberStorage, `sessions/${studyId}/2026-12-01/member-1.txt`), 'participant notes', 'raw', {
+      contentType: 'text/plain',
+    }));
+  });
+
+  it('allows members to write only their own group contact record', async () => {
+    await seedStudy();
+    const memberDb = db('member');
+    const ownRef = doc(memberDb, 'studies', studyId, 'memberContacts', 'member');
+    const otherRef = doc(memberDb, 'studies', studyId, 'memberContacts', 'manager');
+    const contact = { phone: '+31612345678', place: 'Centrum, The Hague', updatedAt: createdAt };
+
+    await assertSucceeds(setDoc(ownRef, contact));
+    await assertFails(setDoc(otherRef, contact));
+  });
+
   it('allows approved members to read session files but blocks pending and unrelated users', async () => {
     await seedStudy();
     const filePath = `sessions/${studyId}/2026-12-01/notes.txt`;
