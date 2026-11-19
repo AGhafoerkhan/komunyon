@@ -112,15 +112,15 @@ export default function DashboardPage() {
       {error ? <Alert>{error}</Alert> : null}
 
       {!loaded ? (
-        <p className="text-sm text-muted">Loading studies…</p>
+        <p className="text-sm text-muted">Loading events…</p>
       ) : studies.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line px-4 py-10 text-center sm:px-6 sm:py-14">
-          <p className="font-serif text-2xl">No studies in The Hague yet</p>
+          <p className="font-serif text-2xl">No events in The Hague yet</p>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
-            Host the first gathering. The address stays private until you approve someone.
+            Host the first event. The address stays private until you approve someone.
           </p>
           <Link href="/studies/new" className={`${buttonClass('primary', 'sm')} mt-5`}>
-            + Host a Study
+            + Host an event
           </Link>
         </div>
       ) : (
@@ -137,13 +137,13 @@ export default function DashboardPage() {
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {upcomingStudies.map((study) => <li key={study.id} className="min-w-0"><StudyCard study={study} viewerId={user.uid} /></li>)}
               </ul>
-            ) : <p className="text-sm text-muted">No upcoming studies.</p>
+            ) : <p className="text-sm text-muted">No upcoming events.</p>
           ) : (
             pastStudies.length ? (
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {pastStudies.map((study) => <li key={study.id} className="min-w-0"><StudyCard study={study} viewerId={user.uid} /></li>)}
               </ul>
-            ) : <p className="text-sm text-muted">No past studies.</p>
+            ) : <p className="text-sm text-muted">No past events.</p>
           )}
         </section>
       )}
