@@ -3,6 +3,7 @@ import { collection, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, wher
 import { getFirebase } from '@/lib/firebase';
 import { parseUserProfile } from '@/lib/parse';
 import { normalizePhone } from '@/lib/validate';
+import { logAuthEvent, logAuthFailure } from '@/lib/errors';
 import type { UserProfile } from '@/types';
 
 function nowIso(): string {
@@ -31,18 +32,56 @@ function sameTokens(current: unknown, next: string[]): boolean {
 
 export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
   const { db } = getFirebase();
+  const projectId = db.app.options.projectId;
   const ref = doc(db, 'users', user.uid);
-  const snap = await getDoc(ref);
+  logAuthEvent('profile-document-read-started', { projectId, uid: user.uid, path: `users/${user.uid}` });
+  let snap;
+  try {
+    snap = await getDoc(ref);
+  } catch (error) {
+    logAuthFailure('profile-document-read-failed', error, { projectId, uid: user.uid, path: `users/${user.uid}` });
+    throw error;
+  }
+  logAuthEvent('profile-document-read-completed', { projectId, uid: user.uid, exists: snap.exists() });
   if (snap.exists()) {
-    const profile = parseUserProfile(snap.id, snap.data());
-    if (!profile) throw new Error('Your profile could not be read.');
+    const rawProfile = snap.data();
+    const profile = parseUserProfile(snap.id, rawProfile);
+    if (!profile) {
+      const requiredFields = ['email', 'fullName', 'age', 'photoURL', 'bio', 'profileCompleted', 'createdAt', 'updatedAt'] as const;
+      const actualTypes = Object.fromEntries(requiredFields.map((field) => [
+        field,
+        rawProfile[field] === null ? 'null' : Array.isArray(rawProfile[field]) ? 'array' : typeof rawProfile[field],
+      ]));
+      const expectedTypes: Record<(typeof requiredFields)[number], string> = {
+        email: 'string', fullName: 'string', age: 'integer', photoURL: 'string', bio: 'string',
+        profileCompleted: 'boolean', createdAt: 'string', updatedAt: 'string',
+      };
+      const invalidFields = requiredFields.filter((field) => field === 'age'
+        ? typeof rawProfile[field] !== 'number' || !Number.isInteger(rawProfile[field])
+        : typeof rawProfile[field] !== expectedTypes[field]);
+      logAuthEvent('profile-schema-invalid', {
+        projectId,
+        uid: user.uid,
+        path: `users/${user.uid}`,
+        invalidFields,
+        expectedTypes: Object.fromEntries(invalidFields.map((field) => [field, expectedTypes[field]])),
+        actualTypes: Object.fromEntries(invalidFields.map((field) => [field, actualTypes[field]])),
+        fieldNames: Object.keys(rawProfile),
+      });
+      throw new Error('Your profile could not be read.');
+    }
     const tokens = nameTokens(profile.fullName);
     if (profile.profileCompleted && !sameTokens(snap.data().nameTokens, tokens)) {
-      await updateDoc(ref, { nameTokens: tokens, updatedAt: nowIso() }).catch(() => undefined);
+      logAuthEvent('profile-name-token-sync-started', { projectId, uid: user.uid });
+      await updateDoc(ref, { nameTokens: tokens, updatedAt: nowIso() }).then(
+        () => logAuthEvent('profile-name-token-sync-succeeded', { projectId, uid: user.uid }),
+        (error: unknown) => logAuthFailure('profile-name-token-sync-failed', error, { projectId, uid: user.uid }),
+      );
     }
     return profile;
   }
 
+  logAuthEvent('profile-stub-creation-started', { projectId, uid: user.uid, path: `users/${user.uid}` });
   const now = nowIso();
   const stub: UserProfile = {
     uid: user.uid,
@@ -59,7 +98,13 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(ref, { ...stub, nameTokens: [] });
+  try {
+    await setDoc(ref, { ...stub, nameTokens: [] });
+    logAuthEvent('profile-stub-creation-succeeded', { projectId, uid: user.uid });
+  } catch (error) {
+    logAuthFailure('profile-stub-creation-failed', error, { projectId, uid: user.uid });
+    throw error;
+  }
   return stub;
 }
 

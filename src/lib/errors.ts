@@ -2,6 +2,27 @@ export function firebaseErrorCode(error: unknown): string | null {
   return hasCode(error) ? error.code : null;
 }
 
+/** Structured auth diagnostics. Keep identity tokens, email, and profile values out of logs. */
+export function logAuthEvent(event: string, details: Record<string, unknown> = {}): void {
+  if (typeof console === 'undefined') return;
+  console.info('[Komunyon][Auth]', { event, at: new Date().toISOString(), ...details });
+}
+
+export function logAuthFailure(event: string, error: unknown, details: Record<string, unknown> = {}): void {
+  if (typeof console === 'undefined') return;
+  console.error('[Komunyon][Auth]', {
+    event,
+    at: new Date().toISOString(),
+    ...details,
+    error: {
+      code: firebaseErrorCode(error),
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    },
+  });
+}
+
 function hasCode(error: unknown): error is { code: string } {
   return typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string';
 }

@@ -13,7 +13,7 @@ import {
   type Auth,
   type User,
 } from 'firebase/auth';
-import { firebaseErrorCode } from '@/lib/errors';
+import { firebaseErrorCode, logAuthEvent, logAuthFailure } from '@/lib/errors';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { getFunctions, type Functions } from 'firebase/functions';
@@ -69,8 +69,14 @@ interface PopupResolver {
  */
 export function warmUpGoogleSignIn(auth: Auth): void {
   const resolver = (auth as Auth & { _popupRedirectResolver?: PopupResolver })._popupRedirectResolver;
-  if (!resolver) return;
-  void resolver._initialize(auth).catch(() => undefined);
+  if (!resolver) {
+    logAuthEvent('popup-warmup-unavailable', { projectId: auth.app.options.projectId });
+    return;
+  }
+  logAuthEvent('popup-warmup-started', { projectId: auth.app.options.projectId });
+  void resolver._initialize(auth)
+    .then(() => logAuthEvent('popup-warmup-completed', { projectId: auth.app.options.projectId }))
+    .catch((error: unknown) => logAuthFailure('popup-warmup-failed', error, { projectId: auth.app.options.projectId }));
 }
 
 let redirectResultRead = false;
@@ -78,9 +84,24 @@ let redirectResultRead = false;
 export async function completeRedirectSignIn(auth: Auth): Promise<void> {
   if (redirectResultRead) return;
   redirectResultRead = true;
-  const result = await getRedirectResult(auth);
-  if (!result) return;
-  await setPersistence(auth, browserLocalPersistence);
+  logAuthEvent('redirect-result-check-started', { projectId: auth.app.options.projectId });
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) {
+      logAuthEvent('redirect-result-empty', { projectId: auth.app.options.projectId });
+      return;
+    }
+    logAuthEvent('redirect-result-received', {
+      projectId: auth.app.options.projectId,
+      uid: result.user.uid,
+      providerIds: result.user.providerData.map((provider) => provider.providerId),
+    });
+    await setPersistence(auth, browserLocalPersistence);
+    logAuthEvent('redirect-persistence-set', { projectId: auth.app.options.projectId, uid: result.user.uid });
+  } catch (error) {
+    logAuthFailure('redirect-result-failed', error, { projectId: auth.app.options.projectId });
+    throw error;
+  }
 }
 
 /** Firefox and iPhone never finish a Google popup. Chrome, including Chrome on a phone, does. */
@@ -93,22 +114,39 @@ function prefersRedirectSignIn(): boolean {
 }
 
 async function redirectGoogleSignIn(auth: Auth, provider: GoogleAuthProvider): Promise<void> {
+  logAuthEvent('redirect-sign-in-started', { projectId: auth.app.options.projectId });
   await setPersistence(auth, browserSessionPersistence);
+  logAuthEvent('redirect-persistence-set', { projectId: auth.app.options.projectId });
   await signInWithRedirect(auth, provider);
+  logAuthEvent('redirect-navigation-requested', { projectId: auth.app.options.projectId });
 }
 
 export async function signInWithGoogleAccount(auth: Auth): Promise<void> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+  logAuthEvent('google-sign-in-started', {
+    projectId: auth.app.options.projectId,
+    authDomain: auth.app.options.authDomain,
+    method: prefersRedirectSignIn() ? 'redirect' : 'popup',
+  });
   if (prefersRedirectSignIn()) {
     await redirectGoogleSignIn(auth, provider);
     return;
   }
   warmUpGoogleSignIn(auth);
   try {
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    logAuthEvent('google-popup-sign-in-succeeded', {
+      projectId: auth.app.options.projectId,
+      uid: result.user.uid,
+      providerIds: result.user.providerData.map((item) => item.providerId),
+    });
   } catch (error) {
-    if (firebaseErrorCode(error) !== 'auth/popup-blocked') throw error;
+    if (firebaseErrorCode(error) !== 'auth/popup-blocked') {
+      logAuthFailure('google-popup-sign-in-failed', error, { projectId: auth.app.options.projectId });
+      throw error;
+    }
+    logAuthEvent('google-popup-blocked-falling-back-to-redirect', { projectId: auth.app.options.projectId });
     await redirectGoogleSignIn(auth, provider);
   }
 }

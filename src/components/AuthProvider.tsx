@@ -3,7 +3,7 @@
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { actionError } from '@/lib/errors';
+import { actionError, logAuthEvent, logAuthFailure } from '@/lib/errors';
 import {
   completeRedirectSignIn,
   getFirebase,
@@ -52,53 +52,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!configured) return;
     if (pathname === '/logout') {
+      logAuthEvent('logout-route-sign-out-started');
       setLoading(false);
       const { auth } = getFirebase();
-      void signOut(auth).catch(() => undefined);
+      void signOut(auth)
+        .then(() => logAuthEvent('logout-route-sign-out-succeeded', { projectId: auth.app.options.projectId }))
+        .catch((failure: unknown) => logAuthFailure('logout-route-sign-out-failed', failure, { projectId: auth.app.options.projectId }));
       return;
     }
     let requestId = 0;
     let unsubscribe = () => {};
     let cancelled = false;
     const { auth } = getFirebase();
+    logAuthEvent('auth-provider-started', { projectId: auth.app.options.projectId, pathname });
     warmUpGoogleSignIn(auth);
     void (async () => {
       try {
         await completeRedirectSignIn(auth);
       } catch (redirectError: unknown) {
-        if (!cancelled) setSignInError(actionError(redirectError));
+        if (!cancelled) {
+          logAuthFailure('redirect-completion-failed', redirectError, { projectId: auth.app.options.projectId, pathname });
+          setSignInError(actionError(redirectError));
+        }
       }
       if (cancelled) return;
+      logAuthEvent('auth-state-listener-subscribing', { projectId: auth.app.options.projectId, pathname });
       unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         const current = ++requestId;
         if (!firebaseUser) {
+          logAuthEvent('auth-state-signed-out', { projectId: auth.app.options.projectId, pathname, requestId: current });
           setUser(null);
           setProfile(null);
           setError(null);
           setLoading(false);
           return;
         }
+        logAuthEvent('auth-state-signed-in-profile-load-started', {
+          projectId: auth.app.options.projectId,
+          pathname,
+          uid: firebaseUser.uid,
+          providerIds: firebaseUser.providerData.map((provider) => provider.providerId),
+          emailVerified: firebaseUser.emailVerified,
+          requestId: current,
+        });
         void loadOrCreateProfile(firebaseUser)
           .then((nextProfile) => {
-            if (current !== requestId || cancelled) return;
+            if (current !== requestId || cancelled) {
+              logAuthEvent('profile-load-result-ignored-as-stale', { uid: firebaseUser.uid, requestId: current });
+              return;
+            }
+            logAuthEvent('profile-load-succeeded', {
+              projectId: auth.app.options.projectId,
+              uid: firebaseUser.uid,
+              profileCompleted: nextProfile.profileCompleted,
+              requestId: current,
+            });
             setUser(firebaseUser);
             setProfile(nextProfile);
             setError(null);
             setLoading(false);
           })
           .catch((loadError: unknown) => {
-            if (current !== requestId || cancelled) return;
+            if (current !== requestId || cancelled) {
+              logAuthEvent('profile-load-error-ignored-as-stale', { uid: firebaseUser.uid, requestId: current });
+              return;
+            }
+            logAuthFailure('profile-load-failed', loadError, {
+              projectId: auth.app.options.projectId,
+              uid: firebaseUser.uid,
+              requestId: current,
+            });
             setUser(firebaseUser);
             setProfile(null);
             setError(actionError(loadError));
             setLoading(false);
           });
+      }, (listenerError) => {
+        logAuthFailure('auth-state-listener-failed', listenerError, { projectId: auth.app.options.projectId, pathname });
+        setSignInError(actionError(listenerError));
+        setLoading(false);
       });
     })();
     return () => {
       cancelled = true;
       requestId += 1;
       unsubscribe();
+      logAuthEvent('auth-provider-cleaned-up', { projectId: auth.app.options.projectId, pathname, requestId });
     };
   }, [configured, pathname]);
 
@@ -116,18 +155,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signInWithGoogle() {
         setSignInError(null);
+        logAuthEvent('google-sign-in-action-started', { projectId: getFirebase().auth.app.options.projectId });
         try {
           await signInWithGoogleAccount(getFirebase().auth);
+          logAuthEvent('google-sign-in-action-returned', { projectId: getFirebase().auth.app.options.projectId });
         } catch (signInFailure) {
+          logAuthFailure('google-sign-in-action-failed', signInFailure, { projectId: getFirebase().auth.app.options.projectId });
           setSignInError(actionError(signInFailure));
           throw signInFailure;
         }
       },
       async signOutUser() {
         const { auth } = getFirebase();
-        await signOut(auth);
-        setUser(null);
-        setProfile(null);
+        const currentUid = auth.currentUser?.uid;
+        logAuthEvent('sign-out-started', { projectId: auth.app.options.projectId, uid: currentUid });
+        try {
+          await signOut(auth);
+          setUser(null);
+          setProfile(null);
+          logAuthEvent('sign-out-succeeded', { projectId: auth.app.options.projectId, uid: currentUid });
+        } catch (signOutFailure) {
+          logAuthFailure('sign-out-failed', signOutFailure, { projectId: auth.app.options.projectId, uid: currentUid });
+          throw signOutFailure;
+        }
       },
       async saveProfile(input, photo) {
         if (!user) throw new Error('You need to be signed in.');
