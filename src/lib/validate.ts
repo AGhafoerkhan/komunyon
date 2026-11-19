@@ -79,8 +79,8 @@ export function validateStudyDraft(draft: StudyDraft, minCapacity: number): Part
     errors.title = `Title must be between ${LIMITS.titleMin} and ${LIMITS.titleMax} characters.`;
   }
   const description = draft.description.trim();
-  if (description.length === 0 || description.length > LIMITS.descriptionMax) {
-    errors.description = `Add a description (up to ${LIMITS.descriptionMax} characters).`;
+  if (description.length < LIMITS.descriptionMin || description.length > LIMITS.descriptionMax) {
+    errors.description = `Description must be between ${LIMITS.descriptionMin} and ${LIMITS.descriptionMax} characters.`;
   }
   if (
     draft.tags.length === 0 ||

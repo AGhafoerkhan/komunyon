@@ -84,7 +84,7 @@ export function StudyForm({
           <p className="mt-1 text-sm text-muted">Visible to anyone signed in. Use a neighbourhood, never a street.</p>
         </div>
 
-        <Field label="Title" hint="At least 10 characters." error={fields.title}>
+        <Field label="Title" hint="At least 6 characters." error={fields.title}>
           <input
             className={fieldClass}
             value={draft.title}
@@ -95,7 +95,7 @@ export function StudyForm({
           />
         </Field>
 
-        <Field label="Description" error={fields.description}>
+        <Field label="Description" hint="At least 12 characters." error={fields.description}>
           <textarea
             className={`${fieldClass} min-h-28 resize-y`}
             value={draft.description}

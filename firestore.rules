@@ -163,10 +163,10 @@ service cloud.firestore {
         && data.hostAge <= 120
         && validPhoto(data.hostPhotoURL)
         && data.title is string
-        && data.title.size() > 0
+        && data.title.size() >= 6
         && data.title.size() <= 120
         && data.description is string
-        && data.description.size() > 0
+        && data.description.size() >= 12
         && data.description.size() <= 2000
         && validTags(data)
         && data.format in ['recurring', 'one-off']
