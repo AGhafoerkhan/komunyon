@@ -15,7 +15,7 @@ function cardHostName(fullName: string): string {
 }
 
 export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: string }) {
-  const taken = study.approvedUserIds.length;
+  const taken = study.approvedCount;
   const hosting = study.hostId === viewerId;
   const joined = !hosting && study.approvedUserIds.includes(viewerId);
   const pending = !hosting && study.pendingUserIds.includes(viewerId);

@@ -710,7 +710,7 @@ function StudyBody({
   onDecline: (request: JoinRequest) => void;
   onAskRemove: (request: JoinRequest) => void;
 }) {
-  const taken = study.approvedUserIds.length;
+  const taken = study.approvedCount;
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
   const sessionDate = upcomingSession(study);
   const scheduledDate = study.format === 'recurring' && study.dayOfWeek !== null

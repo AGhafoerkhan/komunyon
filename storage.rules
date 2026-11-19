@@ -14,14 +14,18 @@ service firebase.storage {
       return firestore.get(studyPath(studyId)).data;
     }
 
+    function membershipPath(studyId, uid) {
+      return /databases/(default)/documents/studies/$(studyId)/members/$(uid);
+    }
+
     function inStudy(studyId) {
       return signedIn()
         && firestore.exists(studyPath(studyId))
         && (
           studyData(studyId).hostId == request.auth.uid
           || (
-            studyData(studyId).approvedUserIds is list
-            && studyData(studyId).approvedUserIds.hasAny([request.auth.uid])
+            firestore.exists(membershipPath(studyId, request.auth.uid))
+            && firestore.get(membershipPath(studyId, request.auth.uid)).data.status == 'approved'
           )
         );
     }

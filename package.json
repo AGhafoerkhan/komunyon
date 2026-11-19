@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test:security": "firebase emulators:exec --only firestore,storage --project demo-komunyon \"vitest run tests/security\""
+    "test:security": "firebase emulators:exec --only auth,firestore,functions,storage --project demo-komunyon \"vitest run tests/security\""
   },
   "dependencies": {
     "firebase": "^11.10.0",
