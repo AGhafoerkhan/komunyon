@@ -8,7 +8,7 @@ import {
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import { collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
-import { getBytes, ref, uploadString } from 'firebase/storage';
+import { deleteObject, getBytes, ref, uploadString } from 'firebase/storage';
 
 const projectId = 'demo-komunyon';
 const studyId = 'event-one';
@@ -779,6 +779,103 @@ describe('co-host participant permissions', () => {
       createdAt,
       permissions: { canManageSessions: true },
     }));
+  });
+});
+
+describe('account deletion backend journey', () => {
+  it('cleans hosted studies, every membership state, private profile data, avatar, and Auth account', async () => {
+    const account = await createAuthUser('full-delete-account');
+    await seedPublicUser(account.uid);
+    await seed(`users/${account.uid}/private/contact`, {
+      email: 'full-delete-account@example.test',
+      phone: '+31612345678',
+      country: 'Netherlands',
+      city: 'The Hague',
+      neighbourhood: 'Centrum',
+      updatedAt: createdAt,
+    });
+
+    const profileRef = doc(db(account.uid), 'users', account.uid);
+    await assertSucceeds(updateDoc(profileRef, {
+      fullName: 'Updated Test User',
+      bio: 'Updated profile before account deletion.',
+      updatedAt: createdAt,
+    }));
+    expect((await getDoc(profileRef)).data()?.fullName).toBe('Updated Test User');
+
+    await seedStudy('owned-study', {
+      hostId: account.uid,
+      pendingUserIds: [],
+      approvedUserIds: [],
+      invitedUserIds: [],
+    });
+    await seed('studies/owned-study/private/details', {
+      exactAddress: 'Sample Street 1', entryNotes: '', updatedAt: createdAt,
+    });
+    await seedStudy('joined-study', {
+      hostId: 'other-host-a',
+      pendingUserIds: [],
+      approvedUserIds: [account.uid],
+      invitedUserIds: [],
+    });
+    await seedStudy('pending-study', {
+      hostId: 'other-host-b',
+      pendingUserIds: [account.uid],
+      approvedUserIds: [],
+      invitedUserIds: [],
+    });
+    await seedStudy('invited-study', {
+      hostId: 'other-host-c',
+      pendingUserIds: [],
+      approvedUserIds: [],
+      invitedUserIds: [account.uid],
+    });
+
+    const bucketUrl = `gs://${projectId}.appspot.com`;
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await uploadString(ref(context.storage(bucketUrl), `avatars/${account.uid}`), 'avatar bytes', 'raw', {
+        contentType: 'image/jpeg',
+      });
+    });
+
+    expect((await callDeleteStudy(account.token, 'owned-study')).ok).toBe(true);
+    expect((await callMembership(account.token, { studyId: 'joined-study', action: 'leave' })).ok).toBe(true);
+    expect((await callMembership(account.token, { studyId: 'pending-study', action: 'cancel-request' })).ok).toBe(true);
+    expect((await callMembership(account.token, { studyId: 'invited-study', action: 'decline-invite' })).ok).toBe(true);
+
+    const ownerDb = db(account.uid);
+    await assertSucceeds(deleteDoc(doc(ownerDb, 'users', account.uid)));
+    await assertSucceeds(deleteDoc(doc(ownerDb, 'users', account.uid, 'private', 'contact')));
+    await assertSucceeds(deleteObject(ref(testEnv.authenticatedContext(account.uid).storage(bucketUrl), `avatars/${account.uid}`)));
+
+    const authDelete = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:delete?key=fake-api-key', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idToken: account.token }),
+    });
+    expect(authDelete.ok).toBe(true);
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const refs = [
+        ['studies', 'owned-study'],
+        ['studies', 'joined-study', 'members', account.uid],
+        ['studies', 'pending-study', 'members', account.uid],
+        ['studies', 'invited-study', 'members', account.uid],
+        ['users', account.uid],
+        ['users', account.uid, 'private', 'contact'],
+      ] as const;
+      const snapshots = await Promise.all(refs.map((parts) => getDoc(doc(context.firestore(), ...parts))));
+      expect(snapshots.every((snapshot) => !snapshot.exists())).toBe(true);
+    });
+    await expect(getBytes(ref(testEnv.authenticatedContext(account.uid).storage(bucketUrl), `avatars/${account.uid}`)))
+      .rejects.toMatchObject({ code: 'storage/object-not-found' });
+
+    const postDeleteLookup = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:lookup?key=fake-api-key', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idToken: account.token }),
+    });
+    expect(postDeleteLookup.ok).toBe(false);
   });
 });
 
