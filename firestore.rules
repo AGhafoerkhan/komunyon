@@ -685,7 +685,13 @@ service cloud.firestore {
               || (
                 (request.resource.data.type == 'accepted' || request.resource.data.type == 'declined')
                 && studyDoc(studyId).keys().hasAny(['invitedUserIds'])
-                && studyDoc(studyId).invitedUserIds.hasAny([request.auth.uid])
+                && (
+                  studyDoc(studyId).invitedUserIds.hasAny([request.auth.uid])
+                  || (
+                    request.resource.data.type == 'accepted'
+                    && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
+                  )
+                )
               )
             )
             && request.resource.data.userId == request.auth.uid

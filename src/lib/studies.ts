@@ -212,6 +212,8 @@ export async function revokeInvite(studyId: string, uid: string): Promise<void> 
 }
 
 export async function acceptInvite(study: BibleStudy, uid: string): Promise<void> {
+  if (study.approvedUserIds.includes(uid)) return;
+  if (!study.invitedUserIds.includes(uid)) throw new Error('This invitation is no longer available.');
   await writeMemberNotice(study.id, uid, 'accepted');
   try {
     await updateDoc(studyRef(study.id), {
