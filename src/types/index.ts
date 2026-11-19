@@ -58,6 +58,9 @@ export interface BibleStudy {
   /** False hides the study from everyone except the host. */
   isPublic: boolean;
   showMemberContacts: boolean;
+  /** Public aggregate; individual member IDs are stored in the members subcollection. */
+  approvedCount: number;
+  /** Authorized, client-side view of the membership documents. Not stored on the study root. */
   pendingUserIds: string[];
   approvedUserIds: string[];
   /** People the host invited. They can read the study, not the address, until they accept. */
@@ -80,8 +83,8 @@ export interface PrivateStudyDetails {
 
 /**
  * View of someone asking to join, or already approved.
- * Persistence is the uid arrays on `BibleStudy`; profiles are read from `users/{uid}`.
- * Declined requests are removed from `pendingUserIds` and are not stored.
+ * Membership status is stored at `studies/{studyId}/members/{uid}`; profiles are read from `users/{uid}`.
+ * Declined requests are removed from the members subcollection and are not stored.
  */
 export interface JoinRequest {
   id: string;

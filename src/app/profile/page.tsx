@@ -11,6 +11,7 @@ import { actionError } from '@/lib/errors';
 import { useTheme } from '@/components/ThemeProvider';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
+import { loadStudyMemberships } from '@/lib/studies';
 
 export default function ProfilePage() {
   const { user, profile, signOutUser } = useAuth();
@@ -25,9 +26,9 @@ export default function ProfilePage() {
     const { db } = getFirebase();
     void Promise.all([
       getDocs(query(collection(db, 'studies'), where('hostId', '==', user.uid))),
-      getDocs(query(collection(db, 'studies'), where('approvedUserIds', 'array-contains', user.uid))),
-    ]).then(([hosted, joined]) => {
-      setActivity({ hosted: hosted.size, joined: joined.size, circles: 0 });
+      loadStudyMemberships(user.uid),
+    ]).then(([hosted, memberships]) => {
+      setActivity({ hosted: hosted.size, joined: memberships.filter((membership) => membership.status === 'approved').length, circles: 0 });
     }).catch(() => {
       // Activity is supplementary; keep the profile usable if a count query is unavailable.
     });

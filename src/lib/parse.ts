@@ -67,7 +67,10 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
   if (typeof data.maxCapacity !== 'number' || !Number.isInteger(data.maxCapacity)) return null;
   if (typeof data.area !== 'string' || !isHagueArea(data.area)) return null;
   if (data.isPublic !== undefined && typeof data.isPublic !== 'boolean') return null;
-  if (!isStringArray(data.pendingUserIds) || !isStringArray(data.approvedUserIds)) return null;
+  if (data.approvedCount !== undefined && (!Number.isInteger(data.approvedCount) || (data.approvedCount as number) < 0)) return null;
+  // These arrays are accepted only as a legacy-read path during staged migration.
+  if (data.pendingUserIds !== undefined && !isStringArray(data.pendingUserIds)) return null;
+  if (data.approvedUserIds !== undefined && !isStringArray(data.approvedUserIds)) return null;
   if (data.invitedUserIds !== undefined && !isStringArray(data.invitedUserIds)) return null;
   if (typeof data.createdAt !== 'string' || typeof data.updatedAt !== 'string') return null;
 
@@ -94,8 +97,9 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
     area: data.area,
     isPublic: data.isPublic !== false,
     showMemberContacts: data.showMemberContacts !== false,
-    pendingUserIds: data.pendingUserIds,
-    approvedUserIds: data.approvedUserIds,
+    approvedCount: typeof data.approvedCount === 'number' ? data.approvedCount : (Array.isArray(data.approvedUserIds) ? data.approvedUserIds.length : 0),
+    pendingUserIds: isStringArray(data.pendingUserIds) ? data.pendingUserIds : [],
+    approvedUserIds: isStringArray(data.approvedUserIds) ? data.approvedUserIds : [],
     invitedUserIds: isStringArray(data.invitedUserIds) ? data.invitedUserIds : [],
     skippedDates: skippedDates(data.skippedDates),
     createdAt: data.createdAt,

@@ -18,7 +18,6 @@ import { loadSessionAttendance, setSessionAttendance as saveSessionAttendance, s
 import { normalizePhone } from '@/lib/validate';
 import { cancellationNote, formatSchedule, spotsLabel } from '@/lib/format';
 import { formatDdMmYyyy, upcomingSession, upcomingSessions } from '@/lib/format';
-import { loadProfile } from '@/lib/users';
 import {
   acceptInvite,
   approveMember,
@@ -37,6 +36,7 @@ import {
   loadPeople,
   removeMember,
   requestToJoin,
+  syncOwnMemberContact,
   subscribePrivateDetails,
   subscribeRemovalNotices,
   subscribeStudy,
@@ -185,9 +185,9 @@ export default function StudyPage() {
       return;
     }
     let active = true;
-    void loadProfile(study.hostId)
-      .then((profile) => {
-        if (active) setHostPhone(profile?.phone.trim() ?? '');
+    void loadPeople(study.id, [study.hostId], study.showMemberContacts)
+      .then(([host]) => {
+        if (active) setHostPhone(host?.phone.trim() ?? '');
       })
       .catch(() => {
         if (active) setHostPhone('');
@@ -196,6 +196,11 @@ export default function StudyPage() {
       active = false;
     };
   }, [approvedMember, study]);
+
+  useEffect(() => {
+    if (!study || !profile || (study.hostId !== profile.uid && !study.approvedUserIds.includes(profile.uid))) return;
+    void syncOwnMemberContact(study, profile).catch(() => undefined);
+  }, [profile?.uid, profile?.updatedAt, study?.id, study?.hostId, study?.approvedUserIds.join(',')]);
 
   useEffect(() => {
     if (!study || !user) {
@@ -214,8 +219,8 @@ export default function StudyPage() {
     }
     let active = true;
     const task = host || canManageParticipants
-      ? loadJoinRequests(study)
-      : loadPeople(study.id, study.approvedUserIds).then((people) => ({ pending: [], approved: people }));
+      ? loadJoinRequests(study, study.showMemberContacts)
+      : loadPeople(study.id, study.approvedUserIds, study.showMemberContacts).then((people) => ({ pending: [], approved: people }));
     void task
       .then((result) => {
         if (!active) return;
@@ -275,32 +280,19 @@ export default function StudyPage() {
 
   useEffect(() => {
     let active = true;
-    if (!study) {
+    if (!study || !user || (study.hostId !== user.uid && !study.approvedUserIds.includes(user.uid))) {
       setHostMember(null);
       return;
     }
-    void loadProfile(study.hostId)
-      .then((profile) => {
-        if (!active || !profile) return;
-        setHostMember({
-          id: `host_${profile.uid}`,
-          studyId: study.id,
-          userId: profile.uid,
-          fullName: profile.fullName,
-          age: profile.age,
-          photoURL: profile.photoURL,
-          bio: profile.bio,
-          phone: profile.phone,
-          place: [profile.neighbourhood, profile.city, profile.country].filter(Boolean).join(', '),
-          status: 'approved',
-          profileMissing: false,
-        });
+    void loadPeople(study.id, [study.hostId], study.showMemberContacts)
+      .then(([host]) => {
+        if (active) setHostMember(host ?? null);
       })
       .catch(() => setHostMember(null));
     return () => {
       active = false;
     };
-  }, [study?.hostId, study?.id]);
+  }, [study?.hostId, study?.id, study?.showMemberContacts, study?.approvedUserIds.join(','), user?.uid]);
 
   useEffect(() => {
     if (!study || !user || (study.hostId !== user.uid && !study.approvedUserIds.includes(user.uid))) {
@@ -718,7 +710,7 @@ function StudyBody({
   onDecline: (request: JoinRequest) => void;
   onAskRemove: (request: JoinRequest) => void;
 }) {
-  const taken = study.approvedUserIds.length;
+  const taken = study.approvedCount;
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
   const sessionDate = upcomingSession(study);
   const scheduledDate = study.format === 'recurring' && study.dayOfWeek !== null
@@ -779,7 +771,7 @@ function StudyBody({
         ...current,
         [attendingDate]: records.some((record) => record.joined && [study.hostId, ...coHostIds].includes(record.uid)),
       }));
-      void loadPeople(study.id, ids).then((people) => {
+      void loadPeople(study.id, ids, study.showMemberContacts).then((people) => {
         if (active) setAttendingMembers(people);
       });
     }, () => {
@@ -879,7 +871,7 @@ function StudyBody({
     if (!next) return;
     const records = await loadSessionAttendance(study.id, date);
     const ids = records.filter((record) => record.joined).map((record) => record.uid);
-    setAttendingMembers(await loadPeople(study.id, ids));
+    setAttendingMembers(await loadPeople(study.id, ids, study.showMemberContacts));
   }
 
   return (
@@ -995,7 +987,7 @@ function StudyBody({
                 empty="No one has joined this session yet."
                     studyId={study.id}
                     requests={uniqueMembers(attendingMembers)}
-                showPhone={role !== 'approved' || study.showMemberContacts}
+                showPhone={study.showMemberContacts}
                     coHostIds={coHostIds}
                     hostId={study.hostId}
               />
@@ -1226,6 +1218,7 @@ function StudyBody({
             requests={pendingRequests}
             rowId={(request) => `request-${request.userId}`}
             onPhoto={openPhoto}
+            showPhone={false}
             renderActions={(request) => (
               <>
                 <Button size="sm" onClick={() => onApprove(request)} disabled={busy !== null}>

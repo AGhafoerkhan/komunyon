@@ -1,6 +1,5 @@
 import { deleteUser, type User } from 'firebase/auth';
-import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
-import { firebaseErrorCode } from '@/lib/errors';
+import { collection, collectionGroup, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { getFirebase, reauthenticateGoogleAccount } from '@/lib/firebase';
 import { deleteProfilePhoto } from '@/lib/photos';
 import { cancelRequest, declineInvite, deleteStudy, leaveStudy } from '@/lib/studies';
@@ -20,35 +19,24 @@ function rememberAccountDeletion(): void {
   sessionStorage.setItem(DELETE_ACCOUNT_KEY, '1');
 }
 
-async function studyIds(field: string, uid: string, match: 'equal' | 'contains'): Promise<string[]> {
-  const { db } = getFirebase();
-  const snap = await getDocs(
-    query(collection(db, 'studies'), where(field, match === 'equal' ? '==' : 'array-contains', uid)),
-  );
-  return snap.docs.map((item) => item.id);
-}
-
 async function wipeAccount(user: User): Promise<void> {
   const uid = user.uid;
-  const hosted = await studyIds('hostId', uid, 'equal');
-  for (const studyId of hosted) await deleteStudy(studyId);
+  const { db } = getFirebase();
+  const hosted = await getDocs(query(collection(db, 'studies'), where('hostId', '==', uid)));
+  for (const item of hosted.docs) await deleteStudy(item.id);
 
-  const [approved, invited] = await Promise.all([
-    studyIds('approvedUserIds', uid, 'contains'),
-    studyIds('invitedUserIds', uid, 'contains'),
-  ]);
-  let pending: string[] = [];
-  try {
-    pending = await studyIds('pendingUserIds', uid, 'contains');
-  } catch (error) {
-    const code = firebaseErrorCode(error);
-    if (code !== 'permission-denied' && code !== 'firestore/permission-denied') throw error;
+  const memberships = await getDocs(query(collectionGroup(db, 'members'), where('uid', '==', uid)));
+  for (const item of memberships.docs) {
+    const studyId = item.ref.parent.parent?.id;
+    if (!studyId) continue;
+    const status = item.data().status;
+    if (status === 'approved') await leaveStudy(studyId, uid);
+    else if (status === 'invited') await declineInvite(studyId, uid);
+    else if (status === 'pending') await cancelRequest(studyId, uid);
   }
-  for (const studyId of approved) await leaveStudy(studyId, uid);
-  for (const studyId of invited) await declineInvite(studyId, uid);
-  for (const studyId of pending) await cancelRequest(studyId, uid);
 
   await deleteDoc(doc(getFirebase().db, 'users', uid));
+  await deleteDoc(doc(getFirebase().db, 'users', uid, 'private', 'contact')).catch(() => undefined);
   await deleteProfilePhoto(uid);
   await deleteUser(user);
 }

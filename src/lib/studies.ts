@@ -5,6 +5,7 @@ import {
   collectionGroup,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
   onSnapshot,
@@ -12,9 +13,10 @@ import {
   setDoc,
   updateDoc,
   where,
-  documentId,
+  writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { deleteStudyPhotos } from '@/lib/photos';
 import { deleteSessionNotes } from '@/lib/sessions';
 import { getFirebase } from '@/lib/firebase';
@@ -67,17 +69,6 @@ function publicFields(host: UserProfile, draft: StudyDraft, createdAt: string, u
   };
 }
 
-async function syncStorageAccess(studyId: string): Promise<void> {
-  const snap = await getDoc(studyRef(studyId));
-  if (!snap.exists()) return;
-  const data = snap.data();
-  if (typeof data.hostId !== 'string' || !Array.isArray(data.approvedUserIds)) return;
-  await setDoc(doc(getFirebase().db, 'studies', studyId, 'access', 'members'), {
-    hostId: data.hostId,
-    approvedUserIds: data.approvedUserIds.filter((uid) => typeof uid === 'string'),
-  });
-}
-
 function privateFields(draft: StudyDraft, updatedAt: string) {
   return {
     exactAddress: draft.exactAddress.trim(),
@@ -86,30 +77,117 @@ function privateFields(draft: StudyDraft, updatedAt: string) {
   };
 }
 
+async function writeMemberContact(studyId: string, uid: string, phone: string, place: string): Promise<void> {
+  await setDoc(doc(getFirebase().db, 'studies', studyId, 'memberContacts', uid), {
+    phone,
+    place,
+    updatedAt: nowIso(),
+  });
+}
+
+async function syncMemberContactFromPrivateProfile(studyId: string, uid: string): Promise<void> {
+  const contact = await getDoc(doc(getFirebase().db, 'users', uid, 'private', 'contact'));
+  if (!contact.exists()) return;
+  const data = contact.data();
+  const place = [data.neighbourhood, data.city, data.country]
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .join(', ');
+  await writeMemberContact(studyId, uid, typeof data.phone === 'string' ? data.phone : '', place);
+}
+
+type MemberStatus = 'pending' | 'approved' | 'invited';
+
+function memberCollection(studyId: string) {
+  return collection(getFirebase().db, 'studies', studyId, 'members');
+}
+
+async function hydrateStudy(study: BibleStudy, viewerUid: string): Promise<BibleStudy> {
+  const { db } = getFirebase();
+  const ownSnapshot = await getDoc(doc(db, 'studies', study.id, 'members', viewerUid)).catch(() => null);
+  const ownStatus = ownSnapshot?.exists() ? ownSnapshot.data().status as MemberStatus : null;
+  if (study.hostId !== viewerUid && ownStatus !== 'approved') {
+    return {
+      ...study,
+      pendingUserIds: ownStatus === 'pending' ? [viewerUid] : [],
+      approvedUserIds: [],
+      invitedUserIds: ownStatus === 'invited' ? [viewerUid] : [],
+    };
+  }
+  const isHost = study.hostId === viewerUid;
+  const manager = ownStatus === 'approved'
+    ? await getDoc(doc(db, 'studies', study.id, 'managers', viewerUid)).catch(() => null)
+    : null;
+  const canListAll = isHost || (manager?.exists() && manager.data().permissions?.canManageParticipants === true);
+  const rosterQuery = canListAll
+    ? memberCollection(study.id)
+    : query(memberCollection(study.id), where('status', '==', 'approved'));
+  const members = await getDocs(rosterQuery);
+  if (members.empty && (study.pendingUserIds.length || study.approvedUserIds.length || study.invitedUserIds.length)) return study;
+  const byStatus: Record<MemberStatus, string[]> = { pending: [], approved: [], invited: [] };
+  members.docs.forEach((item) => {
+    const data = item.data();
+    if (data.uid === item.id && typeof data.status === 'string' && Object.hasOwn(byStatus, data.status)) byStatus[data.status as MemberStatus].push(item.id);
+  });
+  return {
+    ...study,
+    pendingUserIds: byStatus.pending,
+    approvedUserIds: byStatus.approved,
+    invitedUserIds: byStatus.invited,
+  };
+}
+
+async function performMembershipAction(studyId: string, action: string, targetUid?: string): Promise<void> {
+  await httpsCallable(getFirebase().functions, 'changeStudyMembership')({ studyId, action, targetUid });
+}
+
 export function subscribePublicStudies(
+  viewerUid: string,
   onData: (studies: BibleStudy[]) => void,
   onError: (error: unknown) => void,
 ): Unsubscribe {
   const { db } = getFirebase();
   const studiesQuery = query(collection(db, 'studies'), where('isPublic', '==', true));
-  return onSnapshot(
-    studiesQuery,
-    (snap) => {
-      const studies: BibleStudy[] = [];
-      snap.docs.forEach((item) => {
-        const study = parseBibleStudy(item.id, item.data());
-        if (study) studies.push(study);
-      });
-      studies.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      onData(studies);
-    },
-    (error) => onError(error),
-  );
+  const memberQuery = query(collectionGroup(db, 'members'), where('uid', '==', viewerUid));
+  let publicStudies: BibleStudy[] = [];
+  let ownMemberships = new Map<string, string>();
+  let studiesReady = false;
+  let membersReady = false;
+  const publish = () => {
+    if (!studiesReady || !membersReady) return;
+    const studies = publicStudies.map((study) => {
+      const status = ownMemberships.get(study.id);
+      return {
+        ...study,
+        pendingUserIds: status === 'pending' ? [viewerUid] : study.pendingUserIds,
+        approvedUserIds: status === 'approved' ? [viewerUid] : study.approvedUserIds,
+        invitedUserIds: status === 'invited' ? [viewerUid] : study.invitedUserIds,
+      };
+    }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    onData(studies);
+  };
+  const stopStudies = onSnapshot(studiesQuery, (snap) => {
+    publicStudies = snap.docs.flatMap((item) => {
+      const study = parseBibleStudy(item.id, item.data());
+      return study ? [study] : [];
+    });
+    studiesReady = true;
+    publish();
+  }, onError);
+  const stopMembers = onSnapshot(memberQuery, (snap) => {
+    ownMemberships = new Map(snap.docs.flatMap((item) => {
+      const data = item.data();
+      const studyId = item.ref.parent.parent?.id;
+      return studyId && typeof data.status === 'string' ? [[studyId, data.status]] : [];
+    }));
+    membersReady = true;
+    publish();
+  }, onError);
+  return () => { stopStudies(); stopMembers(); };
 }
 
 export async function markUnlistedStudiesPublic(): Promise<void> {
   const { db } = getFirebase();
-  const snap = await getDocs(collection(db, 'studies'));
+  const snap = await getDocs(query(collection(db, 'studies'), where('hostId', '==', getFirebase().auth.currentUser?.uid ?? '')));
   await Promise.all(
     snap.docs.map(async (item) => {
       if (typeof item.data().isPublic === 'boolean') return;
@@ -128,15 +206,63 @@ export function subscribeHostedStudies(
   return onSnapshot(
     hosted,
     (snap) => {
-      const studies: BibleStudy[] = [];
-      snap.docs.forEach((item) => {
+      void Promise.all(snap.docs.map(async (item) => {
         const study = parseBibleStudy(item.id, item.data());
-        if (study) studies.push(study);
-      });
-      onData(studies);
+        return study ? hydrateStudy(study, uid) : null;
+      })).then((studies) => onData(studies.filter((study): study is BibleStudy => study !== null))).catch(onError);
     },
     (error) => onError(error),
   );
+}
+
+function subscribeMembershipStudies(
+  uid: string,
+  statuses: MemberStatus[],
+  onData: (studies: BibleStudy[]) => void,
+  onError: (error: unknown) => void,
+  requiredPermission?: 'canManageParticipants',
+): Unsubscribe {
+  const { db } = getFirebase();
+  const membershipQuery = query(collectionGroup(db, 'members'), where('uid', '==', uid));
+  const active = new Map<string, { stops: Unsubscribe[]; study: BibleStudy | null; managerAllowed: boolean }>();
+  const publish = () => onData([...active.values()].flatMap((entry) => entry.study && entry.managerAllowed ? [entry.study] : []));
+  const stopMemberships = onSnapshot(membershipQuery, (snapshot) => {
+    const matching = new Set(snapshot.docs.flatMap((item) => {
+      const data = item.data();
+      const studyId = item.ref.parent.parent?.id;
+      return studyId && data.uid === uid && statuses.includes(data.status as MemberStatus) ? [studyId] : [];
+    }));
+    for (const [studyId, entry] of active) {
+      if (matching.has(studyId)) continue;
+      entry.stops.forEach((stop) => stop());
+      active.delete(studyId);
+    }
+    for (const studyId of matching) {
+      if (active.has(studyId)) continue;
+      const entry = { stops: [] as Unsubscribe[], study: null as BibleStudy | null, managerAllowed: !requiredPermission };
+      active.set(studyId, entry);
+      entry.stops.push(onSnapshot(doc(db, 'studies', studyId), (studySnapshot) => {
+        const base = studySnapshot.exists() ? parseBibleStudy(studySnapshot.id, studySnapshot.data()) : null;
+        void (base ? hydrateStudy(base, uid) : Promise.resolve(null)).then((study) => {
+          entry.study = study;
+          publish();
+        }).catch(onError);
+      }, onError));
+      if (requiredPermission) {
+        entry.stops.push(onSnapshot(doc(db, 'studies', studyId, 'managers', uid), (managerSnapshot) => {
+          entry.managerAllowed = managerSnapshot.exists()
+            && managerSnapshot.data().permissions?.[requiredPermission] === true;
+          publish();
+        }, onError));
+      }
+    }
+    publish();
+  }, onError);
+  return () => {
+    stopMemberships();
+    active.forEach((entry) => entry.stops.forEach((stop) => stop()));
+    active.clear();
+  };
 }
 
 export function subscribeParticipantManagedStudies(
@@ -144,14 +270,7 @@ export function subscribeParticipantManagedStudies(
   onData: (studies: BibleStudy[]) => void,
   onError: (error: unknown) => void,
 ) {
-  const managedQuery = query(collection(getFirebase().db, 'studies'), where('approvedUserIds', 'array-contains', uid));
-  return onSnapshot(managedQuery, (snapshot) => {
-    void Promise.all(snapshot.docs.map(async (item) => {
-      const manager = await getDoc(doc(getFirebase().db, 'studies', item.id, 'managers', uid));
-      if (!manager.exists() || manager.data().permissions?.canManageParticipants !== true) return null;
-      return parseBibleStudy(item.id, item.data());
-    })).then((studies) => onData(studies.filter((study): study is BibleStudy => study !== null))).catch(onError);
-  }, onError);
+  return subscribeMembershipStudies(uid, ['approved'], onData, onError, 'canManageParticipants');
 }
 
 export function subscribeApprovedStudies(
@@ -159,20 +278,7 @@ export function subscribeApprovedStudies(
   onData: (studies: BibleStudy[]) => void,
   onError: (error: unknown) => void,
 ): Unsubscribe {
-  const { db } = getFirebase();
-  const approved = query(collection(db, 'studies'), where('approvedUserIds', 'array-contains', uid));
-  return onSnapshot(
-    approved,
-    (snap) => {
-      const studies: BibleStudy[] = [];
-      snap.docs.forEach((item) => {
-        const study = parseBibleStudy(item.id, item.data());
-        if (study) studies.push(study);
-      });
-      onData(studies);
-    },
-    (error) => onError(error),
-  );
+  return subscribeMembershipStudies(uid, ['approved'], onData, onError);
 }
 
 export function subscribeInvitedStudies(
@@ -180,70 +286,28 @@ export function subscribeInvitedStudies(
   onData: (studies: BibleStudy[]) => void,
   onError: (error: unknown) => void,
 ): Unsubscribe {
-  const { db } = getFirebase();
-  const invited = query(collection(db, 'studies'), where('invitedUserIds', 'array-contains', uid));
-  return onSnapshot(
-    invited,
-    (snap) => {
-      const studies: BibleStudy[] = [];
-      snap.docs.forEach((item) => {
-        const study = parseBibleStudy(item.id, item.data());
-        if (study) studies.push(study);
-      });
-      studies.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-      onData(studies);
-    },
-    (error) => onError(error),
-  );
+  return subscribeMembershipStudies(uid, ['invited'], onData, onError);
 }
 
 export async function inviteToStudy(studyId: string, uid: string): Promise<void> {
-  await updateDoc(studyRef(studyId), {
-    invitedUserIds: arrayUnion(uid),
-    updatedAt: nowIso(),
-  });
+  await performMembershipAction(studyId, 'invite', uid);
 }
 
 export async function revokeInvite(studyId: string, uid: string): Promise<void> {
-  await updateDoc(studyRef(studyId), {
-    invitedUserIds: arrayRemove(uid),
-    updatedAt: nowIso(),
-  });
+  await performMembershipAction(studyId, 'revoke-invite', uid);
 }
 
 export async function acceptInvite(study: BibleStudy, uid: string): Promise<void> {
   if (study.approvedUserIds.includes(uid)) return;
   if (!study.invitedUserIds.includes(uid)) throw new Error('This invitation is no longer available.');
-  await writeMemberNotice(study.id, uid, 'accepted');
-  try {
-    await updateDoc(studyRef(study.id), {
-      invitedUserIds: arrayRemove(uid),
-      approvedUserIds: arrayUnion(uid),
-      ...(study.pendingUserIds.includes(uid) ? { pendingUserIds: arrayRemove(uid) } : {}),
-      updatedAt: nowIso(),
-    });
-    const firstSession = upcomingSession(study);
-    if (firstSession) {
-      await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
-    }
-    await syncStorageAccess(study.id);
-  } catch (error) {
-    await deleteDoc(doc(getFirebase().db, 'studies', study.id, 'notices', uid)).catch(() => undefined);
-    throw error;
-  }
+  await syncMemberContactFromPrivateProfile(study.id, uid).catch(() => undefined);
+  await performMembershipAction(study.id, 'accept-invite');
+  const firstSession = upcomingSession(study);
+  if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
 }
 
 export async function declineInvite(studyId: string, uid: string): Promise<void> {
-  await writeMemberNotice(studyId, uid, 'declined');
-  try {
-    await updateDoc(studyRef(studyId), {
-      invitedUserIds: arrayRemove(uid),
-      updatedAt: nowIso(),
-    });
-  } catch (error) {
-    await deleteDoc(doc(getFirebase().db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
-    throw error;
-  }
+  await performMembershipAction(studyId, 'decline-invite');
 }
 
 export function subscribeStudy(
@@ -251,13 +315,89 @@ export function subscribeStudy(
   onData: (study: BibleStudy | null) => void,
   onError: (error: unknown) => void,
 ): Unsubscribe {
-  return onSnapshot(
-    studyRef(studyId),
-    (snap) => {
-      onData(snap.exists() ? parseBibleStudy(snap.id, snap.data()) : null);
-    },
-    (error) => onError(error),
-  );
+  const { auth, db } = getFirebase();
+  const uid = auth.currentUser?.uid;
+  let base: BibleStudy | null = null;
+  let ownStatus: MemberStatus | null = null;
+  let roster: Record<MemberStatus, string[]> | null = null;
+  let stopRoster: Unsubscribe | null = null;
+  let managerCanManage = false;
+  let stopManager: Unsubscribe | null = null;
+  const publish = () => {
+    if (!base) { onData(null); return; }
+    if (roster) {
+      onData({ ...base, pendingUserIds: roster.pending, approvedUserIds: roster.approved, invitedUserIds: roster.invited });
+      return;
+    }
+    onData({
+      ...base,
+      pendingUserIds: ownStatus === 'pending' ? [uid!] : base.pendingUserIds,
+      approvedUserIds: ownStatus === 'approved' ? [uid!] : base.approvedUserIds,
+      invitedUserIds: ownStatus === 'invited' ? [uid!] : base.invitedUserIds,
+    });
+  };
+  const bindManager = () => {
+    const eligible = Boolean(uid && ownStatus === 'approved' && base && base.hostId !== uid);
+    if (eligible && !stopManager) {
+      stopManager = onSnapshot(doc(db, 'studies', studyId, 'managers', uid!), (snapshot) => {
+        const nextPermission = snapshot.exists() && snapshot.data().permissions?.canManageParticipants === true;
+        if (managerCanManage !== nextPermission && stopRoster) {
+          stopRoster();
+          stopRoster = null;
+          roster = null;
+        }
+        managerCanManage = nextPermission;
+        bindRoster(Boolean(base && uid && base.hostId === uid) || ownStatus === 'approved');
+      }, () => {
+        managerCanManage = false;
+        if (stopRoster) { stopRoster(); stopRoster = null; roster = null; }
+      });
+    } else if (!eligible && stopManager) {
+      stopManager();
+      stopManager = null;
+      managerCanManage = false;
+    }
+  };
+  const bindRoster = (allowed: boolean) => {
+    if (allowed && !stopRoster) {
+      const host = Boolean(base && uid && base.hostId === uid);
+      const rosterQuery = host || managerCanManage
+        ? memberCollection(studyId)
+        : query(memberCollection(studyId), where('status', '==', 'approved'));
+      stopRoster = onSnapshot(rosterQuery, (snapshot) => {
+        const next: Record<MemberStatus, string[]> = { pending: [], approved: [], invited: [] };
+        snapshot.docs.forEach((item) => {
+          const data = item.data();
+          if (data.uid === item.id && typeof data.status === 'string' && Object.hasOwn(next, data.status)) {
+            next[data.status as MemberStatus].push(item.id);
+          }
+        });
+        roster = next;
+        publish();
+      }, (error) => {
+        roster = null;
+        onError(error);
+      });
+    } else if (!allowed && stopRoster) {
+      stopRoster();
+      stopRoster = null;
+      roster = null;
+      publish();
+    }
+  };
+  const stopStudy = onSnapshot(studyRef(studyId), (snapshot) => {
+    base = snapshot.exists() ? parseBibleStudy(snapshot.id, snapshot.data()) : null;
+    bindManager();
+    bindRoster(Boolean(base && uid && base.hostId === uid) || ownStatus === 'approved');
+    publish();
+  }, onError);
+  const stopOwn = uid ? onSnapshot(doc(db, 'studies', studyId, 'members', uid), (snapshot) => {
+    ownStatus = snapshot.exists() ? snapshot.data().status as MemberStatus : null;
+    bindManager();
+    bindRoster(Boolean(base && uid && base.hostId === uid) || ownStatus === 'approved');
+    publish();
+  }, () => { ownStatus = null; publish(); }) : () => undefined;
+  return () => { stopStudy(); stopOwn(); stopRoster?.(); stopManager?.(); };
 }
 
 export function subscribePrivateDetails(
@@ -277,7 +417,9 @@ export function subscribePrivateDetails(
 export async function getStudy(studyId: string): Promise<BibleStudy | null> {
   const snap = await getDoc(studyRef(studyId));
   if (!snap.exists()) return null;
-  return parseBibleStudy(snap.id, snap.data());
+  const study = parseBibleStudy(snap.id, snap.data());
+  const uid = getFirebase().auth.currentUser?.uid;
+  return study && uid ? hydrateStudy(study, uid) : study;
 }
 
 export async function getPrivateDetails(studyId: string): Promise<PrivateStudyDetails | null> {
@@ -293,9 +435,7 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
   try {
     await setDoc(ref, {
       ...publicFields(host, draft, now, now),
-      pendingUserIds: [],
-      approvedUserIds: [],
-      invitedUserIds: [],
+      approvedCount: 0,
       skippedDates: [],
     });
     await setDoc(privateRef(ref.id), privateFields(draft, now));
@@ -305,7 +445,7 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
         ? [draft.date]
         : [];
     await Promise.all(dates.map((date) => setSessionAttendance(ref.id, date, host.uid, true, draft.maxCapacity)));
-    await syncStorageAccess(ref.id);
+    await writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', '));
   } catch (error) {
     await deleteDoc(ref).catch(() => undefined);
     throw error;
@@ -321,7 +461,6 @@ export async function updateStudy(studyId: string, host: UserProfile, draft: Stu
   const now = nowIso();
   await updateDoc(studyRef(studyId), publicFields(host, draft, createdAt, now));
   await setDoc(privateRef(studyId), privateFields(draft, now));
-  await syncStorageAccess(studyId);
 }
 
 export async function setMemberContactVisibility(studyId: string, visible: boolean): Promise<void> {
@@ -404,103 +543,48 @@ export async function deleteStudy(studyId: string): Promise<void> {
   const { db } = getFirebase();
   await deleteStudyPhotos(studyId);
   await deleteSessionNotes(studyId);
-  const notices = await getDocs(collection(db, 'studies', studyId, 'notices'));
-  await Promise.all(notices.docs.map((item) => deleteDoc(item.ref)));
+  const childCollections = ['notices', 'members', 'memberContacts', 'managers'];
+  for (const child of childCollections) {
+    const docs = await getDocs(collection(db, 'studies', studyId, child));
+    for (let index = 0; index < docs.docs.length; index += 400) {
+      const batch = writeBatch(db);
+      docs.docs.slice(index, index + 400).forEach((item) => batch.delete(item.ref));
+      await batch.commit();
+    }
+  }
   await deleteDoc(privateRef(studyId));
-  await deleteDoc(doc(db, 'studies', studyId, 'access', 'members')).catch(() => undefined);
   await deleteDoc(studyRef(studyId));
 }
 
 export async function requestToJoin(studyId: string, uid: string): Promise<void> {
-  const { db } = getFirebase();
-  await deleteDoc(doc(db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
-  await updateDoc(studyRef(studyId), {
-    pendingUserIds: arrayUnion(uid),
-    updatedAt: nowIso(),
-  });
+  await performMembershipAction(studyId, 'request');
+  await syncMemberContactFromPrivateProfile(studyId, uid).catch(() => undefined);
 }
 
 export async function cancelRequest(studyId: string, uid: string): Promise<void> {
-  await writeMemberNotice(studyId, uid, 'cancelled');
-  try {
-    await updateDoc(studyRef(studyId), {
-      pendingUserIds: arrayRemove(uid),
-      updatedAt: nowIso(),
-    });
-  } catch (error) {
-    await deleteDoc(doc(getFirebase().db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
-    throw error;
-  }
+  await performMembershipAction(studyId, 'cancel-request');
 }
 
 export async function leaveStudy(studyId: string, uid: string): Promise<void> {
-  await writeMemberNotice(studyId, uid, 'left');
-  try {
-    await updateDoc(studyRef(studyId), {
-      approvedUserIds: arrayRemove(uid),
-      updatedAt: nowIso(),
-    });
-    await syncStorageAccess(studyId);
-  } catch (error) {
-    await deleteDoc(doc(getFirebase().db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
-    throw error;
-  }
-}
-
-async function writeMemberNotice(
-  studyId: string,
-  uid: string,
-  type: 'left' | 'cancelled' | 'accepted' | 'declined',
-): Promise<void> {
-  const { db } = getFirebase();
-  await setDoc(doc(db, 'studies', studyId, 'notices', uid), {
-    type,
-    userId: uid,
-    createdAt: nowIso(),
-  });
+  await performMembershipAction(studyId, 'leave');
 }
 
 export async function approveMember(study: BibleStudy, uid: string): Promise<void> {
   if (!study.pendingUserIds.includes(uid)) {
     throw new Error('That request is no longer pending.');
   }
-  await updateDoc(studyRef(study.id), {
-    pendingUserIds: arrayRemove(uid),
-    approvedUserIds: arrayUnion(uid),
-    updatedAt: nowIso(),
-  });
+  await performMembershipAction(study.id, 'approve', uid);
   const firstSession = upcomingSession(study);
   if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
-  await syncStorageAccess(study.id);
 }
 
 export async function declineMember(studyId: string, uid: string): Promise<void> {
-  await updateDoc(studyRef(studyId), {
-    pendingUserIds: arrayRemove(uid),
-    updatedAt: nowIso(),
-  });
+  await performMembershipAction(studyId, 'decline', uid);
 }
 
 export async function removeMember(study: BibleStudy, uid: string, actorName = study.hostName): Promise<void> {
-  const { db } = getFirebase();
-  const notice = doc(db, 'studies', study.id, 'notices', uid);
-  await setDoc(notice, {
-    type: 'removed',
-    userId: uid,
-    studyTitle: study.title,
-    hostName: actorName,
-    createdAt: nowIso(),
-  });
-  try {
-    await updateDoc(studyRef(study.id), {
-      approvedUserIds: arrayRemove(uid),
-      updatedAt: nowIso(),
-    });
-    await syncStorageAccess(study.id);
-  } catch (error) {
-    await deleteDoc(notice).catch(() => undefined);
-    throw error;
-  }
+  void actorName;
+  await performMembershipAction(study.id, 'remove', uid);
 }
 
 async function fetchProfiles(uids: string[]): Promise<Map<string, UserProfile>> {
@@ -509,7 +593,7 @@ async function fetchProfiles(uids: string[]): Promise<Map<string, UserProfile>> 
   const { db } = getFirebase();
   for (let index = 0; index < uids.length; index += 10) {
     const chunk = uids.slice(index, index + 10);
-    const snap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', chunk)));
+    const snap = await getDocs(query(collection(db, 'users'), where('publicProfile', '==', true), where(documentId(), 'in', chunk)));
     snap.docs.forEach((item) => {
       const profile = parseUserProfile(item.id, item.data());
       if (profile) profiles.set(profile.uid, profile);
@@ -518,11 +602,35 @@ async function fetchProfiles(uids: string[]): Promise<Map<string, UserProfile>> 
   return profiles;
 }
 
+async function fetchMemberContacts(studyId: string, uids: string[]): Promise<Map<string, { phone: string; place: string }>> {
+  const contacts = new Map<string, { phone: string; place: string }>();
+  if (uids.length === 0) return contacts;
+  const { db } = getFirebase();
+  const snapshots = await Promise.all(
+    uids.map((uid) => getDoc(doc(db, 'studies', studyId, 'memberContacts', uid)).catch(() => null)),
+  );
+  snapshots.forEach((item) => {
+    if (!item?.exists()) return;
+    const data = item.data();
+    contacts.set(item.id, {
+      phone: typeof data.phone === 'string' ? data.phone : '',
+      place: typeof data.place === 'string' ? data.place : '',
+    });
+  });
+  return contacts;
+}
+
+export async function syncOwnMemberContact(study: BibleStudy, profile: UserProfile): Promise<void> {
+  if (study.hostId !== profile.uid && !study.approvedUserIds.includes(profile.uid)) return;
+  await writeMemberContact(study.id, profile.uid, profile.phone, [profile.neighbourhood, profile.city, profile.country].filter(Boolean).join(', '));
+}
+
 function toJoinRequest(
   studyId: string,
   uid: string,
   status: 'pending' | 'approved',
   profile: UserProfile | undefined,
+  contact?: { phone: string; place: string },
 ): JoinRequest {
   if (!profile) {
     return {
@@ -547,8 +655,8 @@ function toJoinRequest(
     age: profile.age,
     photoURL: profile.photoURL,
     bio: profile.bio,
-    phone: profile.phone,
-    place: [profile.neighbourhood, profile.city, profile.country].filter(Boolean).join(', '),
+    phone: contact?.phone ?? '',
+    place: contact?.place ?? '',
     status,
     profileMissing: false,
   };
@@ -690,19 +798,36 @@ export async function dismissDeparture(studyId: string, uid: string): Promise<vo
   await deleteDoc(doc(db, 'studies', studyId, 'notices', uid));
 }
 
-export async function loadPeople(studyId: string, uids: string[]): Promise<JoinRequest[]> {
+export async function loadPeople(
+  studyId: string,
+  uids: string[],
+  includeContacts = false,
+  status: 'pending' | 'approved' = 'approved',
+): Promise<JoinRequest[]> {
   const profiles = await fetchProfiles(uids);
-  return uids.map((uid) => toJoinRequest(studyId, uid, 'pending', profiles.get(uid)));
+  const contacts = includeContacts ? await fetchMemberContacts(studyId, uids) : new Map();
+  return uids.map((uid) => toJoinRequest(studyId, uid, status, profiles.get(uid), contacts.get(uid)));
 }
 
-export async function loadJoinRequests(study: BibleStudy): Promise<{
+export async function loadStudyMemberships(uid: string): Promise<Array<{ studyId: string; status: MemberStatus }>> {
+  const snapshot = await getDocs(query(collectionGroup(getFirebase().db, 'members'), where('uid', '==', uid)));
+  return snapshot.docs.flatMap((item) => {
+    const data = item.data();
+    const studyId = item.ref.parent.parent?.id;
+    if (!studyId || data.uid !== uid || typeof data.status !== 'string' || !Object.hasOwn({ pending: 1, approved: 1, invited: 1 }, data.status)) return [];
+    return [{ studyId, status: data.status as MemberStatus }];
+  });
+}
+
+export async function loadJoinRequests(study: BibleStudy, includeContacts = false): Promise<{
   pending: JoinRequest[];
   approved: JoinRequest[];
 }> {
   const ids = [...new Set([...study.pendingUserIds, ...study.approvedUserIds])];
   const profiles = await fetchProfiles(ids);
+  const contacts = includeContacts ? await fetchMemberContacts(study.id, study.approvedUserIds) : new Map();
   return {
     pending: study.pendingUserIds.map((uid) => toJoinRequest(study.id, uid, 'pending', profiles.get(uid))),
-    approved: study.approvedUserIds.map((uid) => toJoinRequest(study.id, uid, 'approved', profiles.get(uid))),
+    approved: study.approvedUserIds.map((uid) => toJoinRequest(study.id, uid, 'approved', profiles.get(uid), contacts.get(uid))),
   };
 }

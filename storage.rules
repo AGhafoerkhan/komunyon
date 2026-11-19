@@ -6,34 +6,39 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    function accessPath(studyId) {
-      return /databases/(default)/documents/studies/$(studyId)/access/members;
+    function studyPath(studyId) {
+      return /databases/(default)/documents/studies/$(studyId);
     }
 
-    function accessData(studyId) {
-      return firestore.get(accessPath(studyId)).data;
+    function studyData(studyId) {
+      return firestore.get(studyPath(studyId)).data;
+    }
+
+    function membershipPath(studyId, uid) {
+      return /databases/(default)/documents/studies/$(studyId)/members/$(uid);
     }
 
     function inStudy(studyId) {
       return signedIn()
-        && firestore.exists(accessPath(studyId))
+        && firestore.exists(studyPath(studyId))
         && (
-          accessData(studyId).hostId == request.auth.uid
+          studyData(studyId).hostId == request.auth.uid
           || (
-            accessData(studyId).approvedUserIds is list
-            && accessData(studyId).approvedUserIds.hasAny([request.auth.uid])
+            firestore.exists(membershipPath(studyId, request.auth.uid))
+            && firestore.get(membershipPath(studyId, request.auth.uid)).data.status == 'approved'
           )
         );
     }
 
     function isHost(studyId) {
       return signedIn()
-        && firestore.exists(accessPath(studyId))
-        && accessData(studyId).hostId == request.auth.uid;
+        && firestore.exists(studyPath(studyId))
+        && studyData(studyId).hostId == request.auth.uid;
     }
 
     function isManagerEditor(studyId) {
       return signedIn()
+        && inStudy(studyId)
         && firestore.exists(/databases/(default)/documents/studies/$(studyId)/managers/$(request.auth.uid))
         && firestore.get(/databases/(default)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canEdit == true;
     }

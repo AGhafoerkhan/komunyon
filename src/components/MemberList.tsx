@@ -98,7 +98,7 @@ export function MemberList({
                     {request.profileMissing ? null : <span className="font-normal text-muted"> · {request.age}</span>}
                   </p>
                   {hostId !== request.userId && roleLabels[request.userId]?.length && !roleLabels[request.userId].includes('Co-host') ? <p className="text-xs text-canal">{roleLabels[request.userId].join(' · ')}</p> : null}
-                  {request.place ? <p className="mt-0.5 text-xs text-muted">{request.place}</p> : null}
+                  {request.status === 'approved' && request.place ? <p className="mt-0.5 text-xs text-muted">{request.place}</p> : null}
                   {showPhone && request.phone ? <PhoneLink phone={request.phone} /> : null}
                   {request.profileMissing || request.bio.length === 0 ? null : (
                     <p className="mt-1 line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap text-muted">

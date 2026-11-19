@@ -1,10 +1,8 @@
 import { type User } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
-import { isHagueArea } from '@/lib/hague';
 import { parseUserProfile } from '@/lib/parse';
 import { normalizePhone } from '@/lib/validate';
-import { logAuthEvent, logAuthFailure } from '@/lib/errors';
 import type { UserProfile } from '@/types';
 
 function nowIso(): string {
@@ -33,72 +31,47 @@ function sameTokens(current: unknown, next: string[]): boolean {
 
 export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
   const { db } = getFirebase();
-  const projectId = db.app.options.projectId;
   const ref = doc(db, 'users', user.uid);
-  logAuthEvent('profile-document-read-started', { projectId, uid: user.uid, path: `users/${user.uid}` });
-  let snap;
-  try {
-    snap = await getDoc(ref);
-  } catch (error) {
-    logAuthFailure('profile-document-read-failed', error, { projectId, uid: user.uid, path: `users/${user.uid}` });
-    throw error;
-  }
-  logAuthEvent('profile-document-read-completed', { projectId, uid: user.uid, exists: snap.exists() });
+  const contactRef = doc(db, 'users', user.uid, 'private', 'contact');
+  const snap = await getDoc(ref);
   if (snap.exists()) {
-    const rawProfile = snap.data();
-    logAuthEvent('profile-schema-compat-check', {
-      projectId,
-      uid: user.uid,
-      storedEmailType: rawProfile.email === null ? 'null' : typeof rawProfile.email,
-      authEmailAvailable: Boolean(user.email),
-    });
-    const profile = parseUserProfile(snap.id, rawProfile, user.email ?? '');
-    if (!profile) {
-      const requiredFields = ['email', 'fullName', 'age', 'photoURL', 'bio', 'profileCompleted', 'createdAt', 'updatedAt'] as const;
-      const actualTypes = Object.fromEntries(requiredFields.map((field) => [
-        field,
-        rawProfile[field] === null ? 'null' : Array.isArray(rawProfile[field]) ? 'array' : typeof rawProfile[field],
-      ]));
-      const expectedTypes: Record<(typeof requiredFields)[number], string> = {
-        email: 'string', fullName: 'string', age: 'integer', photoURL: 'string', bio: 'string',
-        profileCompleted: 'boolean', createdAt: 'string', updatedAt: 'string',
-      };
-      const invalidFields = requiredFields.filter((field) => {
-        if (field === 'email' && rawProfile.email === undefined) return false;
-        return field === 'age'
-          ? typeof rawProfile[field] !== 'number' || !Number.isInteger(rawProfile[field])
-          : typeof rawProfile[field] !== expectedTypes[field];
-      });
-      logAuthEvent('profile-schema-invalid', {
-        projectId,
-        uid: user.uid,
-        path: `users/${user.uid}`,
-        invalidFields,
-        expectedTypes: Object.fromEntries(invalidFields.map((field) => [field, expectedTypes[field]])),
-        actualTypes: Object.fromEntries(invalidFields.map((field) => [field, actualTypes[field]])),
-        fieldNames: Object.keys(rawProfile),
-      });
-      throw new Error('Your profile could not be read.');
-    }
-    if (typeof rawProfile.email !== 'string') {
-      logAuthEvent('profile-email-fallback-used', {
-        projectId,
-        uid: user.uid,
-        source: user.email ? 'firebase-auth' : 'empty-fallback',
-      });
-    }
+    const profile = parseUserProfile(snap.id, snap.data());
+    if (!profile) throw new Error('Your profile could not be read.');
+    const stored = snap.data();
+    const contactSnap = await getDoc(contactRef);
+    const privateContact = contactSnap.exists() ? contactSnap.data() : {};
+    const contact = {
+      email: user.email ?? (typeof privateContact.email === 'string' ? privateContact.email : ''),
+      phone: (typeof privateContact.phone === 'string' && privateContact.phone) || (typeof stored.phone === 'string' ? stored.phone : ''),
+      country: (typeof privateContact.country === 'string' && privateContact.country) || (typeof stored.country === 'string' ? stored.country : ''),
+      city: (typeof privateContact.city === 'string' && privateContact.city) || (typeof stored.city === 'string' ? stored.city : ''),
+      neighbourhood: (typeof privateContact.neighbourhood === 'string' && privateContact.neighbourhood) || (typeof stored.neighbourhood === 'string' ? stored.neighbourhood : ''),
+      updatedAt: nowIso(),
+    };
+    const hasLegacyPrivateFields = ['email', 'phone', 'country', 'city', 'neighbourhood']
+      .some((key) => Object.prototype.hasOwnProperty.call(stored, key));
     const tokens = nameTokens(profile.fullName);
-    if (profile.profileCompleted && !sameTokens(snap.data().nameTokens, tokens)) {
-      logAuthEvent('profile-name-token-sync-started', { projectId, uid: user.uid });
-      await updateDoc(ref, { nameTokens: tokens, updatedAt: nowIso() }).then(
-        () => logAuthEvent('profile-name-token-sync-succeeded', { projectId, uid: user.uid }),
-        (error: unknown) => logAuthFailure('profile-name-token-sync-failed', error, { projectId, uid: user.uid }),
-      );
+    const tokensNeedUpdate = !sameTokens(stored.nameTokens, tokens);
+    if (!contactSnap.exists() || hasLegacyPrivateFields) await setDoc(contactRef, contact);
+    if (hasLegacyPrivateFields || stored.publicProfile !== profile.profileCompleted) {
+      await setDoc(ref, {
+        uid: profile.uid,
+        fullName: profile.fullName,
+        age: profile.age,
+        photoURL: profile.photoURL,
+        bio: profile.bio,
+        profileCompleted: profile.profileCompleted,
+        publicProfile: profile.profileCompleted,
+        nameTokens: tokens,
+        createdAt: profile.createdAt,
+        updatedAt: nowIso(),
+      });
+    } else if (tokensNeedUpdate) {
+      await updateDoc(ref, { nameTokens: tokens, updatedAt: nowIso() });
     }
-    return profile;
+    return { ...profile, ...contact, email: user.email ?? contact.email };
   }
 
-  logAuthEvent('profile-stub-creation-started', { projectId, uid: user.uid, path: `users/${user.uid}` });
   const now = nowIso();
   const stub: UserProfile = {
     uid: user.uid,
@@ -115,13 +88,26 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
     createdAt: now,
     updatedAt: now,
   };
-  try {
-    await setDoc(ref, { ...stub, nameTokens: [] });
-    logAuthEvent('profile-stub-creation-succeeded', { projectId, uid: user.uid });
-  } catch (error) {
-    logAuthFailure('profile-stub-creation-failed', error, { projectId, uid: user.uid });
-    throw error;
-  }
+  await setDoc(ref, {
+    uid: stub.uid,
+    fullName: stub.fullName,
+    age: stub.age,
+    photoURL: stub.photoURL,
+    bio: stub.bio,
+    profileCompleted: false,
+    publicProfile: false,
+    nameTokens: [],
+    createdAt: now,
+    updatedAt: now,
+  });
+  await setDoc(contactRef, {
+    email: user.email ?? '',
+    phone: '',
+    country: '',
+    city: '',
+    neighbourhood: '',
+    updatedAt: now,
+  });
   return stub;
 }
 
@@ -175,43 +161,26 @@ export async function saveUserProfile(
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
-  const tokens = nameTokens(profile.fullName);
-  const ruleChecks = {
-    uidMatchesPath: profile.uid === user.uid,
-    emailAvailable: Boolean(profile.email),
-    fullNameLengthValid: profile.fullName.length >= 2 && profile.fullName.length <= 80,
-    ageValid: Number.isInteger(profile.age) && profile.age >= 1 && profile.age <= 120,
-    photoFormatValid: profile.photoURL.length > 0 && (
-      (profile.photoURL.length <= 2000 && profile.photoURL.startsWith('https://'))
-      || (profile.photoURL.length <= 24000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(profile.photoURL))
-    ),
-    bioLengthValid: profile.bio.length <= 800,
-    countryValid: profile.country.length >= 2 && profile.country.length <= 60,
-    cityValid: profile.city.length >= 2 && profile.city.length <= 80,
-    neighbourhoodValid: profile.neighbourhood.length <= 80
-      && (profile.city !== 'The Hague' || isHagueArea(profile.neighbourhood)),
-    phoneFormatValid: /^\+?[0-9]{8,15}$/.test(profile.phone),
-    timestampsValid: typeof profile.createdAt === 'string' && typeof profile.updatedAt === 'string',
-    nameTokenCountValid: tokens.length <= 120,
-  };
-  logAuthEvent('profile-save-write-started', {
-    projectId: db.app.options.projectId,
-    uid: user.uid,
-    operation: existing ? 'update' : 'create',
-    ruleChecks,
+  await setDoc(doc(db, 'users', user.uid, 'private', 'contact'), {
+    email: profile.email,
+    phone: profile.phone,
+    country: profile.country,
+    city: profile.city,
+    neighbourhood: profile.neighbourhood,
+    updatedAt: profile.updatedAt,
   });
-  try {
-    await setDoc(doc(db, 'users', user.uid), { ...profile, nameTokens: tokens });
-    logAuthEvent('profile-save-write-succeeded', { projectId: db.app.options.projectId, uid: user.uid });
-  } catch (error) {
-    logAuthFailure('profile-save-write-failed', error, {
-      projectId: db.app.options.projectId,
-      uid: user.uid,
-      operation: existing ? 'update' : 'create',
-      ruleChecks,
-    });
-    throw error;
-  }
+  await setDoc(doc(db, 'users', user.uid), {
+    uid: profile.uid,
+    fullName: profile.fullName,
+    age: profile.age,
+    photoURL: profile.photoURL,
+    bio: profile.bio,
+    profileCompleted: true,
+    publicProfile: true,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+    nameTokens: nameTokens(profile.fullName),
+  });
   try {
     await syncHostedStudies(profile);
   } catch {
@@ -232,7 +201,7 @@ export async function searchProfiles(term: string): Promise<UserProfile[]> {
   if (token.length < 2 || token.length > 24) return [];
   const { db } = getFirebase();
   const snap = await getDocs(
-    query(collection(db, 'users'), where('nameTokens', 'array-contains', token), limit(8)),
+    query(collection(db, 'users'), where('publicProfile', '==', true), where('nameTokens', 'array-contains', token), limit(8)),
   );
   const people: UserProfile[] = [];
   snap.docs.forEach((item) => {

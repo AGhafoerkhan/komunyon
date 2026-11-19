@@ -17,7 +17,7 @@ export function InvitePeople({ study }: { study: BibleStudy }) {
 
   useEffect(() => {
     let active = true;
-    void loadPeople(study.id, study.invitedUserIds)
+    void loadPeople(study.id, study.invitedUserIds, false, 'pending')
       .then((people) => {
         if (active) setInvited(people);
       })
@@ -118,7 +118,7 @@ export function InvitePeople({ study }: { study: BibleStudy }) {
                   <Button
                     size="sm"
                     variant={already ? 'secondary' : 'primary'}
-                    disabled={already || busy !== null || study.invitedUserIds.length >= 40}
+                    disabled={already || busy !== null}
                     onClick={() => void send(person)}
                   >
                     {label}

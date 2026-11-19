@@ -47,6 +47,7 @@ export default function DashboardPage() {
     };
 
     const unsubPublic = subscribePublicStudies(
+      user.uid,
       (next) => {
         publicStudies = next;
         publicReady = true;
