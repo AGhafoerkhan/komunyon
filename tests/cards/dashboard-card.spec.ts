@@ -1,52 +1,93 @@
 import { expect, test } from '@playwright/test';
 
 const widths = [320, 375, 640, 768, 1024, 1440];
+const fixtureIds = [
+  'host-long-full',
+  'joined-canceled-week',
+  'waiting-approval',
+  'visitor-all-tags',
+  'one-off-past',
+  'one-off-upcoming-minimum-title',
+];
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/dev/card-fixtures');
 });
 
 for (const width of widths) {
-  test(`cards keep their fixed geometry at ${width}px`, async ({ page }) => {
+  test(`cards keep their fixed geometry at ${width}px`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile-chrome' && width !== 320, 'Mobile emulation focuses on the narrow 320px boundary.');
     await page.setViewportSize({ width, height: 900 });
+    for (const id of fixtureIds) {
+      const fixture = page.getByTestId(`fixture-${id}`);
+      const card = fixture.getByTestId('study-card');
+      const title = fixture.getByTestId('card-title');
+      const tags = fixture.getByTestId('card-tags');
+      const date = fixture.getByTestId('card-date');
+      const note = fixture.getByTestId('card-note');
+      const footer = fixture.getByTestId('card-footer');
+      const [cardBox, titleBox, tagsBox, dateBox, noteBox, footerBox] = await Promise.all(
+        [card, title, tags, date, note, footer].map((locator) => locator.boundingBox()),
+      );
+      expect(cardBox, id).not.toBeNull();
+      expect(titleBox, id).not.toBeNull();
+      expect(tagsBox, id).not.toBeNull();
+      expect(dateBox, id).not.toBeNull();
+      expect(noteBox, id).not.toBeNull();
+      expect(footerBox, id).not.toBeNull();
+      await expect(card, id).toHaveCSS('height', '320px');
+      expect(titleBox!.y + titleBox!.height, id).toBeLessThanOrEqual(tagsBox!.y);
+      expect(tagsBox!.y + tagsBox!.height, id).toBeLessThanOrEqual(dateBox!.y);
+      expect(dateBox!.y + dateBox!.height, id).toBeLessThanOrEqual(noteBox!.y);
+      expect(noteBox!.y + noteBox!.height, id).toBeLessThanOrEqual(footerBox!.y);
+      expect(cardBox!.x, id).toBeGreaterThanOrEqual(0);
+      expect(cardBox!.x + cardBox!.width, id).toBeLessThanOrEqual(width);
+      await expect(title, `${id}: title must be clipped to two lines`).toHaveCSS('-webkit-line-clamp', '2');
+      await expect(title, `${id}: title overflow must be clipped`).toHaveCSS('overflow', 'hidden');
+      const tagItems = await tags.locator('li').evaluateAll((items) => items.map((item) => {
+        const rect = item.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      }));
+      expect(tagItems.length, id).toBeLessThanOrEqual(5);
+      for (const item of tagItems) {
+        expect(item.left, `${id}: label left edge`).toBeGreaterThanOrEqual(tagsBox!.x);
+        expect(item.right, `${id}: label right edge`).toBeLessThanOrEqual(tagsBox!.x + tagsBox!.width);
+        expect(item.top, `${id}: label top edge`).toBeGreaterThanOrEqual(tagsBox!.y);
+        expect(item.bottom, `${id}: label bottom edge`).toBeLessThanOrEqual(tagsBox!.y + tagsBox!.height);
+      }
+
+      const join = fixture.getByTestId('card-join');
+      if (await join.count()) {
+        const joinBox = await join.boundingBox();
+        expect(joinBox, id).not.toBeNull();
+        const footerContentRight = await footer.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return element.getBoundingClientRect().right - Number.parseFloat(style.paddingRight);
+        });
+        expect(footerContentRight, id).toBeLessThanOrEqual(joinBox!.x);
+      }
+    }
+
     const fixtures = page.getByTestId('fixture-visitor-all-tags');
     const card = fixtures.getByTestId('study-card');
-    const title = fixtures.getByTestId('card-title');
     const tags = fixtures.getByTestId('card-tags');
-    const date = fixtures.getByTestId('card-date');
-    const note = fixtures.getByTestId('card-note');
-    const footer = fixtures.getByTestId('card-footer');
-    const join = fixtures.getByTestId('card-join');
-
-    await expect(card).toHaveCSS('height', '320px');
-    const boxes = await Promise.all([card, title, tags, date, note, footer, join].map((locator) => locator.boundingBox()));
-    const [cardBox, titleBox, tagsBox, dateBox, noteBox, footerBox, joinBox] = boxes;
-    expect(cardBox).not.toBeNull();
-    expect(titleBox).not.toBeNull();
-    expect(tagsBox).not.toBeNull();
-    expect(dateBox).not.toBeNull();
-    expect(noteBox).not.toBeNull();
-    expect(footerBox).not.toBeNull();
-    expect(joinBox).not.toBeNull();
-    expect(titleBox!.y + titleBox!.height).toBeLessThanOrEqual(tagsBox!.y);
-    expect(tagsBox!.y + tagsBox!.height).toBeLessThanOrEqual(dateBox!.y);
-    expect(dateBox!.y + dateBox!.height).toBeLessThanOrEqual(noteBox!.y);
-    expect(noteBox!.y + noteBox!.height).toBeLessThanOrEqual(footerBox!.y);
-    expect(cardBox!.x).toBeGreaterThanOrEqual(0);
-    expect(cardBox!.x + cardBox!.width).toBeLessThanOrEqual(width);
-
-    const footerContentRight = await footer.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return element.getBoundingClientRect().right - Number.parseFloat(style.paddingRight);
-    });
-    expect(footerContentRight).toBeLessThanOrEqual(joinBox!.x);
     await expect(tags.getByText('Study')).toBeVisible();
     await expect(tags.getByText('Prayer/Worship')).toBeVisible();
     await expect(tags.getByText('Communion')).toBeVisible();
     await expect(tags.getByText('Event')).toBeVisible();
     await expect(tags.getByText('Dinner')).toBeVisible();
-    if (width === 320 || width === 768 || width === 1440) {
+    if (testInfo.project.name === 'desktop-chrome' && (width === 320 || width === 768 || width === 1440)) {
+      await page.mouse.move(0, 0);
       await expect(card).toHaveScreenshot(`dashboard-card-${width}.png`, { animations: 'disabled' });
+    }
+    if (testInfo.project.name === 'desktop-chrome' && width === 320) {
+      await page.mouse.move(0, 0);
+      await expect(page.getByTestId('fixture-host-long-full').getByTestId('study-card'))
+        .toHaveScreenshot(`dashboard-card-host-long-full-${width}.png`, { animations: 'disabled' });
+    }
+    if (testInfo.project.name === 'mobile-chrome' && width === 320) {
+      await page.mouse.move(0, 0);
+      await expect(card).toHaveScreenshot('dashboard-card-mobile-320.png', { animations: 'disabled' });
     }
   });
 }
