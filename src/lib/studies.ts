@@ -17,7 +17,6 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { deleteStudyPhotos } from '@/lib/photos';
 import { getFirebase } from '@/lib/firebase';
 import { actionError, firebaseErrorCode } from '@/lib/errors';
 import { normalizeTime } from '@/lib/guards';
@@ -147,6 +146,18 @@ async function hydrateStudy(study: BibleStudy, viewerUid: string): Promise<Bible
   };
 }
 
+async function forwardStudyErrorUnlessDeleted(
+  studyId: string,
+  error: unknown,
+  onError: (error: unknown) => void,
+): Promise<void> {
+  if (firebaseErrorCode(error) === 'permission-denied') {
+    const snapshot = await getDoc(studyRef(studyId)).catch(() => null);
+    if (snapshot && !snapshot.exists()) return;
+  }
+  onError(error);
+}
+
 async function performMembershipAction(studyId: string, action: string, targetUid?: string): Promise<void> {
   await httpsCallable(getFirebase().functions, 'changeStudyMembership')({ studyId, action, targetUid });
 }
@@ -214,16 +225,38 @@ export function subscribeHostedStudies(
 ): Unsubscribe {
   const { db } = getFirebase();
   const hosted = query(collection(db, 'studies'), where('hostId', '==', uid));
-  return onSnapshot(
+  let active = true;
+  let revision = 0;
+  let currentIds = new Set<string>();
+  const stop = onSnapshot(
     hosted,
     (snap) => {
+      const currentRevision = ++revision;
+      currentIds = new Set(snap.docs.map((item) => item.id));
       void Promise.all(snap.docs.map(async (item) => {
         const study = parseBibleStudy(item.id, item.data());
-        return study ? hydrateStudy(study, uid) : null;
-      })).then((studies) => onData(studies.filter((study): study is BibleStudy => study !== null))).catch(onError);
+        if (!study) return null;
+        try {
+          return await hydrateStudy(study, uid);
+        } catch (error) {
+          if (active && currentIds.has(study.id)) {
+            await forwardStudyErrorUnlessDeleted(study.id, error, (failure) => {
+              if (active && currentIds.has(study.id)) onError(failure);
+            });
+          }
+          return null;
+        }
+      })).then((studies) => {
+        if (!active || currentRevision !== revision) return;
+        onData(studies.filter((study): study is BibleStudy => study !== null));
+      });
     },
-    (error) => onError(error),
+    (error) => { if (active) onError(error); },
   );
+  return () => {
+    active = false;
+    stop();
+  };
 }
 
 function subscribeMembershipStudies(
@@ -252,19 +285,33 @@ function subscribeMembershipStudies(
       if (active.has(studyId)) continue;
       const entry = { stops: [] as Unsubscribe[], study: null as BibleStudy | null, managerAllowed: !requiredPermission };
       active.set(studyId, entry);
+      const reportIfCurrent = (error: unknown) => {
+        void forwardStudyErrorUnlessDeleted(studyId, error, (failure) => {
+          if (active.get(studyId) === entry) onError(failure);
+        });
+      };
       entry.stops.push(onSnapshot(doc(db, 'studies', studyId), (studySnapshot) => {
+        if (active.get(studyId) !== entry) return;
         const base = studySnapshot.exists() ? parseBibleStudy(studySnapshot.id, studySnapshot.data()) : null;
         void (base ? hydrateStudy(base, uid) : Promise.resolve(null)).then((study) => {
+          if (active.get(studyId) !== entry) return;
           entry.study = study;
           publish();
-        }).catch(onError);
-      }, onError));
+        }).catch((error) => {
+          if (active.get(studyId) === entry) reportIfCurrent(error);
+        });
+      }, (error) => {
+        if (active.get(studyId) === entry) reportIfCurrent(error);
+      }));
       if (requiredPermission) {
         entry.stops.push(onSnapshot(doc(db, 'studies', studyId, 'managers', uid), (managerSnapshot) => {
+          if (active.get(studyId) !== entry) return;
           entry.managerAllowed = managerSnapshot.exists()
             && managerSnapshot.data().permissions?.[requiredPermission] === true;
           publish();
-        }, onError));
+        }, (error) => {
+          if (active.get(studyId) === entry) reportIfCurrent(error);
+        }));
       }
     }
     publish();
@@ -585,7 +632,6 @@ export function subscribeCoHostSessionPermission(studyId: string, uid: string, o
 
 export async function deleteStudy(studyId: string): Promise<void> {
   const { functions } = getFirebase();
-  await deleteStudyPhotos(studyId);
   await httpsCallable(functions, 'deleteHostedStudy')({ studyId });
 }
 

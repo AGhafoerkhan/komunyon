@@ -313,7 +313,7 @@ export default function StudyPage() {
     setConfirm(next);
   }
 
-  async function run(key: string, action: () => Promise<void>) {
+  async function run(key: string, action: () => Promise<void>, issueContext?: { action: string; operation: string; target?: string }) {
     setBusy(key);
     setError(null);
     try {
@@ -326,7 +326,7 @@ export default function StudyPage() {
         setError(null);
         return;
       }
-      setError(actionError(failure));
+      setError(actionError(failure, issueContext));
     } finally {
       setBusy(null);
     }
@@ -444,6 +444,10 @@ export default function StudyPage() {
               void run('delete', async () => {
                 await deleteStudy(study.id);
                 router.push('/dashboard');
+              }, {
+                action: 'delete study',
+                operation: 'delete study files and Firestore data',
+                target: `studies/${study.id}`,
               });
               return;
             }
