@@ -635,8 +635,7 @@ service cloud.firestore {
     // Collection-group lookups can return only the caller's own membership records.
     match /{path=**}/members/{uid} {
       allow get, list: if signedIn()
-        && request.auth.uid == uid
-        && resource.data.uid == uid;
+        && resource.data.uid == request.auth.uid;
       allow create, update, delete: if false;
     }
   }

@@ -7,7 +7,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { getBytes, ref, uploadString } from 'firebase/storage';
 
 const projectId = 'demo-komunyon';
@@ -148,6 +148,8 @@ describe('study visibility and private address', () => {
     await assertFails(getDoc(doc(db('member'), 'studies', studyId, 'members', 'invitee')));
     await assertSucceeds(getDoc(doc(db('member'), 'studies', studyId, 'members', 'manager')));
     await assertSucceeds(getDocs(query(collection(db('member'), 'studies', studyId, 'members'), where('status', '==', 'approved'))));
+    await assertSucceeds(getDocs(query(collectionGroup(db('member'), 'members'), where('uid', '==', 'member'))));
+    await assertFails(getDocs(query(collectionGroup(db('member'), 'members'), where('uid', '==', 'request'))));
     await assertFails(getDocs(collection(db('member'), 'studies', studyId, 'members')));
     await assertFails(setDoc(doc(db('member'), 'studies', studyId, 'members', 'attacker'), {
       uid: 'attacker', status: 'approved', createdAt, updatedAt: createdAt,
