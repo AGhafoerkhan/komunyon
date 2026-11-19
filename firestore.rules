@@ -341,14 +341,14 @@ service cloud.firestore {
         && resource.data.approvedUserIds.size() < resource.data.maxCapacity
         && selfRemovedFrom(resource.data.invitedUserIds, request.resource.data.invitedUserIds)
         && selfAddedTo(resource.data.approvedUserIds, request.resource.data.approvedUserIds)
+        && request.resource.data.approvedUserIds.size() <= resource.data.maxCapacity
         && (
           onlyTouched(['invitedUserIds', 'approvedUserIds', 'updatedAt'])
           || (
             onlyTouched(['invitedUserIds', 'approvedUserIds', 'pendingUserIds', 'updatedAt'])
             && selfRemovedFrom(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
           )
-        )
-        && validPublicStudy(request.resource.data);
+        );
     }
 
     function selfDeclinesInvite() {
