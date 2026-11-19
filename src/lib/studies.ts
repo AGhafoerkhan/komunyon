@@ -18,6 +18,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { deleteStudyPhotos } from '@/lib/photos';
 import { getFirebase } from '@/lib/firebase';
+import { actionError } from '@/lib/errors';
 import { normalizeTime } from '@/lib/guards';
 import { upcomingSession, upcomingSessions } from '@/lib/format';
 import { sortTags } from '@/lib/tags';
@@ -301,7 +302,22 @@ export async function acceptInvite(study: BibleStudy, uid: string): Promise<void
   await syncMemberContactFromPrivateProfile(study.id, uid).catch(() => undefined);
   await performMembershipAction(study.id, 'accept-invite');
   const firstSession = upcomingSession(study);
-  if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
+  if (!firstSession) return;
+  try {
+    await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
+  } catch (failure) {
+    const code = typeof failure === 'object' && failure !== null && 'code' in failure
+      ? String(failure.code)
+      : '';
+    // Accepting an invitation grants study access even when the first session is full.
+    if (code !== 'functions/resource-exhausted' && code !== 'resource-exhausted') {
+      actionError(failure, {
+        action: 'accept study invitation',
+        operation: 'set default attendance for the first session after acceptance',
+        target: `studies/${study.id}/sessions/${firstSession}`,
+      });
+    }
+  }
 }
 
 export async function declineInvite(studyId: string, uid: string): Promise<void> {
