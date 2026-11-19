@@ -45,6 +45,12 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
   logAuthEvent('profile-document-read-completed', { projectId, uid: user.uid, exists: snap.exists() });
   if (snap.exists()) {
     const rawProfile = snap.data();
+    logAuthEvent('profile-schema-compat-check', {
+      projectId,
+      uid: user.uid,
+      storedEmailType: rawProfile.email === null ? 'null' : typeof rawProfile.email,
+      authEmailAvailable: Boolean(user.email),
+    });
     const profile = parseUserProfile(snap.id, rawProfile, user.email ?? '');
     if (!profile) {
       const requiredFields = ['email', 'fullName', 'age', 'photoURL', 'bio', 'profileCompleted', 'createdAt', 'updatedAt'] as const;
