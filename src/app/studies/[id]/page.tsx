@@ -1220,7 +1220,7 @@ function StudyBody({
           {!rosterReady ? <p className="text-sm text-muted">Loading requests…</p> : null}
           <MemberList
             title="Pending requests"
-            description="Photo, name, age, and bio. Approving shares the address."
+            description="Approving adds them to the group and shares the address."
             empty="No pending requests."
             studyId={study.id}
             requests={pendingRequests}
