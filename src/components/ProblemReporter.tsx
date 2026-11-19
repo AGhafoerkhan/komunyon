@@ -9,6 +9,7 @@ const message = 'Something went wrong. Contact support or try again later.';
 export function ProblemReporter() {
   const { user } = useAuth();
   const [visible, setVisible] = useState(false);
+  const [reported, setReported] = useState(false);
   const inFlight = useRef(new Set<string>());
   const sent = useRef(new Set<string>());
 
@@ -18,6 +19,7 @@ export function ProblemReporter() {
     try {
       await submitIssueReport(user, issue);
       sent.current.add(issue.id);
+      setReported(true);
     } catch {
       if (attempt < 3) {
         window.setTimeout(() => void sendAutomatically(issue, attempt + 1), 1500 * (attempt + 1));
@@ -30,6 +32,7 @@ export function ProblemReporter() {
   useEffect(() => {
     const handleIssue = () => {
       setVisible(true);
+      setReported(false);
       const issue = getLatestClientIssue();
       if (issue) void sendAutomatically(issue);
     };
@@ -54,7 +57,7 @@ export function ProblemReporter() {
       className="fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-[100] mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 rounded-lg border border-clay/40 bg-card px-4 py-3 text-ink shadow-lg"
     >
       <p className="min-w-48 flex-1 text-sm" role="alert">
-        {message}
+        {reported ? 'Your problem has been reported!' : message}
       </p>
       <div className="flex shrink-0 items-center gap-2">
         <a
