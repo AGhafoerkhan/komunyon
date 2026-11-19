@@ -355,8 +355,7 @@ service cloud.firestore {
       return signedIn()
         && isUidOn(resource.data, 'invitedUserIds')
         && onlyTouched(['invitedUserIds', 'updatedAt'])
-        && selfRemovedFrom(resource.data.invitedUserIds, request.resource.data.invitedUserIds)
-        && validPublicStudy(request.resource.data);
+        && selfRemovedFrom(resource.data.invitedUserIds, request.resource.data.invitedUserIds);
     }
 
     function profileKeys() {
