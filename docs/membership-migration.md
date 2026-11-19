@@ -29,10 +29,11 @@ The script uses Firebase Admin Application Default Credentials. It does not read
 
 ## Rollout order
 
-1. Review and deploy the membership callable Function.
-2. Schedule a brief membership maintenance window. Older clients write the legacy arrays directly, so they must not remain active during the conversion.
-3. Run the migration with `--apply --prune` and verify its completion in the command output.
-4. Deploy the updated Firestore and Storage rules, then deploy the new web client.
-5. Smoke-test public cards/counts, request/approval, invites, leaving/removal, co-host permissions, file access, and account deletion on staging.
+1. Back up the staging Firestore database and verify the backup is complete.
+2. Schedule a brief membership maintenance window. Existing clients write the legacy arrays directly, so membership actions will be temporarily unavailable during the rules and data transition.
+3. Deploy the `changeStudyMembership` and updated `toggleSessionAttendance` callable Functions.
+4. Deploy the updated Firestore and Storage rules. This blocks legacy direct membership-array writes before the migration removes those arrays.
+5. Run the migration with `--apply --prune` and verify its completion in the command output. The callable Functions check the temporary migration lock, so membership actions fail clearly while the conversion runs.
+6. Deploy the updated web client, then smoke-test public cards/counts, request/approval, invites, leaving/removal, co-host permissions, file access, and account deletion on staging.
 
 This repo change does not run the migration or deploy Functions, rules, or the site.
