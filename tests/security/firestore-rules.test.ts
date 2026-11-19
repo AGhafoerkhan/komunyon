@@ -924,6 +924,66 @@ describe('session attendance and capacity', () => {
 });
 
 describe('profile and group contact privacy', () => {
+  it('allows incomplete onboarding profiles but rejects invalid age and forged ownership', async () => {
+    const incompleteProfile = {
+      uid: 'new-user',
+      fullName: '',
+      age: 0,
+      photoURL: '',
+      bio: '',
+      profileCompleted: false,
+      publicProfile: false,
+      nameTokens: [],
+      createdAt,
+      updatedAt: createdAt,
+    };
+    await assertSucceeds(setDoc(doc(db('new-user'), 'users', 'new-user'), incompleteProfile));
+    await assertFails(setDoc(doc(db('bad-age'), 'users', 'bad-age'), {
+      ...incompleteProfile, uid: 'bad-age', age: 121,
+    }));
+    await assertFails(setDoc(doc(db('attacker'), 'users', 'victim'), {
+      ...incompleteProfile, uid: 'victim',
+    }));
+  });
+
+  it('requires private contact details before a new profile can become public', async () => {
+    const ownerDb = testEnv.authenticatedContext('complete-user', { email: 'complete@example.test' }).firestore();
+    const profile = {
+      uid: 'complete-user',
+      fullName: 'Complete User',
+      age: 28,
+      photoURL: '',
+      bio: 'I speak Dutch and English.',
+      profileCompleted: true,
+      publicProfile: true,
+      nameTokens: ['complete', 'user'],
+      createdAt,
+      updatedAt: createdAt,
+    };
+    await assertFails(setDoc(doc(ownerDb, 'users', 'complete-user'), profile));
+    await assertSucceeds(setDoc(doc(ownerDb, 'users', 'complete-user', 'private', 'contact'), {
+      email: 'complete@example.test',
+      phone: '+31612345678',
+      country: 'Netherlands',
+      city: 'The Hague',
+      neighbourhood: 'Centrum',
+      updatedAt: createdAt,
+    }));
+    await assertSucceeds(setDoc(doc(ownerDb, 'users', 'complete-user'), profile));
+  });
+
+  it('allows only the profile owner to delete their profile and private contact record', async () => {
+    await seedPublicUser('member');
+    await seed('users/member/private/contact', {
+      email: 'member@example.test', phone: '+31612345678', country: 'Netherlands',
+      city: 'The Hague', neighbourhood: 'Centrum', updatedAt: createdAt,
+    });
+
+    await assertFails(deleteDoc(doc(db('visitor'), 'users', 'member')));
+    await assertSucceeds(deleteDoc(doc(db('member'), 'users', 'member')));
+    await assertSucceeds(deleteDoc(doc(db('member'), 'users', 'member', 'private', 'contact')));
+  });
+
   it('keeps phone, email, and location private to the profile owner', async () => {
     await seed('users/member', {
       uid: 'member',
