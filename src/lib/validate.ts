@@ -88,7 +88,7 @@ export function validateStudyDraft(draft: StudyDraft, minCapacity: number): Part
     new Set(draft.tags).size !== draft.tags.length ||
     draft.tags.some((tag) => !isStudyTag(tag))
   ) {
-    errors.tags = 'Choose at least one: study, prayer, worship, or communion.';
+    errors.tags = 'Choose at least one: study, prayer/worship, communion, event, or dinner.';
   }
   if (draft.format === 'recurring' && draft.dayOfWeek === null) errors.day = 'Choose the day of the week.';
   if (draft.format === 'one-off' && (draft.date === null || !isIsoDate(draft.date))) errors.date = 'Choose a date.';

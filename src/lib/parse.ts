@@ -19,9 +19,10 @@ function isFormat(value: unknown): value is StudyFormat {
 function parseTags(value: unknown): StudyTag[] | null {
   if (value === undefined) return [];
   if (!Array.isArray(value) || value.length === 0 || value.length > 4) return null;
-  if (!value.every((item) => isStudyTag(item))) return null;
-  const tags = sortTags(value);
-  if (tags.length !== value.length) return null;
+  const compatible = value.map((item) => item === 'prayer' || item === 'worship' ? 'prayer-worship' : item);
+  if (!compatible.every((item) => isStudyTag(item))) return null;
+  const tags = sortTags(compatible as StudyTag[]);
+  if (tags.length !== new Set(compatible).size) return null;
   return tags;
 }
 

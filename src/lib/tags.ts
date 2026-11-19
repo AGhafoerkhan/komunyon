@@ -1,9 +1,9 @@
 export const STUDY_TAGS = [
   { id: 'bible-study', label: 'Study' },
-  { id: 'prayer', label: 'Prayer' },
-  { id: 'worship', label: 'Worship' },
+  { id: 'prayer-worship', label: 'Prayer/Worship' },
   { id: 'communion', label: 'Communion' },
   { id: 'event', label: 'Event' },
+  { id: 'dinner', label: 'Dinner' },
 ] as const;
 
 export type StudyTag = (typeof STUDY_TAGS)[number]['id'];
@@ -18,7 +18,7 @@ export function tagLabel(id: StudyTag): string {
   return STUDY_TAGS.find((tag) => tag.id === id)?.label ?? id;
 }
 
-/** Keep the chip order stable: Study, Prayer, Worship, Communion, Event. */
+/** Keep the chip order stable: Study, Prayer/Worship, Communion, Event, Dinner. */
 export function sortTags(tags: readonly StudyTag[]): StudyTag[] {
   return TAG_IDS.filter((id) => tags.includes(id));
 }
