@@ -239,6 +239,14 @@ describe('study visibility and private address', () => {
     await assertFails(getDoc(doc(db('manager'), 'studies', studyId, 'notices', 'member')));
     await assertFails(getDoc(doc(db('visitor'), 'studies', studyId, 'notices', 'member')));
   });
+
+  it('rejects malformed phone numbers in group contact records', async () => {
+    await seedStudy();
+    const contactRef = doc(db('member'), 'studies', studyId, 'memberContacts', 'member');
+    await assertFails(setDoc(contactRef, {
+      phone: 'call-me-at-this-number', place: 'Centrum, The Hague', updatedAt: createdAt,
+    }));
+  });
 });
 
 describe('co-host participant permissions', () => {
@@ -585,6 +593,35 @@ describe('co-host participant permissions', () => {
     await assertFails(updateDoc(ref, { approvedCount: 999, updatedAt: createdAt }));
   });
 
+  it('revokes co-host edit access as soon as the host turns the permission off', async () => {
+    await seedStudy();
+    await managerPermissions('editor', { canEdit: true });
+    const editorStudy = doc(db('editor'), 'studies', studyId);
+    await assertSucceeds(updateDoc(editorStudy, { title: 'Editor can change this', updatedAt: createdAt }));
+
+    await assertSucceeds(updateDoc(doc(db('host'), 'studies', studyId, 'managers', 'editor'), {
+      permissions: { canEdit: false },
+    }));
+    await assertFails(updateDoc(editorStudy, { title: 'Editor access was revoked', updatedAt: createdAt }));
+  });
+
+  it('does not let a co-host change their own permissions', async () => {
+    await seedStudy();
+    await managerPermissions('manager', {
+      canManageCoHostPermissions: true,
+      grantable: {
+        canEdit: true,
+        canManageParticipants: true,
+        canManageSessions: true,
+        canManageCoHosts: true,
+        canManageCoHostPermissions: true,
+      },
+    });
+    await assertFails(updateDoc(doc(db('manager'), 'studies', studyId, 'managers', 'manager'), {
+      permissions: { canManageSessions: true },
+    }));
+  });
+
   it('revokes a former co-host’s edit permission when they leave the approved group', async () => {
     await seedStudy();
     await managerPermissions('former-manager', { canEdit: true });
@@ -871,6 +908,17 @@ describe('storage membership revocation', () => {
       contentType: 'text/plain',
     }));
     await assertFails(uploadString(ref(memberStorage, `sessions/${studyId}/2026-12-01/member-1.txt`), 'participant notes', 'raw', {
+      contentType: 'text/plain',
+    }));
+  });
+
+  it('rejects unsupported extensions and incorrect media content types', async () => {
+    await seedStudy();
+    const hostStorage = testEnv.authenticatedContext('host').storage(`gs://${projectId}.appspot.com`);
+    await assertFails(uploadString(ref(hostStorage, `sessions/${studyId}/2026-12-01/host-1.pdf`), 'not an allowed file', 'raw', {
+      contentType: 'text/plain',
+    }));
+    await assertFails(uploadString(ref(hostStorage, `sessions/${studyId}/2026-12-01/host-2.mp3`), 'not audio data', 'raw', {
       contentType: 'text/plain',
     }));
   });
