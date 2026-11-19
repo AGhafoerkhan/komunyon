@@ -229,9 +229,16 @@ export default function AdminPage() {
                 <h2 className="font-serif text-2xl">{selected.errorName || 'Application error'}</h2>
                 <p className="mt-1 break-all text-sm text-muted">{selected.errorCode || 'No error code'} · {selected.reporterEmail || selected.reporterUid}</p>
               </div>
-              <span className="text-xs text-muted">{selected.reportedAt?.toLocaleString() ?? selected.occurredAt}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted">{selected.reportedAt?.toLocaleString() ?? selected.occurredAt}</span>
+                <CopyButton text={formatFullReport(selected)} label="full report" />
+              </div>
             </div>
 
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+              <h3 className="text-sm font-semibold">Report details</h3>
+              <CopyButton text={formatReportDetails(selected)} label="report details" />
+            </div>
             <dl className="mt-5 grid gap-3 border-y border-line py-4 text-sm sm:grid-cols-2">
               <Detail label="Action" value={selected.action || 'Not captured'} />
               <Detail label="Operation" value={selected.operation || 'Not captured'} />
@@ -250,20 +257,20 @@ export default function AdminPage() {
             </dl>
 
             <section className="mt-5">
-              <h3 className="text-sm font-semibold">Recent app actions</h3>
+              <LogHeading title="Recent app actions" text={selected.recentActions || 'No recent action trail was captured.'} />
               <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-sand/60 p-3 text-xs">{selected.recentActions || 'No recent action trail was captured.'}</pre>
             </section>
 
             <section className="mt-5">
-              <h3 className="text-sm font-semibold">Error details</h3>
+              <LogHeading title="Error details" text={selected.errorMessage || 'No error message was captured.'} />
               <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-sand/60 p-3 text-xs">{selected.errorMessage || 'No error message was captured.'}</pre>
             </section>
             <section className="mt-4">
-              <h3 className="text-sm font-semibold">Stack trace</h3>
+              <LogHeading title="Stack trace" text={selected.stack || 'No stack trace was captured.'} />
               <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-md bg-sand/60 p-3 text-xs">{selected.stack || 'No stack trace was captured.'}</pre>
             </section>
             <section className="mt-4">
-              <h3 className="text-sm font-semibold">Error handling callsite</h3>
+              <LogHeading title="Error handling callsite" text={selected.callerStack || 'No callsite was captured.'} />
               <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-sand/60 p-3 text-xs">{selected.callerStack || 'No callsite was captured.'}</pre>
             </section>
 
@@ -294,4 +301,93 @@ function Summary({ label, value }: { label: string; value: string }) {
 
 function Detail({ label, value }: { label: string; value: string }) {
   return <div className="min-w-0"><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 break-words">{value}</dd></div>;
+}
+
+function LogHeading({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <CopyButton text={text} label={title.toLowerCase()} />
+    </div>
+  );
+}
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const input = document.createElement('textarea');
+        input.value = text;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.append(input);
+        input.select();
+        const succeeded = document.execCommand('copy');
+        input.remove();
+        if (!succeeded) throw new Error('Clipboard copy was not available.');
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      className="inline-flex min-h-9 shrink-0 items-center rounded-md border border-line px-3 text-xs font-medium text-ink hover:bg-sand"
+      aria-label={`Copy ${label}`}
+    >
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  );
+}
+
+function formatReportDetails(report: IssueReport): string {
+  return [
+    `Action: ${report.action || 'Not captured'}`,
+    `Operation: ${report.operation || 'Not captured'}`,
+    `Firestore target: ${report.target || 'Not captured'}`,
+    `Page: ${report.route || '—'}`,
+    `App version: ${report.version || 'unknown'}`,
+    `Reporter: ${report.reporterEmail || report.reporterUid || 'Unknown'}`,
+    `User ID: ${report.reporterUid || '—'}`,
+    `Occurred: ${report.occurredAt || '—'}`,
+    `Reported: ${report.reportedAt?.toLocaleString() ?? '—'}`,
+    `Browser and device: ${report.browser || '—'}`,
+    `Network online: ${report.online === null ? 'Unknown' : report.online ? 'Yes' : 'No'}`,
+    `Connection details: ${report.networkDetails || 'Not captured'}`,
+    `Tab visibility: ${report.visibility || '—'}`,
+    `Locale / timezone: ${report.locale || '—'} / ${report.timezone || '—'}`,
+    `Viewport: ${report.viewport || '—'}`,
+  ].join('\n');
+}
+
+function formatFullReport(report: IssueReport): string {
+  return [
+    'Komunyon issue report',
+    formatReportDetails(report),
+    `Status: ${report.status}`,
+    `Admin notes: ${report.adminNotes || '—'}`,
+    '',
+    'Error',
+    `${report.errorName || 'Application error'} · ${report.errorCode || 'No error code'}`,
+    report.errorMessage || 'No error message was captured.',
+    '',
+    'Recent app actions',
+    report.recentActions || 'No recent action trail was captured.',
+    '',
+    'Stack trace',
+    report.stack || 'No stack trace was captured.',
+    '',
+    'Error handling callsite',
+    report.callerStack || 'No callsite was captured.',
+  ].join('\n');
 }
