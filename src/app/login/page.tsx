@@ -36,7 +36,7 @@ export default function LoginPage() {
         >
           {busy ? <Spinner /> : <GoogleMark />}
         </button>
-        {message ? (
+        {message === 'Sign-in was cancelled.' ? (
           <p role="alert" className="mt-3 max-w-48 text-center text-sm text-clay">
             {message}
           </p>

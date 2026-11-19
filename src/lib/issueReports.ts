@@ -35,6 +35,35 @@ export interface IssueContext {
 let latestIssue: ClientIssue | null = null;
 let serverAppVersion = 'unknown';
 const recentActions: string[] = [];
+const pendingIssueStorageKey = 'komunyon-pending-issue';
+
+function persistLatestIssue(): void {
+  if (typeof window === 'undefined' || !latestIssue) return;
+  try {
+    window.sessionStorage.setItem(pendingIssueStorageKey, JSON.stringify(latestIssue));
+  } catch {
+    // Storage may be unavailable in private browsing or when the browser is full.
+  }
+}
+
+function restoreLatestIssue(): ClientIssue | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved: unknown = JSON.parse(window.sessionStorage.getItem(pendingIssueStorageKey) ?? 'null');
+    if (typeof saved !== 'object' || saved === null) return null;
+    const issue = saved as Partial<ClientIssue>;
+    if (typeof issue.id !== 'string' || typeof issue.route !== 'string' || typeof issue.occurredAt !== 'string'
+      || typeof issue.name !== 'string' || typeof issue.message !== 'string' || typeof issue.action !== 'string'
+      || typeof issue.operation !== 'string' || typeof issue.target !== 'string' || typeof issue.version !== 'string'
+      || typeof issue.serverVersion !== 'string' || typeof issue.code !== 'string' || typeof issue.stack !== 'string'
+      || typeof issue.callerStack !== 'string' || typeof issue.recentActions !== 'string' || typeof issue.userAgent !== 'string'
+      || typeof issue.online !== 'boolean' || typeof issue.visibility !== 'string' || typeof issue.timezone !== 'string'
+      || typeof issue.locale !== 'string' || typeof issue.viewport !== 'string') return null;
+    return issue as ClientIssue;
+  } catch {
+    return null;
+  }
+}
 
 export function recordIssueBreadcrumb(action: string): void {
   if (typeof window === 'undefined') return;
@@ -65,7 +94,10 @@ function safeError(error: unknown): Pick<ClientIssue, 'name' | 'code' | 'message
 
 export function setServerAppVersion(version: string): void {
   serverAppVersion = version;
-  if (latestIssue) latestIssue.serverVersion = version;
+  if (latestIssue) {
+    latestIssue.serverVersion = version;
+    persistLatestIssue();
+  }
 }
 
 export function captureClientIssue(error: unknown, context?: IssueContext): void {
@@ -95,10 +127,12 @@ export function captureClientIssue(error: unknown, context?: IssueContext): void
     locale: navigator.language.slice(0, 40),
     viewport: `${window.innerWidth}x${window.innerHeight}`,
   };
+  persistLatestIssue();
   window.dispatchEvent(new Event('komunyon:issue'));
 }
 
 export function getLatestClientIssue(): ClientIssue | null {
+  if (!latestIssue) latestIssue = restoreLatestIssue();
   return latestIssue;
 }
 
@@ -130,4 +164,12 @@ export async function submitIssueReport(user: User, issue: ClientIssue): Promise
     status: 'new',
   });
   if (latestIssue?.id === issue.id) latestIssue = null;
+  try {
+    if (typeof window !== 'undefined') {
+      const pending = restoreLatestIssue();
+      if (pending?.id === issue.id) window.sessionStorage.removeItem(pendingIssueStorageKey);
+    }
+  } catch {
+    // A sent issue should not fail because browser storage cleanup is unavailable.
+  }
 }

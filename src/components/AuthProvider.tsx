@@ -81,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
           return;
         }
+        setSignInError(null);
         void loadOrCreateProfile(firebaseUser)
           .then((nextProfile) => {
             if (current !== requestId || cancelled) return;
