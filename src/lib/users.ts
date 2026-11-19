@@ -1,6 +1,7 @@
 import { type User } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
+import { isHagueArea } from '@/lib/hague';
 import { parseUserProfile } from '@/lib/parse';
 import { normalizePhone } from '@/lib/validate';
 import { logAuthEvent, logAuthFailure } from '@/lib/errors';
@@ -174,7 +175,43 @@ export async function saveUserProfile(
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
-  await setDoc(doc(db, 'users', user.uid), { ...profile, nameTokens: nameTokens(profile.fullName) });
+  const tokens = nameTokens(profile.fullName);
+  const ruleChecks = {
+    uidMatchesPath: profile.uid === user.uid,
+    emailAvailable: Boolean(profile.email),
+    fullNameLengthValid: profile.fullName.length >= 2 && profile.fullName.length <= 80,
+    ageValid: Number.isInteger(profile.age) && profile.age >= 1 && profile.age <= 120,
+    photoFormatValid: profile.photoURL.length > 0 && (
+      (profile.photoURL.length <= 2000 && profile.photoURL.startsWith('https://'))
+      || (profile.photoURL.length <= 24000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(profile.photoURL))
+    ),
+    bioLengthValid: profile.bio.length <= 800,
+    countryValid: profile.country.length >= 2 && profile.country.length <= 60,
+    cityValid: profile.city.length >= 2 && profile.city.length <= 80,
+    neighbourhoodValid: profile.neighbourhood.length <= 80
+      && (profile.city !== 'The Hague' || isHagueArea(profile.neighbourhood)),
+    phoneFormatValid: /^\+?[0-9]{8,15}$/.test(profile.phone),
+    timestampsValid: typeof profile.createdAt === 'string' && typeof profile.updatedAt === 'string',
+    nameTokenCountValid: tokens.length <= 120,
+  };
+  logAuthEvent('profile-save-write-started', {
+    projectId: db.app.options.projectId,
+    uid: user.uid,
+    operation: existing ? 'update' : 'create',
+    ruleChecks,
+  });
+  try {
+    await setDoc(doc(db, 'users', user.uid), { ...profile, nameTokens: tokens });
+    logAuthEvent('profile-save-write-succeeded', { projectId: db.app.options.projectId, uid: user.uid });
+  } catch (error) {
+    logAuthFailure('profile-save-write-failed', error, {
+      projectId: db.app.options.projectId,
+      uid: user.uid,
+      operation: existing ? 'update' : 'create',
+      ruleChecks,
+    });
+    throw error;
+  }
   try {
     await syncHostedStudies(profile);
   } catch {

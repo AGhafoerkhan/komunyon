@@ -33,7 +33,7 @@ export function actionError(error: unknown): string {
     switch (error.code) {
       case 'permission-denied':
       case 'firestore/permission-denied':
-        return 'You do not have permission to do that. Deploy firestore.rules and try again.';
+        return 'The database blocked this action. Please try again. If it keeps happening, contact support.';
       case 'auth/popup-closed-by-user':
       case 'auth/cancelled-popup-request':
       case 'auth/user-cancelled':
