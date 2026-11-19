@@ -7,6 +7,7 @@ import { AppShell } from '@/components/TopBar';
 import { useAuth } from '@/components/AuthProvider';
 import { Alert, LoadingScreen, buttonClass, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
+import { isPastStudy } from '@/lib/format';
 import {
   markUnlistedStudiesPublic,
   subscribeApprovedStudies,
@@ -20,6 +21,8 @@ export default function DashboardPage() {
   const [studies, setStudies] = useState<BibleStudy[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const upcomingStudies = studies.filter((study) => !isPastStudy(study));
+  const pastStudies = studies.filter((study) => isPastStudy(study));
 
   useEffect(() => {
     if (!user) return;
@@ -120,13 +123,24 @@ export default function DashboardPage() {
           </Link>
         </div>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {studies.map((study) => (
-            <li key={study.id} className="min-w-0">
-              <StudyCard study={study} viewerId={user.uid} />
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-10">
+          <section>
+            <h2 className="mb-3 font-serif text-2xl">Upcoming</h2>
+            {upcomingStudies.length ? (
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {upcomingStudies.map((study) => <li key={study.id} className="min-w-0"><StudyCard study={study} viewerId={user.uid} /></li>)}
+              </ul>
+            ) : <p className="text-sm text-muted">No upcoming studies.</p>}
+          </section>
+          {pastStudies.length ? (
+            <section>
+              <h2 className="mb-3 font-serif text-2xl">Past</h2>
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {pastStudies.map((study) => <li key={study.id} className="min-w-0"><StudyCard study={study} viewerId={user.uid} /></li>)}
+              </ul>
+            </section>
+          ) : null}
+        </div>
       )}
     </AppShell>
   );

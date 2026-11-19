@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Avatar, FormatBadge, TagList } from '@/components/ui';
 import { loadSessionAttendance, setSessionAttendance, subscribeSessionAttendance, subscribeSessionAttendanceList } from '@/lib/attendance';
-import { cancellationNote, formatDdMmYyyy, formatSchedule, spotsLabel, upcomingSession, upcomingSessions } from '@/lib/format';
+import { cancellationNote, formatDdMmYyyy, formatSchedule, isPastStudy, spotsLabel, upcomingSession, upcomingSessions } from '@/lib/format';
 import { requestToJoin } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
@@ -20,6 +20,7 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
   const joined = !hosting && study.approvedUserIds.includes(viewerId);
   const pending = !hosting && study.pendingUserIds.includes(viewerId);
   const sessionDate = upcomingSession(study);
+  const past = isPastStudy(study);
   const firstScheduledDate = study.format === 'recurring' && study.dayOfWeek !== null
     ? upcomingSessions(study.dayOfWeek, study.time, 1)[0] ?? null
     : study.date;
@@ -124,19 +125,19 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
         </div>
       </div>
       <p className={`h-10 shrink-0 overflow-hidden text-sm leading-relaxed line-clamp-2 ${canceledDate ? 'text-canal' : 'text-clay'}`}>
-        {canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || '\u00a0'}
+        {past ? 'This study has ended.' : canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || '\u00a0'}
       </p>
           <p className="mt-auto shrink-0 pr-20 text-sm tabular-nums">
         <span className="font-medium text-ink">
-          {sessionDate ? sessionTaken : taken} / {study.maxCapacity}
+          {sessionDate ? sessionTaken : past ? 'Past' : taken} {past ? '' : `/ ${study.maxCapacity}`}
         </span>
-        <span className="text-muted"> · {spotsLabel(sessionDate ? sessionTaken : taken, study.maxCapacity)}</span>
+        {!past ? <span className="text-muted"> · {spotsLabel(sessionDate ? sessionTaken : taken, study.maxCapacity)}</span> : null}
         {hosting && !study.isPublic ? <span className="text-muted"> · Private</span> : null}
         {hosting ? <span className="text-canal"> · Your study</span> : null}
         {joined && !canceledDate ? <span className="text-canal"> · Joined</span> : null}
       </p>
       </Link>
-        {!hosting && !joined ? (
+        {!past && !hosting && !joined ? (
           <button
             type="button"
             className="absolute bottom-4 right-4 text-sm text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"

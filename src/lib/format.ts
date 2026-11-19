@@ -163,6 +163,11 @@ export function historySessions(
   return [...scheduled, ...extra].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
+export function isPastStudy(study: ScheduledStudy, now = new Date()): boolean {
+  if (study.format === 'one-off') return pastSessions(study, 1, now).length > 0;
+  return upcomingSession(study, now) === null;
+}
+
 function sessionStarted(iso: string, time: string, now: Date): boolean {
   const [year, month, day] = iso.split('-').map(Number);
   const meeting = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
