@@ -270,6 +270,7 @@ export function ProfileForm({
           value={bio}
           onChange={(event) => setBio(event.target.value)}
           maxLength={LIMITS.bioMax}
+          placeholder="I speak Dutch/English."
         />
       </Field>
 
