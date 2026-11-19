@@ -8,6 +8,7 @@ if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR !== 'true'
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
+  workers: 1,
   reporter: 'list',
   projects: [
     {
@@ -20,6 +21,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
+  expect: { timeout: 10_000 },
   webServer: {
     command: 'npm run dev -- --hostname 127.0.0.1 --port 3101',
     url: 'http://127.0.0.1:3101/login',
