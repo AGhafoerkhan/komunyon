@@ -228,6 +228,18 @@ describe('study visibility and private address', () => {
     }));
   });
 
+  it('does not let a session manager edit private notes without study-edit permission', async () => {
+    await seedStudy();
+    await seed(`studies/${studyId}/sessions/2026-12-01`, {
+      description: 'Host notes', updatedAt: createdAt,
+    });
+    await managerPermissions('manager', { canManageSessions: true });
+
+    await assertFails(updateDoc(doc(db('manager'), 'studies', studyId, 'sessions', '2026-12-01'), {
+      description: 'Session manager cannot edit these notes', updatedAt: createdAt,
+    }));
+  });
+
   it('allows only the notice owner and host to read a membership notice', async () => {
     await seedStudy();
     await seed(`studies/${studyId}/notices/member`, {
@@ -454,6 +466,30 @@ describe('co-host participant permissions', () => {
     });
   });
 
+  it('lets the host revoke an invitation and prevents the former invitee from accepting it', async () => {
+    const host = await createAuthUser('revoke-invite-host');
+    const invitee = await createAuthUser('revoke-invite-user');
+    await seedPublicUser(invitee.uid);
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [],
+      approvedUserIds: [],
+      invitedUserIds: [],
+    });
+
+    expect((await callMembership(host.token, { studyId, action: 'invite', targetUid: invitee.uid })).ok).toBe(true);
+    expect((await callMembership(host.token, { studyId, action: 'revoke-invite', targetUid: invitee.uid })).ok).toBe(true);
+    expect((await callMembership(invitee.token, { studyId, action: 'accept-invite' })).ok).toBe(false);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [membership, study] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', invitee.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId)),
+      ]);
+      expect(membership.exists()).toBe(false);
+      expect(study.data()?.approvedCount).toBe(0);
+    });
+  });
+
   it('supports canceling and re-sending a request, then host decline without changing approved count', async () => {
     const host = await createAuthUser('request-lifecycle-host');
     const requester = await createAuthUser('request-lifecycle-user');
@@ -508,6 +544,29 @@ describe('co-host participant permissions', () => {
       expect(targetMembership.exists()).toBe(false);
       expect(pendingMembership.data()?.status).toBe('pending');
       expect(study.data()?.approvedCount).toBe(1);
+    });
+  });
+
+  it('rejects unauthenticated and malformed callable membership requests without writes', async () => {
+    const host = await createAuthUser('invalid-call-host');
+    const member = await createAuthUser('invalid-call-member');
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [],
+      approvedUserIds: [],
+      invitedUserIds: [],
+    });
+
+    expect((await callMembership('', { studyId, action: 'request' })).ok).toBe(false);
+    const invalid = await callMembership(member.token, { studyId, action: 'make-host' });
+    expect(invalid.ok).toBe(false);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [membership, study] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', member.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId)),
+      ]);
+      expect(membership.exists()).toBe(false);
+      expect(study.data()?.approvedCount).toBe(0);
     });
   });
 
