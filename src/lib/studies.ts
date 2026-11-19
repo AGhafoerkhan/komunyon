@@ -67,23 +67,30 @@ function publicFields(host: UserProfile, draft: StudyDraft, createdAt: string, u
   };
 }
 
-async function syncStorageAccess(studyId: string): Promise<void> {
-  const snap = await getDoc(studyRef(studyId));
-  if (!snap.exists()) return;
-  const data = snap.data();
-  if (typeof data.hostId !== 'string' || !Array.isArray(data.approvedUserIds)) return;
-  await setDoc(doc(getFirebase().db, 'studies', studyId, 'access', 'members'), {
-    hostId: data.hostId,
-    approvedUserIds: data.approvedUserIds.filter((uid) => typeof uid === 'string'),
-  });
-}
-
 function privateFields(draft: StudyDraft, updatedAt: string) {
   return {
     exactAddress: draft.exactAddress.trim(),
     entryNotes: draft.entryNotes.trim(),
     updatedAt,
   };
+}
+
+async function writeMemberContact(studyId: string, uid: string, phone: string, place: string): Promise<void> {
+  await setDoc(doc(getFirebase().db, 'studies', studyId, 'memberContacts', uid), {
+    phone,
+    place,
+    updatedAt: nowIso(),
+  });
+}
+
+async function syncMemberContactFromPrivateProfile(studyId: string, uid: string): Promise<void> {
+  const contact = await getDoc(doc(getFirebase().db, 'users', uid, 'private', 'contact'));
+  if (!contact.exists()) return;
+  const data = contact.data();
+  const place = [data.neighbourhood, data.city, data.country]
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .join(', ');
+  await writeMemberContact(studyId, uid, typeof data.phone === 'string' ? data.phone : '', place);
 }
 
 export function subscribePublicStudies(
@@ -216,6 +223,7 @@ export async function acceptInvite(study: BibleStudy, uid: string): Promise<void
   if (!study.invitedUserIds.includes(uid)) throw new Error('This invitation is no longer available.');
   await writeMemberNotice(study.id, uid, 'accepted');
   try {
+    await syncMemberContactFromPrivateProfile(study.id, uid).catch(() => undefined);
     await updateDoc(studyRef(study.id), {
       invitedUserIds: arrayRemove(uid),
       approvedUserIds: arrayUnion(uid),
@@ -226,7 +234,6 @@ export async function acceptInvite(study: BibleStudy, uid: string): Promise<void
     if (firstSession) {
       await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
     }
-    await syncStorageAccess(study.id);
   } catch (error) {
     await deleteDoc(doc(getFirebase().db, 'studies', study.id, 'notices', uid)).catch(() => undefined);
     throw error;
@@ -305,7 +312,7 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
         ? [draft.date]
         : [];
     await Promise.all(dates.map((date) => setSessionAttendance(ref.id, date, host.uid, true, draft.maxCapacity)));
-    await syncStorageAccess(ref.id);
+    await writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', '));
   } catch (error) {
     await deleteDoc(ref).catch(() => undefined);
     throw error;
@@ -321,7 +328,6 @@ export async function updateStudy(studyId: string, host: UserProfile, draft: Stu
   const now = nowIso();
   await updateDoc(studyRef(studyId), publicFields(host, draft, createdAt, now));
   await setDoc(privateRef(studyId), privateFields(draft, now));
-  await syncStorageAccess(studyId);
 }
 
 export async function setMemberContactVisibility(studyId: string, visible: boolean): Promise<void> {
@@ -407,7 +413,6 @@ export async function deleteStudy(studyId: string): Promise<void> {
   const notices = await getDocs(collection(db, 'studies', studyId, 'notices'));
   await Promise.all(notices.docs.map((item) => deleteDoc(item.ref)));
   await deleteDoc(privateRef(studyId));
-  await deleteDoc(doc(db, 'studies', studyId, 'access', 'members')).catch(() => undefined);
   await deleteDoc(studyRef(studyId));
 }
 
@@ -418,6 +423,7 @@ export async function requestToJoin(studyId: string, uid: string): Promise<void>
     pendingUserIds: arrayUnion(uid),
     updatedAt: nowIso(),
   });
+  await syncMemberContactFromPrivateProfile(studyId, uid).catch(() => undefined);
 }
 
 export async function cancelRequest(studyId: string, uid: string): Promise<void> {
@@ -440,7 +446,6 @@ export async function leaveStudy(studyId: string, uid: string): Promise<void> {
       approvedUserIds: arrayRemove(uid),
       updatedAt: nowIso(),
     });
-    await syncStorageAccess(studyId);
   } catch (error) {
     await deleteDoc(doc(getFirebase().db, 'studies', studyId, 'notices', uid)).catch(() => undefined);
     throw error;
@@ -471,7 +476,6 @@ export async function approveMember(study: BibleStudy, uid: string): Promise<voi
   });
   const firstSession = upcomingSession(study);
   if (firstSession) await setSessionAttendance(study.id, firstSession, uid, true, study.maxCapacity);
-  await syncStorageAccess(study.id);
 }
 
 export async function declineMember(studyId: string, uid: string): Promise<void> {
@@ -496,7 +500,6 @@ export async function removeMember(study: BibleStudy, uid: string, actorName = s
       approvedUserIds: arrayRemove(uid),
       updatedAt: nowIso(),
     });
-    await syncStorageAccess(study.id);
   } catch (error) {
     await deleteDoc(notice).catch(() => undefined);
     throw error;
@@ -509,7 +512,7 @@ async function fetchProfiles(uids: string[]): Promise<Map<string, UserProfile>> 
   const { db } = getFirebase();
   for (let index = 0; index < uids.length; index += 10) {
     const chunk = uids.slice(index, index + 10);
-    const snap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', chunk)));
+    const snap = await getDocs(query(collection(db, 'users'), where('publicProfile', '==', true), where(documentId(), 'in', chunk)));
     snap.docs.forEach((item) => {
       const profile = parseUserProfile(item.id, item.data());
       if (profile) profiles.set(profile.uid, profile);
@@ -518,11 +521,35 @@ async function fetchProfiles(uids: string[]): Promise<Map<string, UserProfile>> 
   return profiles;
 }
 
+async function fetchMemberContacts(studyId: string, uids: string[]): Promise<Map<string, { phone: string; place: string }>> {
+  const contacts = new Map<string, { phone: string; place: string }>();
+  if (uids.length === 0) return contacts;
+  const { db } = getFirebase();
+  const snapshots = await Promise.all(
+    uids.map((uid) => getDoc(doc(db, 'studies', studyId, 'memberContacts', uid)).catch(() => null)),
+  );
+  snapshots.forEach((item) => {
+    if (!item?.exists()) return;
+    const data = item.data();
+    contacts.set(item.id, {
+      phone: typeof data.phone === 'string' ? data.phone : '',
+      place: typeof data.place === 'string' ? data.place : '',
+    });
+  });
+  return contacts;
+}
+
+export async function syncOwnMemberContact(study: BibleStudy, profile: UserProfile): Promise<void> {
+  if (study.hostId !== profile.uid && !study.approvedUserIds.includes(profile.uid)) return;
+  await writeMemberContact(study.id, profile.uid, profile.phone, [profile.neighbourhood, profile.city, profile.country].filter(Boolean).join(', '));
+}
+
 function toJoinRequest(
   studyId: string,
   uid: string,
   status: 'pending' | 'approved',
   profile: UserProfile | undefined,
+  contact?: { phone: string; place: string },
 ): JoinRequest {
   if (!profile) {
     return {
@@ -547,8 +574,8 @@ function toJoinRequest(
     age: profile.age,
     photoURL: profile.photoURL,
     bio: profile.bio,
-    phone: profile.phone,
-    place: [profile.neighbourhood, profile.city, profile.country].filter(Boolean).join(', '),
+    phone: contact?.phone ?? '',
+    place: contact?.place ?? '',
     status,
     profileMissing: false,
   };
@@ -690,19 +717,26 @@ export async function dismissDeparture(studyId: string, uid: string): Promise<vo
   await deleteDoc(doc(db, 'studies', studyId, 'notices', uid));
 }
 
-export async function loadPeople(studyId: string, uids: string[]): Promise<JoinRequest[]> {
+export async function loadPeople(
+  studyId: string,
+  uids: string[],
+  includeContacts = false,
+  status: 'pending' | 'approved' = 'approved',
+): Promise<JoinRequest[]> {
   const profiles = await fetchProfiles(uids);
-  return uids.map((uid) => toJoinRequest(studyId, uid, 'pending', profiles.get(uid)));
+  const contacts = includeContacts ? await fetchMemberContacts(studyId, uids) : new Map();
+  return uids.map((uid) => toJoinRequest(studyId, uid, status, profiles.get(uid), contacts.get(uid)));
 }
 
-export async function loadJoinRequests(study: BibleStudy): Promise<{
+export async function loadJoinRequests(study: BibleStudy, includeContacts = false): Promise<{
   pending: JoinRequest[];
   approved: JoinRequest[];
 }> {
   const ids = [...new Set([...study.pendingUserIds, ...study.approvedUserIds])];
   const profiles = await fetchProfiles(ids);
+  const contacts = includeContacts ? await fetchMemberContacts(study.id, study.approvedUserIds) : new Map();
   return {
     pending: study.pendingUserIds.map((uid) => toJoinRequest(study.id, uid, 'pending', profiles.get(uid))),
-    approved: study.approvedUserIds.map((uid) => toJoinRequest(study.id, uid, 'approved', profiles.get(uid))),
+    approved: study.approvedUserIds.map((uid) => toJoinRequest(study.id, uid, 'approved', profiles.get(uid), contacts.get(uid))),
   };
 }

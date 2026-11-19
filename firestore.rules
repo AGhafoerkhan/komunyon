@@ -19,6 +19,22 @@ service cloud.firestore {
       return /databases/$(database)/documents/studies/$(studyId);
     }
 
+    function profileContactPath(uid) {
+      return /databases/$(database)/documents/users/$(uid)/private/contact;
+    }
+
+    function hasCompletePrivateContact(uid) {
+      return exists(profileContactPath(uid))
+        && get(profileContactPath(uid)).data.phone is string
+        && get(profileContactPath(uid)).data.phone.matches('^\\+?[0-9]{8,15}$')
+        && get(profileContactPath(uid)).data.country is string
+        && get(profileContactPath(uid)).data.country.size() >= 2
+        && get(profileContactPath(uid)).data.city is string
+        && get(profileContactPath(uid)).data.city.size() >= 2
+        && get(profileContactPath(uid)).data.neighbourhood is string
+        && get(profileContactPath(uid)).data.neighbourhood.size() >= 2;
+    }
+
     function studyExists(studyId) {
       return exists(studyPath(studyId));
     }
@@ -37,6 +53,17 @@ service cloud.firestore {
         && study[field].hasAny([request.auth.uid]);
     }
 
+    function canReadStudy(study) {
+      return signedIn()
+        && (
+          studyIsListed(study)
+          || study.hostId == request.auth.uid
+          || isUidOn(study, 'invitedUserIds')
+          || isUidOn(study, 'approvedUserIds')
+          || isUidOn(study, 'pendingUserIds')
+        );
+    }
+
     function canReadPrivate(study) {
       return signedIn()
         && (
@@ -45,6 +72,20 @@ service cloud.firestore {
             study.approvedUserIds is list
             && study.approvedUserIds.hasAny([request.auth.uid])
           )
+        );
+    }
+
+    function canSeeGroupContact(studyId, uid) {
+      return signedIn()
+        && studyExists(studyId)
+        && (!studyDoc(studyId).keys().hasAny(['showMemberContacts']) || studyDoc(studyId).showMemberContacts == true)
+        && (
+          studyDoc(studyId).hostId == request.auth.uid
+          || studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
+        )
+        && (
+          studyDoc(studyId).hostId == uid
+          || studyDoc(studyId).approvedUserIds.hasAny([uid])
         );
     }
 
@@ -182,10 +223,13 @@ service cloud.firestore {
         && (!data.keys().hasAny(['showMemberContacts']) || data.showMemberContacts is bool)
         && data.pendingUserIds is list
         && data.pendingUserIds.size() <= 200
+        && data.pendingUserIds.size() == data.pendingUserIds.toSet().size()
         && data.approvedUserIds is list
+        && data.approvedUserIds.size() == data.approvedUserIds.toSet().size()
         && (!data.keys().hasAny(['invitedUserIds']) || (
           data.invitedUserIds is list
           && data.invitedUserIds.size() <= 40
+          && data.invitedUserIds.size() == data.invitedUserIds.toSet().size()
         ))
         && validSkippedDates(data)
         && data.createdAt is string
@@ -194,12 +238,39 @@ service cloud.firestore {
         && data.updatedAt.size() <= 40;
     }
 
+    function validStudyUpdate(data) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return data.keys().hasOnly(publicStudyKeys())
+        && data.hostId == resource.data.hostId
+        && data.createdAt == resource.data.createdAt
+        && data.updatedAt is string
+        && data.updatedAt.size() <= 40
+        && (!changed.hasAny(['hostName']) || (data.hostName is string && data.hostName.size() > 0 && data.hostName.size() <= 80))
+        && (!changed.hasAny(['hostAge']) || (data.hostAge is int && data.hostAge >= 1 && data.hostAge <= 120))
+        && (!changed.hasAny(['hostPhotoURL']) || validPhoto(data.hostPhotoURL))
+        && (!changed.hasAny(['title']) || (data.title is string && data.title.size() >= 6 && data.title.size() <= 120))
+        && (!changed.hasAny(['description']) || (data.description is string && data.description.size() >= 12 && data.description.size() <= 2000))
+        && (!changed.hasAny(['tags']) || validTagList(data.tags))
+        && (!changed.hasAny(['format', 'dayOfWeek', 'date']) || validSchedule(data))
+        && (!changed.hasAny(['time']) || (data.time is string && data.time.matches('^([01]\\d|2[0-3]):[0-5]\\d$')))
+        && (!changed.hasAny(['maxCapacity']) || (data.maxCapacity is int && data.maxCapacity >= 1 && data.maxCapacity <= 100))
+        && (!changed.hasAny(['area']) || (data.area is string && isHagueArea(data.area)))
+        && (!changed.hasAny(['isPublic']) || data.isPublic is bool)
+        && (!changed.hasAny(['showMemberContacts']) || data.showMemberContacts is bool)
+        && (!changed.hasAny(['pendingUserIds']) || (data.pendingUserIds is list && data.pendingUserIds.size() <= 200 && data.pendingUserIds.size() == data.pendingUserIds.toSet().size()))
+        && (!changed.hasAny(['approvedUserIds']) || (data.approvedUserIds is list && data.approvedUserIds.size() == data.approvedUserIds.toSet().size()))
+        && (!changed.hasAny(['invitedUserIds']) || (data.invitedUserIds is list && data.invitedUserIds.size() <= 40 && data.invitedUserIds.size() == data.invitedUserIds.toSet().size()))
+        && (!changed.hasAny(['skippedDates']) || validSkippedDates(data));
+    }
+
     function isHost() {
       return signedIn() && request.auth.uid == resource.data.hostId;
     }
 
     function isManagerEditor(studyId) {
       return signedIn()
+        && studyExists(studyId)
+        && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
         && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
         && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canEdit == true;
     }
@@ -210,18 +281,24 @@ service cloud.firestore {
 
     function isParticipantManager(studyId) {
       return signedIn()
+        && studyExists(studyId)
+        && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
         && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
         && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canManageParticipants == true;
     }
 
     function isCoHostManager(studyId) {
       return signedIn()
+        && studyExists(studyId)
+        && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
         && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
         && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canManageCoHosts == true;
     }
 
     function isCoHostPermissionManager(studyId) {
       return signedIn()
+        && studyExists(studyId)
+        && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
         && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
         && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canManageCoHostPermissions == true;
     }
@@ -259,26 +336,58 @@ service cloud.firestore {
         && previous.size() == next.size() + 1;
     }
 
+    function removesOneFrom(previous, next) {
+      return previous is list
+        && next is list
+        && previous.hasAll(next)
+        && previous.size() == next.size() + 1;
+    }
+
+    function managerChangesInvites(studyId) {
+      return onlyTouched(['invitedUserIds', 'updatedAt'])
+        && resource.data.invitedUserIds is list
+        && request.resource.data.invitedUserIds is list
+        && (
+          (
+            request.resource.data.invitedUserIds.hasAll(resource.data.invitedUserIds)
+            && request.resource.data.invitedUserIds.size() == resource.data.invitedUserIds.size() + 1
+          )
+          || (
+            resource.data.invitedUserIds.hasAll(request.resource.data.invitedUserIds)
+            && resource.data.invitedUserIds.size() == request.resource.data.invitedUserIds.size() + 1
+          )
+        )
+        && request.resource.data.invitedUserIds.size() <= 40
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 40;
+    }
+
     function onlyTouched(fields) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
     }
 
     function selfRequestsToJoin(studyId) {
       return signedIn()
+        && studyIsListed(resource.data)
         && request.auth.uid != resource.data.hostId
         && !resource.data.approvedUserIds.hasAny([request.auth.uid])
+        && !isUidOn(resource.data, 'invitedUserIds')
         && (!exists(/databases/$(database)/documents/studies/$(studyId)/notices/$(request.auth.uid))
           || get(/databases/$(database)/documents/studies/$(studyId)/notices/$(request.auth.uid)).data.type != 'removed')
         && onlyTouched(['pendingUserIds', 'updatedAt'])
         && selfAddedTo(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
-        && validPublicStudy(request.resource.data);
+        && request.resource.data.pendingUserIds.size() <= 200
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 40;
     }
 
     function selfCancelsRequest() {
       return signedIn()
         && onlyTouched(['pendingUserIds', 'updatedAt'])
         && selfRemovedFrom(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
-        && validPublicStudy(request.resource.data);
+        && request.resource.data.pendingUserIds.size() <= 200
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 40;
     }
 
     function selfLeavesGroup() {
@@ -286,49 +395,66 @@ service cloud.firestore {
         && request.auth.uid != resource.data.hostId
         && onlyTouched(['approvedUserIds', 'updatedAt'])
         && selfRemovedFrom(resource.data.approvedUserIds, request.resource.data.approvedUserIds)
-        && validPublicStudy(request.resource.data);
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 40;
     }
 
     function managerRemovesMember(studyId) {
-      return signedIn()
-        && isParticipantManager(studyId)
-        && request.auth.uid != resource.data.hostId
+      return request.auth.uid != resource.data.hostId
         && request.resource.data.approvedUserIds.hasAny([request.auth.uid])
         && onlyTouched(['approvedUserIds', 'updatedAt'])
         && request.resource.data.approvedUserIds is list
         && resource.data.approvedUserIds.hasAll(request.resource.data.approvedUserIds)
         && resource.data.approvedUserIds.size() == request.resource.data.approvedUserIds.size() + 1
         && !request.resource.data.approvedUserIds.hasAny([resource.data.hostId])
-        && validPublicStudy(request.resource.data);
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 40;
     }
 
     function managerManagesSessions(studyId) {
       return signedIn()
+        && studyExists(studyId)
+        && studyDoc(studyId).approvedUserIds.hasAny([request.auth.uid])
         && exists(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid))
         && get(/databases/$(database)/documents/studies/$(studyId)/managers/$(request.auth.uid)).data.permissions.canManageSessions == true
         && onlyTouched(['skippedDates', 'updatedAt'])
-        && validPublicStudy(request.resource.data);
+        && validSkippedDates(request.resource.data)
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 40;
     }
 
     function managerApprovesMember(studyId) {
-      return signedIn()
-        && isParticipantManager(studyId)
-        && onlyTouched(['pendingUserIds', 'approvedUserIds', 'updatedAt'])
+      return onlyTouched(['pendingUserIds', 'approvedUserIds', 'updatedAt'])
         && request.resource.data.pendingUserIds is list
         && request.resource.data.approvedUserIds is list
         && resource.data.pendingUserIds.hasAll(request.resource.data.pendingUserIds)
         && request.resource.data.approvedUserIds.hasAll(resource.data.approvedUserIds)
         && resource.data.pendingUserIds.size() == request.resource.data.pendingUserIds.size() + 1
         && request.resource.data.approvedUserIds.size() == resource.data.approvedUserIds.size() + 1
-        && validPublicStudy(request.resource.data);
+        && resource.data.pendingUserIds.toSet().difference(request.resource.data.pendingUserIds.toSet())
+          == request.resource.data.approvedUserIds.toSet().difference(resource.data.approvedUserIds.toSet())
+        && request.resource.data.pendingUserIds.size() <= 200
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 40;
     }
 
     function managerDeclinesMember(studyId) {
-      return signedIn()
-        && isParticipantManager(studyId)
-        && onlyTouched(['pendingUserIds', 'updatedAt'])
-        && selfRemovedFrom(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
-        && validPublicStudy(request.resource.data);
+      return onlyTouched(['pendingUserIds', 'updatedAt'])
+        && removesOneFrom(resource.data.pendingUserIds, request.resource.data.pendingUserIds)
+        && request.resource.data.pendingUserIds.size() <= 200
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 40;
+    }
+
+    function managerUpdatesParticipants(studyId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isParticipantManager(studyId)
+        && (
+          (changed.hasOnly(['pendingUserIds', 'approvedUserIds', 'updatedAt']) && managerApprovesMember(studyId))
+          || (changed.hasOnly(['pendingUserIds', 'updatedAt']) && managerDeclinesMember(studyId))
+          || (changed.hasOnly(['approvedUserIds', 'updatedAt']) && managerRemovesMember(studyId))
+          || (changed.hasOnly(['invitedUserIds', 'updatedAt']) && managerChangesInvites(studyId))
+        );
     }
 
     function selfAcceptsInvite() {
@@ -356,17 +482,13 @@ service cloud.firestore {
     function profileKeys() {
       return [
         'uid',
-        'email',
         'fullName',
         'nameTokens',
         'age',
         'photoURL',
         'bio',
-        'country',
-        'city',
-        'neighbourhood',
-        'phone',
         'profileCompleted',
+        'publicProfile',
         'createdAt',
         'updatedAt'
       ];
@@ -383,37 +505,6 @@ service cloud.firestore {
       );
     }
 
-    function emailOk(data) {
-      return data.email is string
-        && data.email.size() <= 200
-        && (
-          request.auth.token.email == null
-          || data.email == request.auth.token.email
-        );
-    }
-
-    function placeOk(data, required) {
-      return (!data.keys().hasAny(['country']) || (data.country is string && data.country.size() <= 60))
-        && (!data.keys().hasAny(['city']) || (data.city is string && data.city.size() <= 80))
-        && (!data.keys().hasAny(['neighbourhood']) || (data.neighbourhood is string && data.neighbourhood.size() <= 80))
-        && (!data.keys().hasAny(['phone']) || (data.phone is string && data.phone.size() <= 16))
-        && (
-          !required
-          || (
-            data.country is string
-            && data.country.size() >= 2
-            && data.city is string
-            && data.city.size() >= 2
-            && data.neighbourhood is string
-            && (data.city != 'The Hague' || isHagueArea(data.neighbourhood))
-            && data.phone is string
-            && data.phone.matches('^\\+?[0-9]{8,15}$')
-            && data.photoURL is string
-            && data.photoURL.size() > 0
-          )
-        );
-    }
-
     function profileComplete(data) {
       return data.profileCompleted == true
         && data.fullName is string
@@ -424,8 +515,7 @@ service cloud.firestore {
         && data.age <= 120
         && validPhoto(data.photoURL)
         && data.bio is string
-        && data.bio.size() <= 800
-        && placeOk(data, true);
+        && data.bio.size() <= 800;
     }
 
     function profileIncomplete(data) {
@@ -437,8 +527,7 @@ service cloud.firestore {
         && data.age <= 120
         && validPhoto(data.photoURL)
         && data.bio is string
-        && data.bio.size() <= 800
-        && placeOk(data, false);
+        && data.bio.size() <= 800;
     }
 
     function validNameTokens(data) {
@@ -449,41 +538,54 @@ service cloud.firestore {
     function validProfile(uid) {
       return request.resource.data.keys().hasOnly(profileKeys())
         && request.resource.data.uid == uid
-        && emailOk(request.resource.data)
+        && request.resource.data.publicProfile is bool
+        && request.resource.data.publicProfile == request.resource.data.profileCompleted
         && validNameTokens(request.resource.data)
         && request.resource.data.createdAt is string
         && request.resource.data.createdAt.size() <= 40
         && request.resource.data.updatedAt is string
         && request.resource.data.updatedAt.size() <= 40
         && (
-          profileComplete(request.resource.data)
+          (profileComplete(request.resource.data) && hasCompletePrivateContact(uid))
           || profileIncomplete(request.resource.data)
         );
     }
 
     match /users/{uid} {
-      allow read: if signedIn();
+      allow get: if isOwner(uid) || (signedIn() && resource.data.publicProfile == true);
+      allow list: if signedIn() && resource.data.publicProfile == true;
       allow create: if isOwner(uid) && validProfile(uid);
       allow update: if isOwner(uid)
         && validProfile(uid)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if isOwner(uid);
+
+      match /private/contact {
+        allow get: if isOwner(uid);
+        allow list: if false;
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['email', 'phone', 'country', 'city', 'neighbourhood', 'updatedAt'])
+          && request.resource.data.email is string
+          && request.resource.data.email.size() <= 200
+          && (request.auth.token.email == null || request.resource.data.email == request.auth.token.email)
+          && request.resource.data.phone is string
+          && request.resource.data.phone.size() <= 16
+          && (request.resource.data.phone == '' || request.resource.data.phone.matches('^\\+?[0-9]{8,15}$'))
+          && request.resource.data.country is string
+          && request.resource.data.country.size() <= 60
+          && request.resource.data.city is string
+          && request.resource.data.city.size() <= 80
+          && request.resource.data.neighbourhood is string
+          && request.resource.data.neighbourhood.size() <= 80
+          && request.resource.data.updatedAt is string
+          && request.resource.data.updatedAt.size() <= 40;
+        allow delete: if isOwner(uid);
+      }
     }
 
     match /studies/{studyId} {
-      allow get: if true;
-
-      allow list: if studyIsListed(resource.data)
-        || (
-          signedIn()
-          && (
-            resource.data.hostId == request.auth.uid
-            || isUidOn(resource.data, 'invitedUserIds')
-            || isUidOn(resource.data, 'approvedUserIds')
-            || isUidOn(resource.data, 'pendingUserIds')
-          )
-        );
+      allow get, list: if canReadStudy(resource.data);
 
       allow create: if signedIn()
         && request.resource.data.hostId == request.auth.uid
@@ -497,16 +599,14 @@ service cloud.firestore {
 
       allow update: if (
           isStudyEditor(studyId)
-          && hostPreserved()
-          && validPublicStudy(request.resource.data)
+          && validStudyUpdate(request.resource.data)
+          && (isHost() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['pendingUserIds', 'approvedUserIds', 'invitedUserIds']))
         )
         || selfRequestsToJoin(studyId)
         || selfCancelsRequest()
         || selfLeavesGroup()
-        || managerRemovesMember(studyId)
+        || managerUpdatesParticipants(studyId)
         || managerManagesSessions(studyId)
-        || managerApprovesMember(studyId)
-        || managerDeclinesMember(studyId)
         || selfAcceptsInvite()
         || selfDeclinesInvite()
         || (
@@ -514,7 +614,8 @@ service cloud.firestore {
           && !resource.data.keys().hasAny(['isPublic'])
           && onlyTouched(['isPublic'])
           && request.resource.data.isPublic == true
-          && validPublicStudy(request.resource.data)
+          && request.resource.data.updatedAt is string
+          && request.resource.data.updatedAt.size() <= 40
         );
 
       allow delete: if isHost();
@@ -604,7 +705,25 @@ service cloud.firestore {
               && request.resource.data.permissions.grantable.canManageCoHostPermissions is bool));
         allow delete: if studyExists(studyId)
           && signedIn()
+          && uid != studyDoc(studyId).hostId
           && (studyDoc(studyId).hostId == request.auth.uid || isCoHostManager(studyId));
+      }
+
+      match /memberContacts/{uid} {
+        allow get: if signedIn()
+          && (request.auth.uid == uid || canSeeGroupContact(studyId, uid));
+        allow list: if false;
+        allow create, update: if studyExists(studyId)
+          && signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['phone', 'place', 'updatedAt'])
+          && request.resource.data.phone is string
+          && (request.resource.data.phone == '' || request.resource.data.phone.matches('^\\+?[0-9]{8,15}$'))
+          && request.resource.data.place is string
+          && request.resource.data.place.size() <= 240
+          && request.resource.data.updatedAt is string
+          && request.resource.data.updatedAt.size() <= 40;
+        allow delete: if signedIn() && request.auth.uid == uid;
       }
 
       match /sessions/{date} {

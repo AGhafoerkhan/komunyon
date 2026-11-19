@@ -32,15 +32,44 @@ function sameTokens(current: unknown, next: string[]): boolean {
 export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
   const { db } = getFirebase();
   const ref = doc(db, 'users', user.uid);
+  const contactRef = doc(db, 'users', user.uid, 'private', 'contact');
   const snap = await getDoc(ref);
   if (snap.exists()) {
     const profile = parseUserProfile(snap.id, snap.data());
     if (!profile) throw new Error('Your profile could not be read.');
+    const stored = snap.data();
+    const contactSnap = await getDoc(contactRef);
+    const privateContact = contactSnap.exists() ? contactSnap.data() : {};
+    const contact = {
+      email: user.email ?? (typeof privateContact.email === 'string' ? privateContact.email : ''),
+      phone: (typeof privateContact.phone === 'string' && privateContact.phone) || (typeof stored.phone === 'string' ? stored.phone : ''),
+      country: (typeof privateContact.country === 'string' && privateContact.country) || (typeof stored.country === 'string' ? stored.country : ''),
+      city: (typeof privateContact.city === 'string' && privateContact.city) || (typeof stored.city === 'string' ? stored.city : ''),
+      neighbourhood: (typeof privateContact.neighbourhood === 'string' && privateContact.neighbourhood) || (typeof stored.neighbourhood === 'string' ? stored.neighbourhood : ''),
+      updatedAt: nowIso(),
+    };
+    const hasLegacyPrivateFields = ['email', 'phone', 'country', 'city', 'neighbourhood']
+      .some((key) => Object.prototype.hasOwnProperty.call(stored, key));
     const tokens = nameTokens(profile.fullName);
-    if (profile.profileCompleted && !sameTokens(snap.data().nameTokens, tokens)) {
-      await updateDoc(ref, { nameTokens: tokens, updatedAt: nowIso() }).catch(() => undefined);
+    const tokensNeedUpdate = !sameTokens(stored.nameTokens, tokens);
+    if (!contactSnap.exists() || hasLegacyPrivateFields) await setDoc(contactRef, contact);
+    if (hasLegacyPrivateFields || stored.publicProfile !== profile.profileCompleted) {
+      await setDoc(ref, {
+        uid: profile.uid,
+        fullName: profile.fullName,
+        age: profile.age,
+        photoURL: profile.photoURL,
+        bio: profile.bio,
+        profileCompleted: profile.profileCompleted,
+        publicProfile: profile.profileCompleted,
+        nameTokens: tokens,
+        createdAt: profile.createdAt,
+        updatedAt: nowIso(),
+      });
+    } else if (tokensNeedUpdate) {
+      await updateDoc(ref, { nameTokens: tokens, updatedAt: nowIso() });
     }
-    return profile;
+    return { ...profile, ...contact, email: user.email ?? contact.email };
   }
 
   const now = nowIso();
@@ -59,7 +88,26 @@ export async function loadOrCreateProfile(user: User): Promise<UserProfile> {
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(ref, { ...stub, nameTokens: [] });
+  await setDoc(ref, {
+    uid: stub.uid,
+    fullName: stub.fullName,
+    age: stub.age,
+    photoURL: stub.photoURL,
+    bio: stub.bio,
+    profileCompleted: false,
+    publicProfile: false,
+    nameTokens: [],
+    createdAt: now,
+    updatedAt: now,
+  });
+  await setDoc(contactRef, {
+    email: user.email ?? '',
+    phone: '',
+    country: '',
+    city: '',
+    neighbourhood: '',
+    updatedAt: now,
+  });
   return stub;
 }
 
@@ -113,7 +161,26 @@ export async function saveUserProfile(
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
-  await setDoc(doc(db, 'users', user.uid), { ...profile, nameTokens: nameTokens(profile.fullName) });
+  await setDoc(doc(db, 'users', user.uid, 'private', 'contact'), {
+    email: profile.email,
+    phone: profile.phone,
+    country: profile.country,
+    city: profile.city,
+    neighbourhood: profile.neighbourhood,
+    updatedAt: profile.updatedAt,
+  });
+  await setDoc(doc(db, 'users', user.uid), {
+    uid: profile.uid,
+    fullName: profile.fullName,
+    age: profile.age,
+    photoURL: profile.photoURL,
+    bio: profile.bio,
+    profileCompleted: true,
+    publicProfile: true,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+    nameTokens: nameTokens(profile.fullName),
+  });
   try {
     await syncHostedStudies(profile);
   } catch {
@@ -134,7 +201,7 @@ export async function searchProfiles(term: string): Promise<UserProfile[]> {
   if (token.length < 2 || token.length > 24) return [];
   const { db } = getFirebase();
   const snap = await getDocs(
-    query(collection(db, 'users'), where('nameTokens', 'array-contains', token), limit(8)),
+    query(collection(db, 'users'), where('publicProfile', '==', true), where('nameTokens', 'array-contains', token), limit(8)),
   );
   const people: UserProfile[] = [];
   snap.docs.forEach((item) => {

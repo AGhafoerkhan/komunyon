@@ -17,7 +17,7 @@ export function InvitePeople({ study }: { study: BibleStudy }) {
 
   useEffect(() => {
     let active = true;
-    void loadPeople(study.id, study.invitedUserIds)
+    void loadPeople(study.id, study.invitedUserIds, false, 'pending')
       .then((people) => {
         if (active) setInvited(people);
       })

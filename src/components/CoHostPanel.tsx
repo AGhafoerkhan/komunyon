@@ -27,7 +27,7 @@ export function CoHostPanel({ study, canManagePermissions = false }: { study: Bi
   useEffect(() => {
     let active = true;
     void Promise.all([
-      loadPeople(study.id, study.approvedUserIds),
+      loadPeople(study.id, study.approvedUserIds, study.showMemberContacts),
       getDocs(collection(getFirebase().db, 'studies', study.id, 'managers')),
     ])
       .then(([approved, managers]) => {

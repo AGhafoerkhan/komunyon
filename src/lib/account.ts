@@ -49,6 +49,7 @@ async function wipeAccount(user: User): Promise<void> {
   for (const studyId of pending) await cancelRequest(studyId, uid);
 
   await deleteDoc(doc(getFirebase().db, 'users', uid));
+  await deleteDoc(doc(getFirebase().db, 'users', uid, 'private', 'contact')).catch(() => undefined);
   await deleteProfilePhoto(uid);
   await deleteUser(user);
 }
