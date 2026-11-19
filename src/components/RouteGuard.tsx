@@ -67,7 +67,7 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   if (error) {
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-6">
-        <p className="font-serif text-3xl">Could not open your profile</p>
+        <p className="font-serif text-3xl">Something went wrong</p>
         <p className="text-sm text-muted">{error}</p>
         <div>
           <Button variant="secondary" onClick={() => void signOutUser()}>

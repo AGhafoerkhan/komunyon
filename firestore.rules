@@ -15,6 +15,12 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function isAppOwner() {
+      return signedIn()
+        && request.auth.token.email == 'angeloleeuw@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
     function studyPath(studyId) {
       return /databases/$(database)/documents/studies/$(studyId);
     }
@@ -428,6 +434,44 @@ service cloud.firestore {
           && request.resource.data.updatedAt.size() <= 40;
         allow delete: if isOwner(uid);
       }
+    }
+
+    match /issueReports/{reportId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'reporterUid', 'reporterEmail', 'route', 'version', 'browser',
+          'errorName', 'errorCode', 'errorMessage', 'stack', 'occurredAt',
+          'reportedAt', 'status'
+        ])
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.reporterEmail == request.auth.token.email
+        && request.resource.data.route is string
+        && request.resource.data.route.size() <= 300
+        && request.resource.data.version is string
+        && request.resource.data.version.size() <= 100
+        && request.resource.data.browser is string
+        && request.resource.data.browser.size() <= 600
+        && request.resource.data.errorName is string
+        && request.resource.data.errorName.size() <= 120
+        && request.resource.data.errorCode is string
+        && request.resource.data.errorCode.size() <= 120
+        && request.resource.data.errorMessage is string
+        && request.resource.data.errorMessage.size() <= 2000
+        && request.resource.data.stack is string
+        && request.resource.data.stack.size() <= 12000
+        && request.resource.data.occurredAt is string
+        && request.resource.data.occurredAt.size() <= 40
+        && request.resource.data.reportedAt == request.time
+        && request.resource.data.status == 'new';
+
+      allow get, list: if isAppOwner();
+      allow update: if isAppOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'adminNotes', 'updatedAt'])
+        && request.resource.data.status in ['new', 'investigating', 'fixed', 'wontfix']
+        && (!request.resource.data.keys().hasAny(['adminNotes'])
+          || (request.resource.data.adminNotes is string && request.resource.data.adminNotes.size() <= 2000))
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
     }
 
     match /studies/{studyId} {

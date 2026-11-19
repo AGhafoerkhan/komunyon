@@ -3,6 +3,7 @@ import { Figtree, Fraunces } from 'next/font/google';
 import { AuthProvider } from '@/components/AuthProvider';
 import { NoticePermission } from '@/components/DeviceNotices';
 import { PageDiagnostics } from '@/components/PageDiagnostics';
+import { ProblemReporter } from '@/components/ProblemReporter';
 import { PwaRegister } from '@/components/PwaRegister';
 import { RouteGuard } from '@/components/RouteGuard';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <AuthProvider>
             <PageDiagnostics />
+            <ProblemReporter />
             <PwaRegister />
             <NoticePermission />
             <RouteGuard>{children}</RouteGuard>

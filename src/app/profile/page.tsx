@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { DeviceNotices } from '@/components/DeviceNotices';
 import { ProfileForm } from '@/components/ProfileForm';
 import { useAuth } from '@/components/AuthProvider';
@@ -72,6 +73,11 @@ export default function ProfilePage() {
           <summary className="cursor-pointer list-none py-4 font-serif text-xl">Settings</summary>
           <div className="border-t border-line pb-4">
             <DeviceNotices />
+            {user.email?.toLowerCase() === 'angeloleeuw@gmail.com' ? (
+              <Link href="/admin" className="mt-6 inline-flex h-10 items-center rounded-md border border-line bg-card px-3.5 text-sm font-medium text-ink hover:bg-sand">
+                Issue reports
+              </Link>
+            ) : null}
             <section className="mt-6 rounded-lg border border-line bg-card p-4 shadow-sm transition-all duration-300">
           <div className="flex items-center justify-between gap-4">
             <div>

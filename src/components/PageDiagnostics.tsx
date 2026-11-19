@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import { captureClientIssue } from '@/lib/issueReports';
 
 function errorDetails(value: unknown) {
   if (value instanceof Error) {
@@ -21,6 +22,7 @@ export function PageDiagnostics() {
     });
 
     const onError = (event: ErrorEvent) => {
+      captureClientIssue(event.error ?? event.message);
       console.error('[Komunyon][Page] uncaught error', {
         pathname,
         at: new Date().toISOString(),
@@ -32,6 +34,7 @@ export function PageDiagnostics() {
     };
 
     const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      captureClientIssue(event.reason);
       console.error('[Komunyon][Page] unhandled promise rejection', {
         pathname,
         at: new Date().toISOString(),
