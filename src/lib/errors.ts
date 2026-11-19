@@ -7,6 +7,7 @@ function hasCode(error: unknown): error is { code: string } {
 }
 
 export function actionError(error: unknown): string {
+  logActionError(error);
   if (hasCode(error)) {
     switch (error.code) {
       case 'permission-denied':
@@ -50,4 +51,24 @@ export function actionError(error: unknown): string {
   }
   if (error instanceof Error && error.message) return error.message;
   return 'Something went wrong. Please try again.';
+}
+
+function logActionError(error: unknown): void {
+  if (typeof console === 'undefined') return;
+  if (hasCode(error)) {
+    console.error('[Komunyon] Firebase action failed', {
+      code: error.code,
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : undefined,
+      stack: error instanceof Error ? error.stack : undefined,
+      rawError: error,
+    });
+    return;
+  }
+  console.error('[Komunyon] Action failed', {
+    message: error instanceof Error ? error.message : String(error),
+    name: error instanceof Error ? error.name : undefined,
+    stack: error instanceof Error ? error.stack : undefined,
+    rawError: error,
+  });
 }
