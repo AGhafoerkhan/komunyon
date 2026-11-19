@@ -18,7 +18,7 @@ function isFormat(value: unknown): value is StudyFormat {
 /** Missing tags stay empty so studies created before tags still load. */
 function parseTags(value: unknown): StudyTag[] | null {
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.length === 0 || value.length > 4) return null;
+  if (!Array.isArray(value) || value.length === 0 || value.length > 5) return null;
   const compatible = value.map((item) => item === 'prayer' || item === 'worship' ? 'prayer-worship' : item);
   if (!compatible.every((item) => isStudyTag(item))) return null;
   const tags = sortTags(compatible as StudyTag[]);
