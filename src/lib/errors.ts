@@ -42,10 +42,11 @@ export function actionError(error: unknown): string {
       case 'storage/bucket-not-found':
         return 'Photo storage is not set up yet. In Firebase, open Storage and click Get Started, then try again.';
       case 'firestore/failed-precondition':
+      case 'failed-precondition':
         if (hasMessage(error) && /query requires .*index/i.test(error.message)) {
-          return 'This Firestore query needs an index. The index has been configured; refresh after Firebase finishes building it.';
+          return 'This page is waiting for a Firestore index to finish building. Please try again shortly.';
         }
-        return 'Firestore is not created for this project yet.';
+        return 'The database could not complete that request. Please try again.';
       default:
         return error.code.startsWith('firestore/')
           ? `The database rejected that request (${error.code}).`
