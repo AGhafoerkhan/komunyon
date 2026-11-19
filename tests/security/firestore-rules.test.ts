@@ -446,6 +446,88 @@ describe('co-host participant permissions', () => {
     });
   });
 
+  it('supports canceling and re-sending a request, then host decline without changing approved count', async () => {
+    const host = await createAuthUser('request-lifecycle-host');
+    const requester = await createAuthUser('request-lifecycle-user');
+    await seedPublicUser(requester.uid);
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [requester.uid],
+      approvedUserIds: [],
+      invitedUserIds: [],
+    });
+
+    expect((await callMembership(requester.token, { studyId, action: 'cancel-request' })).ok).toBe(true);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      expect((await getDoc(doc(context.firestore(), 'studies', studyId, 'notices', requester.uid))).data()?.type).toBe('cancelled');
+    });
+    expect((await callMembership(requester.token, { studyId, action: 'request' })).ok).toBe(true);
+    expect((await callMembership(host.token, { studyId, action: 'decline', targetUid: requester.uid })).ok).toBe(true);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [member, study, notice] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', requester.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId)),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'notices', requester.uid)),
+      ]);
+      expect(member.exists()).toBe(false);
+      expect(study.data()?.approvedCount).toBe(0);
+      expect(notice.exists()).toBe(false);
+    });
+  });
+
+  it('does not let an edit-only co-host invite or approve participants', async () => {
+    const host = await createAuthUser('edit-only-host');
+    const editor = await createAuthUser('edit-only-manager');
+    const target = await createAuthUser('edit-only-target');
+    const requester = await createAuthUser('edit-only-requester');
+    await seedPublicUser(target.uid);
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [requester.uid],
+      approvedUserIds: [editor.uid],
+      invitedUserIds: [],
+    });
+    await managerPermissions(editor.uid, { canEdit: true });
+
+    expect((await callMembership(editor.token, { studyId, action: 'invite', targetUid: target.uid })).ok).toBe(false);
+    expect((await callMembership(editor.token, { studyId, action: 'approve', targetUid: requester.uid })).ok).toBe(false);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [targetMembership, pendingMembership, study] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', target.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', requester.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId)),
+      ]);
+      expect(targetMembership.exists()).toBe(false);
+      expect(pendingMembership.data()?.status).toBe('pending');
+      expect(study.data()?.approvedCount).toBe(1);
+    });
+  });
+
+  it('blocks membership and attendance changes while a study migration lock is active', async () => {
+    const host = await createAuthUser('locked-study-host');
+    const member = await createAuthUser('locked-study-member');
+    await seedPublicUser(member.uid);
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      membershipMigrationLocked: true,
+      pendingUserIds: [],
+      approvedUserIds: [member.uid],
+      invitedUserIds: [],
+    });
+
+    const requestResult = await callMembership(member.token, { studyId, action: 'request' });
+    expect(requestResult.ok).toBe(false);
+    expect(requestResult.body.error?.status).toBe('UNAVAILABLE');
+    const attendanceResult = await callAttendance(member.token, {
+      studyId, date: '2026-12-01', joined: true,
+    });
+    expect(attendanceResult.ok).toBe(false);
+    expect(attendanceResult.body.error?.status).toBe('UNAVAILABLE');
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      expect((await getDoc(doc(context.firestore(), 'studies', studyId, 'sessions', '2026-12-01', 'attendees', member.uid))).exists()).toBe(false);
+    });
+  });
+
   it('enforces manager permissions, blocks self-removal, and attributes removals to the actor', async () => {
     const host = await createAuthUser('host');
     const manager = await createAuthUser('manager');
