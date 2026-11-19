@@ -7,6 +7,7 @@ import { actionError } from '@/lib/errors';
 import {
   completeRedirectSignIn,
   getFirebase,
+  getGoogleSignInFailureStage,
   isFirebaseConfigured,
   signInWithGoogleAccount,
   warmUpGoogleSignIn,
@@ -129,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (signInFailure) {
           setSignInError(actionError(signInFailure, {
             action: 'sign in with Google',
-            operation: 'Firebase Auth popup or redirect flow',
+            operation: `Firebase Auth Google sign-in: ${getGoogleSignInFailureStage(signInFailure)}`,
           }));
           throw signInFailure;
         }

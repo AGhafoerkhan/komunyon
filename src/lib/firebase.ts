@@ -102,16 +102,41 @@ export async function signInWithGoogleAccount(auth: Auth): Promise<void> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   if (prefersRedirectSignIn()) {
-    await redirectGoogleSignIn(auth, provider);
+    try {
+      await redirectGoogleSignIn(auth, provider);
+    } catch (error) {
+      markGoogleSignInFailureStage(error, 'redirect');
+      throw error;
+    }
     return;
   }
   warmUpGoogleSignIn(auth);
   try {
     await signInWithPopup(auth, provider);
   } catch (error) {
-    if (firebaseErrorCode(error) !== 'auth/popup-blocked') throw error;
-    await redirectGoogleSignIn(auth, provider);
+    if (firebaseErrorCode(error) !== 'auth/popup-blocked') {
+      markGoogleSignInFailureStage(error, 'popup');
+      throw error;
+    }
+    try {
+      await redirectGoogleSignIn(auth, provider);
+    } catch (redirectError) {
+      markGoogleSignInFailureStage(redirectError, 'redirect fallback');
+      throw redirectError;
+    }
   }
+}
+
+const googleSignInFailureStages = new WeakMap<object, string>();
+
+function markGoogleSignInFailureStage(error: unknown, stage: string): void {
+  if (typeof error === 'object' && error !== null) googleSignInFailureStages.set(error, stage);
+}
+
+export function getGoogleSignInFailureStage(error: unknown): string {
+  return typeof error === 'object' && error !== null
+    ? googleSignInFailureStages.get(error) ?? 'provider flow'
+    : 'provider flow';
 }
 
 /** Google must be confirmed again before Firebase will delete the account. */

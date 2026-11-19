@@ -10,20 +10,34 @@ export function ProblemReporter() {
   const { user } = useAuth();
   const [visible, setVisible] = useState(false);
   const [reported, setReported] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [online, setOnline] = useState(true);
   const [versionMismatch, setVersionMismatch] = useState(false);
   const inFlight = useRef(new Set<string>());
   const sent = useRef(new Set<string>());
 
   const sendAutomatically = useCallback(async (issue: ClientIssue, attempt = 0) => {
-    if (!user || sent.current.has(issue.id) || inFlight.current.has(issue.id)) return;
+    if (sent.current.has(issue.id) || inFlight.current.has(issue.id)) return;
+    if (!user || !navigator.onLine) {
+      setPending(true);
+      return;
+    }
     inFlight.current.add(issue.id);
     try {
       await submitIssueReport(user, issue);
       sent.current.add(issue.id);
+      setPending(false);
       setReported(true);
-    } catch {
-      if (attempt < 3) {
-        window.setTimeout(() => void sendAutomatically(issue, attempt + 1), 1500 * (attempt + 1));
+    } catch (failure) {
+      setPending(true);
+      const code = typeof failure === 'object' && failure !== null && 'code' in failure
+        ? String(failure.code)
+        : '';
+      const retryable = !code || ['unavailable', 'deadline-exceeded', 'resource-exhausted', 'internal', 'network-request-failed']
+        .some((retryCode) => code.endsWith(retryCode));
+      if (retryable && navigator.onLine && attempt < 4) {
+        const delay = Math.min(2000 * (2 ** attempt), 30_000);
+        window.setTimeout(() => void sendAutomatically(issue, attempt + 1), delay);
       }
     } finally {
       inFlight.current.delete(issue.id);
@@ -45,9 +59,21 @@ export function ProblemReporter() {
   }, []);
 
   useEffect(() => {
+    const updateOnline = () => setOnline(navigator.onLine);
+    updateOnline();
+    window.addEventListener('online', updateOnline);
+    window.addEventListener('offline', updateOnline);
+    return () => {
+      window.removeEventListener('online', updateOnline);
+      window.removeEventListener('offline', updateOnline);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleIssue = () => {
       setVisible(true);
       setReported(false);
+      setPending(true);
       const issue = getLatestClientIssue();
       if (issue) void sendAutomatically(issue);
     };
@@ -65,6 +91,11 @@ export function ProblemReporter() {
   }, [sendAutomatically]);
 
   if (!visible) return null;
+  const pendingMessage = !user
+    ? 'This report will be sent after you sign in.'
+    : !online
+      ? 'This report will be sent when you are back online.'
+      : 'This report is queued and will retry automatically.';
 
   return (
     <aside
@@ -75,6 +106,7 @@ export function ProblemReporter() {
         {reported ? 'Your problem has been reported!' : (
           <>
             {message}
+            {pending ? <span className="mt-1 block text-xs text-muted">{pendingMessage}</span> : null}
             {versionMismatch ? <span className="mt-1 block text-xs text-muted">This app may be out of date. Refresh Komunyon and try again.</span> : null}
           </>
         )}

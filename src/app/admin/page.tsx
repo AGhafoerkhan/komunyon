@@ -28,6 +28,7 @@ interface IssueReport {
   recentActions: string;
   occurredAt: string;
   online: boolean | null;
+  networkDetails: string;
   visibility: string;
   timezone: string;
   locale: string;
@@ -54,6 +55,7 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [personFilter, setPersonFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [actionFilter, setActionFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] = useState<IssueStatus>('new');
   const [notesDraft, setNotesDraft] = useState('');
@@ -85,6 +87,7 @@ export default function AdminPage() {
           recentActions: asText(data.recentActions),
           occurredAt: asText(data.occurredAt),
           online: typeof data.online === 'boolean' ? data.online : null,
+          networkDetails: asText(data.networkDetails),
           visibility: asText(data.visibility),
           timezone: asText(data.timezone),
           locale: asText(data.locale),
@@ -110,10 +113,13 @@ export default function AdminPage() {
   }, [isOwner, loadReports, user]);
 
   const people = useMemo(() => [...new Set(reports.map((report) => report.reporterEmail || report.reporterUid))].sort(), [reports]);
+  const actions = useMemo(() => [...new Set(reports.map((report) => report.action).filter(Boolean))].sort(), [reports]);
   const filtered = useMemo(() => reports.filter((report) => {
     const person = report.reporterEmail || report.reporterUid;
-    return (personFilter === 'all' || person === personFilter) && (statusFilter === 'all' || report.status === statusFilter);
-  }), [personFilter, reports, statusFilter]);
+    return (personFilter === 'all' || person === personFilter)
+      && (statusFilter === 'all' || report.status === statusFilter)
+      && (actionFilter === 'all' || report.action === actionFilter);
+  }), [actionFilter, personFilter, reports, statusFilter]);
   const selected = filtered.find((report) => report.id === selectedId) ?? filtered[0] ?? null;
 
   useEffect(() => {
@@ -171,7 +177,7 @@ export default function AdminPage() {
         <Summary label="People" value={String(people.length)} />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2" aria-label="Report filters">
+      <section className="grid gap-4 sm:grid-cols-3" aria-label="Report filters">
         <label className="text-sm font-medium">Person
           <select className="mt-1 block min-h-11 w-full rounded-md border border-line bg-card px-3 text-base text-ink" value={personFilter} onChange={(event) => setPersonFilter(event.target.value)}>
             <option value="all">All people</option>
@@ -182,6 +188,12 @@ export default function AdminPage() {
           <select className="mt-1 block min-h-11 w-full rounded-md border border-line bg-card px-3 text-base text-ink" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="all">All statuses</option>
             {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+        </label>
+        <label className="text-sm font-medium">Action
+          <select className="mt-1 block min-h-11 w-full rounded-md border border-line bg-card px-3 text-base text-ink" value={actionFilter} onChange={(event) => setActionFilter(event.target.value)}>
+            <option value="all">All actions</option>
+            {actions.map((action) => <option key={action} value={action}>{action}</option>)}
           </select>
         </label>
       </section>
@@ -205,7 +217,7 @@ export default function AdminPage() {
                 <span className="shrink-0 rounded px-2 py-0.5 text-xs capitalize text-muted">{report.status}</span>
               </span>
               <span className="mt-2 block truncate text-sm">{report.errorCode || report.errorName || 'Application error'} · {report.route || '/'}</span>
-              <span className="mt-1 block text-xs text-muted">{report.reportedAt?.toLocaleString() ?? 'Time unavailable'}</span>
+              <span className="mt-1 block text-xs text-muted">Occurred {new Date(report.occurredAt).toLocaleString()} · Reported {report.reportedAt?.toLocaleString() ?? 'time unavailable'}</span>
             </button>
           ))}
         </div>
@@ -230,6 +242,7 @@ export default function AdminPage() {
               <Detail label="Occurred" value={selected.occurredAt || '—'} />
               <Detail label="Browser and device" value={selected.browser || '—'} />
               <Detail label="Network online" value={selected.online === null ? 'Unknown' : selected.online ? 'Yes' : 'No'} />
+              <Detail label="Connection details" value={selected.networkDetails || 'Not captured'} />
               <Detail label="Tab visibility" value={selected.visibility || '—'} />
               <Detail label="Locale / timezone" value={`${selected.locale || '—'} / ${selected.timezone || '—'}`} />
               <Detail label="Viewport" value={selected.viewport || '—'} />

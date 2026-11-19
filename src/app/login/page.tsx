@@ -3,21 +3,18 @@
 import { useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Spinner } from '@/components/ui';
-import { actionError } from '@/lib/errors';
 
 export default function LoginPage() {
   const { signInWithGoogle, prepareGoogleSignIn, signInError } = useAuth();
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const message = error || signInError;
+  const message = signInError;
 
   async function signIn() {
     setBusy(true);
-    setError(null);
     try {
       await signInWithGoogle();
-    } catch (failure) {
-      setError(actionError(failure));
+    } catch {
+      // AuthProvider records one detailed issue with the correct sign-in stage.
     } finally {
       setBusy(false);
     }

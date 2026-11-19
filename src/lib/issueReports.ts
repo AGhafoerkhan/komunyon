@@ -20,6 +20,7 @@ export interface ClientIssue {
   userAgent: string;
   occurredAt: string;
   online: boolean;
+  networkDetails: string;
   visibility: string;
   timezone: string;
   locale: string;
@@ -58,7 +59,7 @@ function restoreLatestIssue(): ClientIssue | null {
       || typeof issue.serverVersion !== 'string' || typeof issue.code !== 'string' || typeof issue.stack !== 'string'
       || typeof issue.callerStack !== 'string' || typeof issue.recentActions !== 'string' || typeof issue.userAgent !== 'string'
       || typeof issue.online !== 'boolean' || typeof issue.visibility !== 'string' || typeof issue.timezone !== 'string'
-      || typeof issue.locale !== 'string' || typeof issue.viewport !== 'string') return null;
+      || typeof issue.networkDetails !== 'string' || typeof issue.locale !== 'string' || typeof issue.viewport !== 'string') return null;
     return issue as ClientIssue;
   } catch {
     return null;
@@ -122,6 +123,7 @@ export function captureClientIssue(error: unknown, context?: IssueContext): void
     userAgent: redact(navigator.userAgent || 'unknown', 600),
     occurredAt: new Date().toISOString(),
     online: navigator.onLine,
+    networkDetails: getNetworkDetails(),
     visibility: document.visibilityState,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone.slice(0, 80),
     locale: navigator.language.slice(0, 40),
@@ -156,6 +158,7 @@ export async function submitIssueReport(user: User, issue: ClientIssue): Promise
     recentActions: issue.recentActions,
     occurredAt: issue.occurredAt,
     online: issue.online,
+    networkDetails: issue.networkDetails,
     visibility: issue.visibility,
     timezone: issue.timezone,
     locale: issue.locale,
@@ -172,4 +175,18 @@ export async function submitIssueReport(user: User, issue: ClientIssue): Promise
   } catch {
     // A sent issue should not fail because browser storage cleanup is unavailable.
   }
+}
+
+function getNetworkDetails(): string {
+  const connection = (navigator as Navigator & {
+    connection?: { type?: string; effectiveType?: string; rtt?: number; downlink?: number; saveData?: boolean };
+  }).connection;
+  const parts = [
+    `type=${connection?.type ?? 'unknown'}`,
+    `effective=${connection?.effectiveType ?? 'unknown'}`,
+    `rttMs=${typeof connection?.rtt === 'number' ? connection.rtt : 'unknown'}`,
+    `downlinkMbps=${typeof connection?.downlink === 'number' ? connection.downlink : 'unknown'}`,
+    `saveData=${typeof connection?.saveData === 'boolean' ? connection.saveData : 'unknown'}`,
+  ];
+  return parts.join('; ').slice(0, 200);
 }

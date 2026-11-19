@@ -442,7 +442,7 @@ service cloud.firestore {
           'reporterUid', 'reporterEmail', 'route', 'version', 'browser',
           'action', 'operation', 'target', 'errorName', 'errorCode', 'errorMessage',
           'stack', 'callerStack', 'recentActions', 'occurredAt', 'online',
-          'visibility', 'timezone', 'locale', 'viewport', 'reportedAt', 'status'
+          'visibility', 'timezone', 'locale', 'viewport', 'networkDetails', 'reportedAt', 'status'
         ])
         && request.resource.data.reporterUid == request.auth.uid
         && request.resource.data.reporterEmail == request.auth.token.email
@@ -468,6 +468,7 @@ service cloud.firestore {
         && request.resource.data.occurredAt is string
         && request.resource.data.occurredAt.size() <= 40
         && (!request.resource.data.keys().hasAny(['online']) || request.resource.data.online is bool)
+        && (!request.resource.data.keys().hasAny(['networkDetails']) || (request.resource.data.networkDetails is string && request.resource.data.networkDetails.size() <= 200))
         && (!request.resource.data.keys().hasAny(['visibility']) || (request.resource.data.visibility is string && request.resource.data.visibility.size() <= 20))
         && (!request.resource.data.keys().hasAny(['timezone']) || (request.resource.data.timezone is string && request.resource.data.timezone.size() <= 80))
         && (!request.resource.data.keys().hasAny(['locale']) || (request.resource.data.locale is string && request.resource.data.locale.size() <= 40))
