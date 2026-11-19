@@ -114,6 +114,15 @@ async function callDeleteStudy(token: string, studyId: string): Promise<{ ok: bo
   return { ok: response.ok, body: await response.json() };
 }
 
+async function callAttendance(token: string, data: Record<string, unknown>): Promise<{ ok: boolean; body: any }> {
+  const response = await fetch(`http://127.0.0.1:5001/${projectId}/europe-west4/toggleSessionAttendance`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ data }),
+  });
+  return { ok: response.ok, body: await response.json() };
+}
+
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId,
@@ -385,6 +394,109 @@ describe('co-host participant permissions', () => {
 
     await assertFails(deleteDoc(doc(db('manager'), 'studies', studyId, 'managers', 'host')));
     await assertSucceeds(deleteDoc(doc(db('manager'), 'studies', studyId, 'managers', 'manager')));
+  });
+});
+
+describe('session attendance and capacity', () => {
+  const date = '2026-12-01';
+
+  it('counts an approved participant once when joining repeatedly', async () => {
+    const host = await createAuthUser('attendance-host');
+    const member = await createAuthUser('attendance-member');
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      maxCapacity: 3,
+      pendingUserIds: [],
+      approvedUserIds: [member.uid],
+      invitedUserIds: [],
+    });
+    await seed(`studies/${studyId}/sessions/${date}/summary/attendance`, {
+      attendingCount: 1, updatedAt: createdAt,
+    });
+
+    expect((await callAttendance(member.token, { studyId, date, joined: true })).ok).toBe(true);
+    expect((await callAttendance(member.token, { studyId, date, joined: true })).ok).toBe(true);
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [attendee, summary] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'sessions', date, 'attendees', member.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'sessions', date, 'summary', 'attendance')),
+      ]);
+      expect(attendee.data()?.joined).toBe(true);
+      expect(summary.data()?.attendingCount).toBe(2);
+    });
+  });
+
+  it('rejects new attendance when a session is full without changing its count', async () => {
+    const host = await createAuthUser('full-host');
+    const member = await createAuthUser('full-member');
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      maxCapacity: 2,
+      pendingUserIds: [],
+      approvedUserIds: [member.uid],
+      invitedUserIds: [],
+    });
+    await seed(`studies/${studyId}/sessions/${date}/summary/attendance`, {
+      attendingCount: 2, updatedAt: createdAt,
+    });
+
+    const result = await callAttendance(member.token, { studyId, date, joined: true });
+    expect(result.ok).toBe(false);
+    expect(result.body.error?.status).toBe('RESOURCE_EXHAUSTED');
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [attendee, summary] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'sessions', date, 'attendees', member.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'sessions', date, 'summary', 'attendance')),
+      ]);
+      expect(attendee.exists()).toBe(false);
+      expect(summary.data()?.attendingCount).toBe(2);
+    });
+  });
+
+  it('rejects attendance from a user who is not an approved member', async () => {
+    const host = await createAuthUser('private-host');
+    const visitor = await createAuthUser('attendance-visitor');
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [],
+      approvedUserIds: [],
+      invitedUserIds: [],
+    });
+
+    const result = await callAttendance(visitor.token, { studyId, date, joined: true });
+    expect(result.ok).toBe(false);
+    expect(result.body.error?.status).toBe('PERMISSION_DENIED');
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      expect((await getDoc(doc(context.firestore(), 'studies', studyId, 'sessions', date, 'attendees', visitor.uid))).exists()).toBe(false);
+    });
+  });
+
+  it('cancels only when every host-side person is unavailable, and reopens when the host joins', async () => {
+    const host = await createAuthUser('availability-host');
+    const cohost = await createAuthUser('availability-cohost');
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [],
+      approvedUserIds: [cohost.uid],
+      invitedUserIds: [],
+    });
+    await managerPermissions(cohost.uid, { canManageSessions: true });
+
+    expect((await callAttendance(host.token, { studyId, date, joined: false })).ok).toBe(true);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      expect((await getDoc(doc(context.firestore(), 'studies', studyId))).data()?.skippedDates).toEqual([]);
+    });
+
+    expect((await callAttendance(cohost.token, { studyId, date, joined: false })).ok).toBe(true);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      expect((await getDoc(doc(context.firestore(), 'studies', studyId))).data()?.skippedDates).toContain(date);
+    });
+
+    expect((await callAttendance(host.token, { studyId, date, joined: true })).ok).toBe(true);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      expect((await getDoc(doc(context.firestore(), 'studies', studyId))).data()?.skippedDates).not.toContain(date);
+    });
   });
 });
 
