@@ -334,6 +334,85 @@ describe('co-host participant permissions', () => {
     expect(inviteNoticeType).toBe('left');
   });
 
+  it('rejects a duplicate join request without changing the pending membership', async () => {
+    const host = await createAuthUser('repeat-request-host');
+    const requester = await createAuthUser('repeat-request-user');
+    await seedPublicUser(requester.uid);
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [],
+      approvedUserIds: [],
+      invitedUserIds: [],
+    });
+
+    expect((await callMembership(requester.token, { studyId, action: 'request' })).ok).toBe(true);
+    expect((await callMembership(requester.token, { studyId, action: 'request' })).ok).toBe(false);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [member, study] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', requester.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId)),
+      ]);
+      expect(member.data()?.status).toBe('pending');
+      expect(study.data()?.approvedCount).toBe(0);
+    });
+  });
+
+  it('lets the host admit more group members than a single session capacity', async () => {
+    const host = await createAuthUser('unlimited-group-host');
+    const existingMember = await createAuthUser('existing-group-member');
+    const invitee = await createAuthUser('extra-group-invitee');
+    await seedPublicUser(invitee.uid);
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      maxCapacity: 1,
+      pendingUserIds: [],
+      approvedUserIds: [existingMember.uid],
+      invitedUserIds: [],
+    });
+
+    expect((await callMembership(host.token, { studyId, action: 'invite', targetUid: invitee.uid })).ok).toBe(true);
+    expect((await callMembership(invitee.token, { studyId, action: 'accept-invite' })).ok).toBe(true);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [existing, added, study] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', existingMember.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', invitee.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId)),
+      ]);
+      expect(existing.data()?.status).toBe('approved');
+      expect(added.data()?.status).toBe('approved');
+      expect(study.data()?.approvedCount).toBe(2);
+    });
+  });
+
+  it('lets an invitee decline without taking a spot or receiving private-address access', async () => {
+    const host = await createAuthUser('decline-host');
+    const invitee = await createAuthUser('decline-invitee');
+    await seedPublicUser(invitee.uid);
+    await seedStudy(studyId, {
+      hostId: host.uid,
+      pendingUserIds: [],
+      approvedUserIds: [],
+      invitedUserIds: [],
+    });
+    await seed(`studies/${studyId}/private/details`, {
+      exactAddress: 'Sample Street 1', entryNotes: '', updatedAt: createdAt,
+    });
+    expect((await callMembership(host.token, { studyId, action: 'invite', targetUid: invitee.uid })).ok).toBe(true);
+    await assertFails(getDoc(doc(db(invitee.uid), 'studies', studyId, 'private', 'details')));
+
+    expect((await callMembership(invitee.token, { studyId, action: 'decline-invite' })).ok).toBe(true);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const [member, study, notice] = await Promise.all([
+        getDoc(doc(context.firestore(), 'studies', studyId, 'members', invitee.uid)),
+        getDoc(doc(context.firestore(), 'studies', studyId)),
+        getDoc(doc(context.firestore(), 'studies', studyId, 'notices', invitee.uid)),
+      ]);
+      expect(member.exists()).toBe(false);
+      expect(study.data()?.approvedCount).toBe(0);
+      expect(notice.data()?.type).toBe('declined');
+    });
+  });
+
   it('enforces manager permissions, blocks self-removal, and attributes removals to the actor', async () => {
     const host = await createAuthUser('host');
     const manager = await createAuthUser('manager');
