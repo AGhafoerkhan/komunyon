@@ -259,6 +259,46 @@ describe('study visibility and private address', () => {
       phone: 'call-me-at-this-number', place: 'Centrum, The Hague', updatedAt: createdAt,
     }));
   });
+
+  it('lets profile owners update public fields but keeps private contact data out of the public document', async () => {
+    await seed('users/member', {
+      uid: 'member',
+      fullName: 'Member Example',
+      age: 25,
+      photoURL: '',
+      bio: 'A public profile bio.',
+      profileCompleted: true,
+      publicProfile: true,
+      nameTokens: ['member'],
+      createdAt,
+      updatedAt: createdAt,
+    });
+    await seed('users/member/private/contact', {
+      email: 'member@example.test',
+      phone: '+31612345678',
+      country: 'Netherlands',
+      city: 'The Hague',
+      neighbourhood: 'Centrum',
+      updatedAt: createdAt,
+    });
+    const ownerRef = doc(db('member'), 'users', 'member');
+
+    await assertSucceeds(updateDoc(ownerRef, { fullName: 'Updated Member', updatedAt: createdAt }));
+    await assertFails(updateDoc(ownerRef, { email: 'private@example.test', updatedAt: createdAt }));
+    await assertFails(updateDoc(ownerRef, { uid: 'other-user', updatedAt: createdAt }));
+    await assertFails(updateDoc(doc(db('visitor'), 'users', 'member'), {
+      fullName: 'Visitor changed profile', updatedAt: createdAt,
+    }));
+  });
+
+  it('allows the host to unpublish a study but blocks participants from changing visibility', async () => {
+    await seedStudy();
+    const hostRef = doc(db('host'), 'studies', studyId);
+    const memberRef = doc(db('member'), 'studies', studyId);
+
+    await assertSucceeds(updateDoc(hostRef, { isPublic: false, updatedAt: createdAt }));
+    await assertFails(updateDoc(memberRef, { isPublic: true, updatedAt: createdAt }));
+  });
 });
 
 describe('co-host participant permissions', () => {
