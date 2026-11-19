@@ -99,9 +99,9 @@ export default function DashboardPage() {
     <AppShell>
       <div className="mb-6">
         <div className="flex items-start justify-between gap-3">
-          <h1 className={`${pageTitleClass} min-w-0`}>Studies in The Hague</h1>
+          <h1 className={`${pageTitleClass} min-w-0`}>Event in The Hague</h1>
           <Link href="/studies/new" className={`${buttonClass('primary', 'sm')} mt-1 shrink-0`}>
-            Host a study
+            Host an event
           </Link>
         </div>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
