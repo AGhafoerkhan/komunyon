@@ -141,6 +141,27 @@ afterAll(async () => {
 });
 
 describe('study visibility and private address', () => {
+  it('allows a signed-in host to create a valid study but rejects invalid or impersonated creation', async () => {
+    const valid = { ...baseStudy, hostId: 'creator', approvedCount: 0 };
+    await assertSucceeds(setDoc(doc(db('creator'), 'studies', 'created-valid'), valid));
+    await assertFails(setDoc(doc(db('creator'), 'studies', 'created-short-title'), {
+      ...valid, title: 'Short',
+    }));
+    await assertFails(setDoc(doc(db('attacker'), 'studies', 'created-as-other-host'), valid));
+    await assertFails(setDoc(doc(db(), 'studies', 'created-anonymously'), valid));
+  });
+
+  it('lets the host edit allowed fields but protects ownership and attendance totals', async () => {
+    await seedStudy();
+    const hostRef = doc(db('host'), 'studies', studyId);
+    await assertSucceeds(updateDoc(hostRef, { title: 'A safely updated event', updatedAt: createdAt }));
+    await assertFails(updateDoc(hostRef, { hostId: 'attacker', updatedAt: createdAt }));
+    await assertFails(updateDoc(hostRef, { approvedCount: 999, updatedAt: createdAt }));
+    await assertFails(updateDoc(doc(db('visitor'), 'studies', studyId), {
+      title: 'Visitor changed this study', updatedAt: createdAt,
+    }));
+  });
+
   it('requires sign-in for study reads and hides unlisted events from unrelated users', async () => {
     await seedStudy();
     await seedStudy('unlisted-event', { isPublic: false });
@@ -394,6 +415,40 @@ describe('co-host participant permissions', () => {
 
     await assertFails(deleteDoc(doc(db('manager'), 'studies', studyId, 'managers', 'host')));
     await assertSucceeds(deleteDoc(doc(db('manager'), 'studies', studyId, 'managers', 'manager')));
+  });
+
+  it('limits a co-host to granting only permissions the host delegated', async () => {
+    await seedStudy(studyId, {
+      approvedUserIds: ['manager', 'target-editor', 'target-planner'],
+      pendingUserIds: [],
+      invitedUserIds: [],
+    });
+    await seed(`studies/${studyId}/managers/manager`, {
+      uid: 'manager',
+      createdAt,
+      permissions: {
+        canManageCoHosts: true,
+        canManageCoHostPermissions: true,
+        grantable: {
+          canEdit: true,
+          canManageParticipants: false,
+          canManageSessions: false,
+          canManageCoHosts: false,
+          canManageCoHostPermissions: false,
+        },
+      },
+    });
+
+    await assertSucceeds(setDoc(doc(db('manager'), 'studies', studyId, 'managers', 'target-editor'), {
+      uid: 'target-editor',
+      createdAt,
+      permissions: { canEdit: true },
+    }));
+    await assertFails(setDoc(doc(db('manager'), 'studies', studyId, 'managers', 'target-planner'), {
+      uid: 'target-planner',
+      createdAt,
+      permissions: { canManageSessions: true },
+    }));
   });
 });
 
