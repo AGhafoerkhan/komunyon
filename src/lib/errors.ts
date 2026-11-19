@@ -2,33 +2,11 @@ export function firebaseErrorCode(error: unknown): string | null {
   return hasCode(error) ? error.code : null;
 }
 
-/** Structured auth diagnostics. Keep identity tokens, email, and profile values out of logs. */
-export function logAuthEvent(event: string, details: Record<string, unknown> = {}): void {
-  if (typeof console === 'undefined') return;
-  console.info('[Komunyon][Auth]', { event, at: new Date().toISOString(), ...details });
-}
-
-export function logAuthFailure(event: string, error: unknown, details: Record<string, unknown> = {}): void {
-  if (typeof console === 'undefined') return;
-  console.error('[Komunyon][Auth]', {
-    event,
-    at: new Date().toISOString(),
-    ...details,
-    error: {
-      code: firebaseErrorCode(error),
-      name: error instanceof Error ? error.name : typeof error,
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    },
-  });
-}
-
 function hasCode(error: unknown): error is { code: string } {
   return typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string';
 }
 
 export function actionError(error: unknown): string {
-  logActionError(error);
   if (hasCode(error)) {
     switch (error.code) {
       case 'permission-denied':
@@ -82,22 +60,3 @@ function hasMessage(error: unknown): error is { code: string; message: string } 
   return hasCode(error) && 'message' in error && typeof error.message === 'string';
 }
 
-function logActionError(error: unknown): void {
-  if (typeof console === 'undefined') return;
-  if (hasCode(error)) {
-    console.error('[Komunyon] Firebase action failed', {
-      code: error.code,
-      message: error instanceof Error ? error.message : String(error),
-      name: error instanceof Error ? error.name : undefined,
-      stack: error instanceof Error ? error.stack : undefined,
-      rawError: error,
-    });
-    return;
-  }
-  console.error('[Komunyon] Action failed', {
-    message: error instanceof Error ? error.message : String(error),
-    name: error instanceof Error ? error.name : undefined,
-    stack: error instanceof Error ? error.stack : undefined,
-    rawError: error,
-  });
-}
