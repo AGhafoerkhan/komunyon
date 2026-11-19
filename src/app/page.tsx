@@ -76,8 +76,16 @@ export default function HomePage() {
         />
         <header className="relative w-full border-b border-[#2b303b]">
           <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
-            <span className="font-serif text-lg text-[#f0f2f4]">Komunyon</span>
-            <span className="text-sm text-[#8a94a8]">The Hague</span>
+            <div className="min-w-0">
+              <span className="block font-serif text-lg leading-tight text-[#f0f2f4]">Komunyon</span>
+              <span className="block text-sm leading-tight text-[#8a94a8]">The Hague</span>
+            </div>
+            <a
+              href="/login"
+              className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-[#4db3a2] px-4 text-sm font-medium text-[#dbf0ec] transition hover:bg-[#4db3a2] hover:text-[#0f1115] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4db3a2]"
+            >
+              Sign in
+            </a>
           </div>
         </header>
         <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-5 py-12 text-center">
