@@ -191,7 +191,12 @@ service cloud.firestore {
           data.skippedDates is list
           && data.skippedDates.size() <= 8
           && data.skippedDates.size() == data.skippedDates.toSet().size()
-          && (data.format == 'recurring' || data.skippedDates.size() == 0)
+          && (
+            (data.format == 'recurring' && data.skippedDates.size() <= 8)
+            || (data.format == 'one-off'
+              && data.skippedDates.size() <= 1
+              && (data.skippedDates.size() == 0 || data.skippedDates[0] == data.date))
+          )
           && (data.skippedDates.size() < 1 || isSkippedDate(data.skippedDates[0]))
           && (data.skippedDates.size() < 2 || isSkippedDate(data.skippedDates[1]))
           && (data.skippedDates.size() < 3 || isSkippedDate(data.skippedDates[2]))

@@ -162,6 +162,14 @@ describe('study visibility and private address', () => {
     }));
   });
 
+  it('lets a host cancel only the scheduled date of a one-off event', async () => {
+    await seedStudy();
+    const hostRef = doc(db('host'), 'studies', studyId);
+    await assertSucceeds(updateDoc(hostRef, { skippedDates: [baseStudy.date], updatedAt: createdAt }));
+    await assertFails(updateDoc(hostRef, { skippedDates: ['2026-12-02'], updatedAt: createdAt }));
+    await assertFails(updateDoc(hostRef, { skippedDates: [baseStudy.date, '2026-12-02'], updatedAt: createdAt }));
+  });
+
   it('requires sign-in for study reads and hides unlisted events from unrelated users', async () => {
     await seedStudy();
     await seedStudy('unlisted-event', { isPublic: false });
