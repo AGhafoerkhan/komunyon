@@ -22,7 +22,7 @@ const EMPTY: StudyDraft = {
   maxCapacity: 8,
   area: '',
   isPublic: true,
-  showMemberContacts: false,
+  showMemberContacts: true,
   skippedDates: [],
   exactAddress: '',
   entryNotes: '',
