@@ -463,20 +463,16 @@ export async function createStudy(host: UserProfile, draft: StudyDraft): Promise
       approvedCount: 0,
       skippedDates: [],
     });
-    await Promise.all([
-      setDoc(privateRef(ref.id), privateFields(draft, now)),
-      writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', ')),
-    ]);
+    await setDoc(privateRef(ref.id), privateFields(draft, now));
     const dates = draft.format === 'recurring' && draft.dayOfWeek !== null
       ? upcomingSessions(draft.dayOfWeek, draft.time, 8)
       : draft.date
         ? [draft.date]
         : [];
-    if (dates.length > 0) {
-      await httpsCallable(getFirebase().functions, 'initializeHostedStudySessions')({ studyId: ref.id, dates });
-    }
+    await Promise.all(dates.map((date) => setSessionAttendance(ref.id, date, host.uid, true, draft.maxCapacity)));
+    await writeMemberContact(ref.id, host.uid, host.phone, [host.neighbourhood, host.city, host.country].filter(Boolean).join(', '));
   } catch (error) {
-    await deleteDoc(ref).catch(() => undefined);
+    await httpsCallable(getFirebase().functions, 'deleteHostedStudy')({ studyId: ref.id }).catch(() => undefined);
     throw error;
   }
   return ref.id;
