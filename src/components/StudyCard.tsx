@@ -1,10 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Avatar, FormatBadge, TagList } from '@/components/ui';
+import { StudyCardView } from '@/components/StudyCardView';
 import { loadSessionAttendance, setSessionAttendance, subscribeSessionAttendance, subscribeSessionAttendanceList } from '@/lib/attendance';
-import { cancellationNote, formatDdMmYyyy, formatSchedule, isPastStudy, spotsLabel, upcomingSession, upcomingSessions } from '@/lib/format';
+import { cancellationNote, formatSchedule, isPastStudy, upcomingSession, upcomingSessions } from '@/lib/format';
 import { requestToJoin } from '@/lib/studies';
 import type { BibleStudy } from '@/types';
 
@@ -94,59 +93,20 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
   }
 
   return (
-    <div
-      className="relative flex h-[320px] w-full flex-col gap-3 overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
-    >
-      <Link href={`/studies/${study.id}`} className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="flex h-10 shrink-0 items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Avatar src={study.hostPhotoURL} name={study.hostName} size={40} />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
-              {displayedHostName}
-              <span className="font-normal text-muted"> · {study.hostAge}</span>
-            </p>
-            <p className="truncate text-xs text-muted">{study.area}</p>
-          </div>
-        </div>
-        <FormatBadge format={study.format} />
-      </div>
-      <div className="h-[6.5rem] shrink-0 overflow-hidden md:h-[7.5rem] min-[640px]:max-[1023px]:h-[8rem]">
-        <h2 className="h-12 overflow-hidden font-serif text-xl leading-7 break-words md:h-14 min-[640px]:max-[1023px]:h-[3.75rem]">{study.title}</h2>
-        <div className="mt-0 flex h-6 items-start overflow-hidden md:mt-3 min-[640px]:max-[1023px]:mt-5">
-          <TagList tags={study.tags} />
-        </div>
-        <div className="mt-1 text-sm text-muted">
-          {canceledDate ? (
-            <p>{formatDdMmYyyy(canceledDate)} · {study.time} · <span className="text-clay">Canceled</span></p>
-          ) : (
-            <p>{formatSchedule(study)}</p>
-          )}
-        </div>
-      </div>
-      <p className={`h-10 shrink-0 overflow-hidden text-sm leading-relaxed line-clamp-2 ${canceledDate ? 'text-canal' : 'text-clay'}`}>
-        {past ? 'This study has ended.' : canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || '\u00a0'}
-      </p>
-          <p className="mt-auto shrink-0 pr-20 text-sm tabular-nums">
-        <span className="font-medium text-ink">
-          {sessionDate ? sessionTaken : past ? 'Past' : taken} {past ? '' : `/ ${study.maxCapacity}`}
-        </span>
-        {!past ? <span className="text-muted"> · {spotsLabel(sessionDate ? sessionTaken : taken, study.maxCapacity)}</span> : null}
-        {hosting && !study.isPublic ? <span className="text-muted"> · Private</span> : null}
-        {hosting ? <span className="text-canal"> · Your study</span> : null}
-        {joined && !canceledDate ? <span className="text-canal"> · Joined</span> : null}
-      </p>
-      </Link>
-        {!past && !hosting && !joined ? (
-          <button
-            type="button"
-            className="absolute bottom-4 right-4 text-sm text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
-            onClick={(event) => void requestCardJoin(event)}
-            disabled={joinBusy || joinRequested}
-          >
-            {joinRequested ? 'Waiting for approval' : 'Join'}
-          </button>
-      ) : null}
-    </div>
+    <StudyCardView
+      study={study}
+      hosting={hosting}
+      joined={joined}
+      past={past}
+      canceledDate={canceledDate}
+      scheduleText={formatSchedule(study)}
+      note={past ? 'This study has ended.' : canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || ''}
+      displayedHostName={displayedHostName}
+      sessionDate={sessionDate}
+      sessionTaken={sessionDate ? sessionTaken : taken}
+      joinBusy={joinBusy}
+      joinRequested={joinRequested}
+      onRequestJoin={(event) => void requestCardJoin(event)}
+    />
   );
 }

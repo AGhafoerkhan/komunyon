@@ -32,10 +32,11 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const completed = isProfileReady(profile);
   const loggingOut = pathname === '/logout';
+  const cardFixtureRoute = process.env.NODE_ENV === 'development' && pathname === '/dev/card-fixtures';
   const atLogin = pathname === '/login';
 
   useEffect(() => {
-    if (loggingOut) return;
+    if (loggingOut || cardFixtureRoute) return;
     if (!configured) {
       if (pathname !== '/') router.replace('/');
       return;
@@ -56,9 +57,9 @@ export function RouteGuard({ children }: { children: ReactNode }) {
       const next = peekStudyLink();
       router.replace(next ?? '/dashboard');
     }
-  }, [atLogin, completed, configured, error, loading, loggingOut, pathname, router, user]);
+  }, [atLogin, cardFixtureRoute, completed, configured, error, loading, loggingOut, pathname, router, user]);
 
-  if (loggingOut) return children;
+  if (loggingOut || cardFixtureRoute) return children;
   if (!configured && pathname !== '/') return <LoadingScreen label="Redirecting" />;
   if (!configured) return children;
   if (loading) return <LoadingScreen />;

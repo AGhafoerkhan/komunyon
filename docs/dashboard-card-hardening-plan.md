@@ -35,7 +35,7 @@ For every fixture, check for clipping outside reserved zones, horizontal overflo
 1. Capture the current card at phone, tablet, and desktop widths; record the 320px height and existing role-specific behavior as the baseline.
 2. Build deterministic card fixtures for the boundary matrix and identify any existing content combinations that exceed the current zones.
 3. Refine only the card markup and responsive styles, retaining existing attendance and request handlers. Add a visible `+N` label count only if all five labels cannot fit cleanly in the reserved tag area.
-4. Add browser-level layout checks for the matrix, including screenshot checks at the key widths and interaction checks for the card link versus Join button. The repo currently has Vitest security tests but no Playwright dependency, so assess adding Playwright when implementation starts; do not couple these checks to production Firebase data.
+4. Add browser-level layout checks for the matrix, including screenshot checks at key widths and interaction checks for the card link versus Join button. Playwright runs against a development-only fixture page and never connects to production or staging Firebase data.
 5. Run the repo typecheck and the new card checks, inspect the staging preview at the same widths, then commit and push the implementation.
 
 ## Acceptance criteria
