@@ -105,7 +105,7 @@ export default function EditStudyPage() {
     );
   }
 
-  const minCapacity = Math.max(1, study.approvedUserIds.length);
+  const minCapacity = 1;
 
   return (
     <AppShell>

@@ -14,7 +14,6 @@ export function InvitePeople({ study }: { study: BibleStudy }) {
   const [invited, setInvited] = useState<JoinRequest[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const full = study.approvedUserIds.length >= study.maxCapacity;
 
   useEffect(() => {
     let active = true;
@@ -119,7 +118,7 @@ export function InvitePeople({ study }: { study: BibleStudy }) {
                   <Button
                     size="sm"
                     variant={already ? 'secondary' : 'primary'}
-                    disabled={already || full || busy !== null || study.invitedUserIds.length >= 40}
+                    disabled={already || busy !== null || study.invitedUserIds.length >= 40}
                     onClick={() => void send(person)}
                   >
                     {label}
@@ -129,7 +128,6 @@ export function InvitePeople({ study }: { study: BibleStudy }) {
             })}
           </ul>
         ) : null}
-        {full ? <p className="mt-3 text-xs text-muted">This study is full, so a new invite has to wait.</p> : null}
       </div>
       {invited.length > 0 ? (
         <ul className="border-t border-line">

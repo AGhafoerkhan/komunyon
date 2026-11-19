@@ -238,7 +238,6 @@ export function JoinNotices() {
             <ul className="max-h-80 overflow-y-auto">
               {notices.map((notice) => {
                 const study = invited.find((item) => item.id === notice.studyId);
-                const full = study ? study.approvedUserIds.length >= study.maxCapacity : false;
                 return (
                   <li key={notice.id} className="border-b border-line last:border-b-0">
                     <div className="flex items-start gap-3 px-3 py-3">
@@ -269,7 +268,7 @@ export function JoinNotices() {
                       <div className="flex gap-2 px-3 pb-3">
                         <Button
                           size="sm"
-                          disabled={full || busy !== null}
+                          disabled={busy !== null}
                           onClick={() => void respond(study, 'accept')}
                         >
                           Accept

@@ -481,9 +481,6 @@ async function writeMemberNotice(
 }
 
 export async function approveMember(study: BibleStudy, uid: string): Promise<void> {
-  if (study.approvedUserIds.length >= study.maxCapacity) {
-    throw new Error('This study is full.');
-  }
   if (!study.pendingUserIds.includes(uid)) {
     throw new Error('That request is no longer pending.');
   }

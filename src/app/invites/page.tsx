@@ -69,7 +69,6 @@ export default function InvitesPage() {
       {studies.length > 0 ? (
         <ul className="mt-6 border-t border-line">
           {studies.map((study) => {
-            const full = study.approvedUserIds.length >= study.maxCapacity;
             return (
               <li
                 key={study.id}
@@ -88,7 +87,7 @@ export default function InvitesPage() {
                   ) : null}
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" disabled={full || busy !== null} onClick={() => void respond(study, 'accept')}>
+                  <Button size="sm" disabled={busy !== null} onClick={() => void respond(study, 'accept')}>
                     Accept
                   </Button>
                   <Button
@@ -100,7 +99,6 @@ export default function InvitesPage() {
                     Decline
                   </Button>
                 </div>
-                {full ? <p className="text-xs text-muted sm:w-full">This study is full.</p> : null}
               </li>
             );
           })}

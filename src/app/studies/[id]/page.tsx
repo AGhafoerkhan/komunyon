@@ -521,9 +521,8 @@ function GuestStudy({
           {cancellationNote(study) ? <p className="text-sm leading-relaxed text-clay">{cancellationNote(study)}</p> : null}
           <p className="text-sm tabular-nums">
             <span className="font-medium text-ink">
-              {study.approvedUserIds.length} / {study.maxCapacity}
+              Session capacity: {study.maxCapacity}
             </span>
-            <span className="text-muted"> · {spotsLabel(study.approvedUserIds.length, study.maxCapacity)}</span>
           </p>
           {error || signInError ? <FormError>{error || signInError}</FormError> : null}
           <Button className="w-full" onPointerDown={prepareGoogleSignIn} onClick={() => void signIn()} disabled={busy}>
@@ -720,7 +719,6 @@ function StudyBody({
   onAskRemove: (request: JoinRequest) => void;
 }) {
   const taken = study.approvedUserIds.length;
-  const full = taken >= study.maxCapacity;
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
   const sessionDate = upcomingSession(study);
   const scheduledDate = study.format === 'recurring' && study.dayOfWeek !== null
@@ -1150,22 +1148,20 @@ function StudyBody({
 
           {role === 'invited' ? (
             <div id="accept" className="flex scroll-mt-24 flex-col gap-2">
-              <Button className="w-full" onClick={onAccept} disabled={full || busy !== null}>
+              <Button className="w-full" onClick={onAccept} disabled={busy !== null}>
                 Accept invite
               </Button>
               <Button className="w-full" variant="secondary" onClick={onDeclineInvite} disabled={busy !== null}>
                 Decline
               </Button>
-              {full ? <p className="text-xs text-muted">This study is full.</p> : null}
             </div>
           ) : null}
 
           {role === 'visitor' ? (
             <div className="shrink-0">
-              <Button className="w-full" onClick={onRequest} disabled={full || busy !== null}>
+              <Button className="w-full" onClick={onRequest} disabled={busy !== null}>
                 Request to join
               </Button>
-              {full ? <p className="text-xs text-muted">This study is full.</p> : null}
             </div>
           ) : null}
 
@@ -1222,11 +1218,6 @@ function StudyBody({
           {role === 'host' || canManageCoHosts ? <CoHostPanel study={study} canManagePermissions={role === 'host' || canManageCoHostPermissions} /> : null}
           {role === 'host' || canManageParticipants ? <>
           {!rosterReady ? <p className="text-sm text-muted">Loading requests…</p> : null}
-          {full ? (
-            <p className="text-sm text-muted">
-              The group is full. Remove someone, or raise the capacity, before approving another person.
-            </p>
-          ) : null}
           <MemberList
             title="Pending requests"
             description="Photo, name, age, and bio. Approving shares the address."
@@ -1237,7 +1228,7 @@ function StudyBody({
             onPhoto={openPhoto}
             renderActions={(request) => (
               <>
-                <Button size="sm" onClick={() => onApprove(request)} disabled={full || busy !== null}>
+                <Button size="sm" onClick={() => onApprove(request)} disabled={busy !== null}>
                   Approve
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => onDecline(request)} disabled={busy !== null}>
