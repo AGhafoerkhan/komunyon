@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { StudyCard } from '@/components/StudyCard';
 import { AppShell } from '@/components/TopBar';
 import { useAuth } from '@/components/AuthProvider';
-import { Alert, LoadingScreen, buttonClass, pageTitleClass } from '@/components/ui';
+import { Alert, LoadingScreen, buttonClass, fieldClass, pageTitleClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { isPastStudy } from '@/lib/format';
 import {
@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const [studies, setStudies] = useState<BibleStudy[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [studyFilter, setStudyFilter] = useState<'upcoming' | 'past'>('upcoming');
   const upcomingStudies = studies.filter((study) => !isPastStudy(study));
   const pastStudies = studies.filter((study) => isPastStudy(study));
 
@@ -123,24 +124,28 @@ export default function DashboardPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-10">
-          <section>
-            <h2 className="mb-3 font-serif text-2xl">Upcoming</h2>
-            {upcomingStudies.length ? (
+        <section>
+          <label className="mb-4 flex max-w-xs items-center gap-3">
+            <span className="shrink-0 text-sm font-medium">Show</span>
+            <select className={fieldClass} value={studyFilter} onChange={(event) => setStudyFilter(event.target.value as 'upcoming' | 'past')}>
+              <option value="upcoming">Upcoming</option>
+              <option value="past">Past</option>
+            </select>
+          </label>
+          {studyFilter === 'upcoming' ? (
+            upcomingStudies.length ? (
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {upcomingStudies.map((study) => <li key={study.id} className="min-w-0"><StudyCard study={study} viewerId={user.uid} /></li>)}
               </ul>
-            ) : <p className="text-sm text-muted">No upcoming studies.</p>}
-          </section>
-          {pastStudies.length ? (
-            <section>
-              <h2 className="mb-3 font-serif text-2xl">Past</h2>
+            ) : <p className="text-sm text-muted">No upcoming studies.</p>
+          ) : (
+            pastStudies.length ? (
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {pastStudies.map((study) => <li key={study.id} className="min-w-0"><StudyCard study={study} viewerId={user.uid} /></li>)}
               </ul>
-            </section>
-          ) : null}
-        </div>
+            ) : <p className="text-sm text-muted">No past studies.</p>
+          )}
+        </section>
       )}
     </AppShell>
   );
