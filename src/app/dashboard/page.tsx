@@ -116,7 +116,7 @@ export default function DashboardPage() {
             Host the first gathering. The address stays private until you approve someone.
           </p>
           <Link href="/studies/new" className={`${buttonClass('primary', 'sm')} mt-5`}>
-            + Host a Bible Study
+            + Host a Study
           </Link>
         </div>
       ) : (

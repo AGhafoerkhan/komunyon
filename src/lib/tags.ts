@@ -1,5 +1,5 @@
 export const STUDY_TAGS = [
-  { id: 'bible-study', label: 'Bible study' },
+  { id: 'bible-study', label: 'Study' },
   { id: 'prayer', label: 'Prayer' },
   { id: 'worship', label: 'Worship' },
   { id: 'communion', label: 'Communion' },
@@ -17,7 +17,7 @@ export function tagLabel(id: StudyTag): string {
   return STUDY_TAGS.find((tag) => tag.id === id)?.label ?? id;
 }
 
-/** Keep the chip order stable: Bible study, Prayer, Worship, Communion. */
+/** Keep the chip order stable: Study, Prayer, Worship, Communion. */
 export function sortTags(tags: readonly StudyTag[]): StudyTag[] {
   return TAG_IDS.filter((id) => tags.includes(id));
 }

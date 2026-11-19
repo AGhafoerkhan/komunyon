@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   applicationName: 'Komunyon',
   title: 'Komunyon — Bible studies in The Hague',
   description:
-    'Find a Bible study in The Hague, meet the people hosting it, or host your own. The street address opens after the host approves you.',
+    'Find a study in The Hague, meet the people hosting it, or host your own. The street address opens after the host approves you.',
   appleWebApp: {
     capable: true,
     title: 'Komunyon',

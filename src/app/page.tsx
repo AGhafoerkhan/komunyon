@@ -10,7 +10,7 @@ const story = [
   {
     label: 'Problem',
     title: 'You want to go, and you don’t know where',
-    body: 'People want a Bible study almost every day. They don’t know who is hosting, where they could go, or how to host their own. They want to meet new people and really connect.',
+    body: 'People want a study almost every day. They don’t know who is hosting, where they could go, or how to host their own. They want to meet new people and really connect.',
     tone: 'slate',
     labelClass: 'text-[#fa387f]',
   },
@@ -84,7 +84,7 @@ export default function HomePage() {
           <p className="text-xs tracking-wide text-[#70c2b4]">Bible studies &amp; communion</p>
           <span aria-hidden className="mt-5 h-px w-16 bg-gradient-to-r from-[#4db3a2] to-[#f9065f]" />
           <h1 className="mt-5 w-full font-serif text-3xl leading-tight font-normal break-words text-[#f0f2f4] sm:text-4xl">
-            A seat at a Bible study, with people you have yet to meet.
+            A seat at a study, with people you have yet to meet.
           </h1>
           <p className="mt-4 w-full text-base leading-relaxed text-[#a7afbe]">
             Find who is gathering in The Hague, ask for a seat, or host a table of your own.

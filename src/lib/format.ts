@@ -93,8 +93,8 @@ export function cancellationNote(
   const [year, month, day] = next.split('-').map(Number);
   const following = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
   following.setDate(following.getDate() + 7);
-  if (resume === isoDate(following)) return 'This week is canceled. Bible study will proceed next week.';
-  return `This week is canceled. Bible study will proceed on ${formatDdMmYyyy(resume)}.`;
+  if (resume === isoDate(following)) return 'This week is canceled. The study will proceed next week.';
+  return `This week is canceled. The study will proceed on ${formatDdMmYyyy(resume)}.`;
 }
 
 type ScheduledStudy = Pick<BibleStudy, 'format' | 'dayOfWeek' | 'date' | 'time' | 'skippedDates' | 'createdAt'>;
