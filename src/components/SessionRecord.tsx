@@ -10,11 +10,13 @@ import { formatDdMmYyyy } from '@/lib/format';
 import { LIMITS } from '@/lib/limits';
 import { deleteSessionFile, downloadSessionFile, listSessionFiles, uploadSessionFile, type SessionFile } from '@/lib/photos';
 import { loadSessionDescription, saveSessionDescription } from '@/lib/sessions';
+import { useSuccessToast } from '@/components/SuccessToast';
 
 const cardGrid = 'mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4';
 
 export function SessionRecord({ studyId, date, isHost }: { studyId: string; date: string; isHost: boolean }) {
   const { user } = useAuth();
+  const { showSuccess } = useSuccessToast();
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<SessionFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
     try {
       await saveSessionDescription(studyId, date, description);
       setDescription(description.trim());
+      showSuccess('Session description saved.');
     } catch (failure) {
       setError(actionError(failure));
     } finally {
@@ -78,6 +81,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
     try {
       await uploadSessionFile(studyId, date, uid, file);
       setFiles(await listSessionFiles(studyId, date));
+      showSuccess('File added to this session.');
     } catch (failure) {
       setError(actionError(failure));
     } finally {

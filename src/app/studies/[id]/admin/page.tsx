@@ -11,6 +11,7 @@ import { actionError } from '@/lib/errors';
 import { getFirebase } from '@/lib/firebase';
 import { getStudy } from '@/lib/studies';
 import { loadProfile } from '@/lib/users';
+import { useSuccessToast } from '@/components/SuccessToast';
 
 export default function CoHostAdminPage() {
   const params = useParams();
@@ -19,6 +20,7 @@ export default function CoHostAdminPage() {
   const studyId = typeof params.id === 'string' ? params.id : '';
   const uid = searchParams.get('uid') ?? '';
   const { user } = useAuth();
+  const { showSuccess } = useSuccessToast();
   const [name, setName] = useState('Co-host');
   const [canEdit, setCanEdit] = useState(false);
   const [canManageParticipants, setCanManageParticipants] = useState(false);
@@ -137,6 +139,7 @@ export default function CoHostAdminPage() {
         permissions: { canEdit, canManageParticipants, canManageCoHosts, canManageCoHostPermissions, canManageSessions, grantable: safeGrantable },
         updatedAt: new Date().toISOString(),
       }, { merge: true });
+      showSuccess('Co-host access saved.');
       router.push(`/studies/${studyId}`);
     } catch (failure) {
       setError(actionError(failure));

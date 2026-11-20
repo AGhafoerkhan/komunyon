@@ -10,6 +10,7 @@ import { COUNTRIES, citiesIn } from '@/lib/places';
 import { CHECK_AGAIN, validateProfile, type ProfileField } from '@/lib/validate';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { jumpToFirstInvalidField } from '@/lib/forms';
+import { useSuccessToast } from '@/components/SuccessToast';
 
 export function ProfileForm({
   mode,
@@ -34,6 +35,7 @@ export function ProfileForm({
   };
 }) {
   const { saveProfile, user } = useAuth();
+  const { showSuccess } = useSuccessToast();
   const accountPhoto = initial.photoURL || user?.photoURL || '';
   const profileActivity = activity ?? { hosted: 0, joined: 0, circles: 0 };
   const startingCountry = initial.country || 'Netherlands';
@@ -51,7 +53,6 @@ export function ProfileForm({
   const [preview, setPreview] = useState(accountPhoto);
   const [fields, setFields] = useState<Partial<Record<ProfileField, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -104,13 +105,11 @@ export function ProfileForm({
     if (Object.keys(found).length > 0) {
       setFields(found);
       setFormError(CHECK_AGAIN);
-      setSaved(false);
       return;
     }
     setSaving(true);
     setFields({});
     setFormError(null);
-    setSaved(false);
     try {
       await saveProfile(
         {
@@ -124,7 +123,7 @@ export function ProfileForm({
         },
         photo,
       );
-      setSaved(true);
+      showSuccess(mode === 'onboarding' ? 'Profile created.' : 'Profile saved.');
     } catch (failure) {
       setFormError(actionError(failure, {
         action: mode === 'edit' ? 'save profile changes' : 'complete profile setup',
@@ -138,15 +137,6 @@ export function ProfileForm({
 
   return (
     <form ref={formRef} onSubmit={(event) => void onSubmit(event)} className="mt-6 flex flex-col gap-5" noValidate>
-      {saved && mode === 'edit' ? (
-        <p className="rounded-md border border-moss/30 bg-moss/5 px-3 py-2 text-sm text-moss">Profile saved.</p>
-      ) : null}
-      {saved && mode === 'onboarding' ? (
-        <p className="rounded-md border border-moss/30 bg-moss/5 px-3 py-2 text-sm text-moss">
-          Profile saved. Opening studies…
-        </p>
-      ) : null}
-
       <div className="flex flex-wrap items-center gap-4">
         <Avatar src={preview} name={fullName || 'Profile'} size={72} onOpen={() => setPhotoOpen(true)} />
         <div className="min-w-0 flex-1 text-sm leading-relaxed text-muted">

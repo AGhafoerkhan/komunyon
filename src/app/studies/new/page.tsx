@@ -25,6 +25,7 @@ export default function NewStudyPage() {
       <div className="max-w-2xl">
         <StudyForm
           submitLabel="Publish study"
+          successMessage="Study published."
           onSubmit={async (draft) => {
             const id = await createStudy(draft);
             router.push(`/studies/${id}`);

@@ -130,6 +130,7 @@ export default function EditStudyPage() {
           initial={draftFromStudy(study, details)}
           minCapacity={minCapacity}
           submitLabel="Save changes"
+          successMessage="Study changes saved."
           onSubmit={async (draft) => {
             await updateStudy(study.id, hostProfile ?? profile, draft, study.createdAt);
             router.push(`/studies/${study.id}`);

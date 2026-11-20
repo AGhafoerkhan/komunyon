@@ -10,6 +10,7 @@ import { LIMITS } from '@/lib/limits';
 import { sortTags, STUDY_TAGS, type StudyTag } from '@/lib/tags';
 import { CHECK_AGAIN, validateStudyDraft, type StudyField } from '@/lib/validate';
 import { jumpToFirstInvalidField } from '@/lib/forms';
+import { useSuccessToast } from '@/components/SuccessToast';
 import type { DayOfWeek, StudyDraft, StudyFormat } from '@/types';
 
 const EMPTY: StudyDraft = {
@@ -33,13 +34,16 @@ export function StudyForm({
   initial,
   minCapacity = 1,
   submitLabel,
+  successMessage,
   onSubmit,
 }: {
   initial?: StudyDraft;
   minCapacity?: number;
   submitLabel: string;
+  successMessage: string;
   onSubmit: (draft: StudyDraft) => Promise<void>;
 }) {
+  const { showSuccess } = useSuccessToast();
   const [draft, setDraft] = useState<StudyDraft>(initial ?? EMPTY);
   const [fields, setFields] = useState<Partial<Record<StudyField, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -78,6 +82,7 @@ export function StudyForm({
     setFormError(null);
     try {
       await onSubmit(draft);
+      showSuccess(successMessage);
     } catch (failure) {
       setFormError(actionError(failure));
       setSaving(false);

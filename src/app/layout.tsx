@@ -6,6 +6,7 @@ import { PageDiagnostics } from '@/components/PageDiagnostics';
 import { ProblemReporter } from '@/components/ProblemReporter';
 import { PwaRegister } from '@/components/PwaRegister';
 import { RouteGuard } from '@/components/RouteGuard';
+import { SuccessToastProvider } from '@/components/SuccessToast';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 
@@ -56,11 +57,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans antialiased">
         <ThemeProvider>
           <AuthProvider>
-            <PageDiagnostics />
-            <ProblemReporter />
-            <PwaRegister />
-            <NoticePermission />
-            <RouteGuard>{children}</RouteGuard>
+            <SuccessToastProvider>
+              <PageDiagnostics />
+              <ProblemReporter />
+              <PwaRegister />
+              <NoticePermission />
+              <RouteGuard>{children}</RouteGuard>
+            </SuccessToastProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -9,10 +9,12 @@ import { getFirebase } from '@/lib/firebase';
 import { loadPeople } from '@/lib/studies';
 import { searchProfiles } from '@/lib/users';
 import { useAuth } from '@/components/AuthProvider';
+import { useSuccessToast } from '@/components/SuccessToast';
 import type { BibleStudy, JoinRequest, UserProfile } from '@/types';
 
 export function CoHostPanel({ study, canManagePermissions = false }: { study: BibleStudy; canManagePermissions?: boolean }) {
   const { user } = useAuth();
+  const { showSuccess } = useSuccessToast();
   const [people, setPeople] = useState<JoinRequest[]>([]);
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<UserProfile[]>([]);
@@ -73,6 +75,7 @@ export function CoHostPanel({ study, canManagePermissions = false }: { study: Bi
       } else {
         await setDoc(managerRef, { uid: person.uid, createdAt: new Date().toISOString() });
         setCoHostIds((current) => [...current, person.uid]);
+        showSuccess('Co-host assigned.');
       }
     } catch (failure) {
       setError(actionError(failure));
@@ -90,6 +93,7 @@ export function CoHostPanel({ study, canManagePermissions = false }: { study: Bi
         permissions: { canEdit: permissions[uid] === true },
         updatedAt: new Date().toISOString(),
       }, { merge: true });
+      showSuccess('Co-host access saved.');
       setAdminUid(null);
     } catch (failure) {
       setError(actionError(failure));

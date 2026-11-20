@@ -79,6 +79,17 @@ body {
   }
 }
 
+@keyframes success-toast-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+.success-toast-progress {
+  animation-name: success-toast-countdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 .spring-target {
   border-radius: 0.75rem;
   animation: spring-in 0.65s cubic-bezier(0.2, 1.4, 0.36, 1);
@@ -87,6 +98,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .spring-target,
+  .success-toast-progress,
   html,
   body {
     animation: none;

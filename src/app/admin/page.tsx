@@ -5,6 +5,7 @@ import { collection, doc, getDocs, limit, orderBy, query, serverTimestamp, updat
 import { useAuth } from '@/components/AuthProvider';
 import { Button, LoadingScreen, pageTitleClass } from '@/components/ui';
 import { getFirebase } from '@/lib/firebase';
+import { useSuccessToast } from '@/components/SuccessToast';
 
 const OWNER_EMAIL = 'angeloleeuw@gmail.com';
 const statuses = ['new', 'investigating', 'fixed', 'wontfix'] as const;
@@ -47,6 +48,7 @@ function asStatus(value: unknown): IssueStatus {
 }
 
 export default function AdminPage() {
+  const { showSuccess } = useSuccessToast();
   const { user } = useAuth();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [reports, setReports] = useState<IssueReport[]>([]);
@@ -59,7 +61,6 @@ export default function AdminPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] = useState<IssueStatus>('new');
   const [notesDraft, setNotesDraft] = useState('');
-  const [saved, setSaved] = useState(false);
 
   const loadReports = useCallback(async () => {
     if (!isOwner) return;
@@ -126,13 +127,11 @@ export default function AdminPage() {
     if (!selected) return;
     setStatusDraft(selected.status);
     setNotesDraft(selected.adminNotes);
-    setSaved(false);
   }, [selected?.id]);
 
   async function saveReport() {
     if (!selected) return;
     setBusy(true);
-    setSaved(false);
     try {
       await updateDoc(doc(getFirebase().db, 'issueReports', selected.id), {
         status: statusDraft,
@@ -142,7 +141,7 @@ export default function AdminPage() {
       setReports((current) => current.map((report) => report.id === selected.id
         ? { ...report, status: statusDraft, adminNotes: notesDraft.slice(0, 2000) }
         : report));
-      setSaved(true);
+      showSuccess('Issue report saved.');
     } catch {
       setLoadError(true);
     } finally {
@@ -285,7 +284,6 @@ export default function AdminPage() {
               </label>
               <div className="flex items-center gap-3 sm:col-span-2">
                 <Button onClick={() => void saveReport()} disabled={busy}>{busy ? 'Saving…' : 'Save report'}</Button>
-                {saved ? <span role="status" className="text-sm text-moss">Saved</span> : null}
               </div>
             </section>
           </article>
