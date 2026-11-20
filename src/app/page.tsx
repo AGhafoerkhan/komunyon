@@ -10,8 +10,8 @@ import { missingFirebaseEnv } from '@/lib/firebase';
 const steps = [
   {
     number: '01',
-    title: 'Find a gathering',
-    body: 'See public studies by neighbourhood, time, and the next session’s available places.',
+    title: 'Find an event',
+    body: 'See public events by neighbourhood, time, and the next date’s available places. An event can be a study, prayer gathering, communion, or shared meal.',
   },
   {
     number: '02',
@@ -21,7 +21,7 @@ const steps = [
   {
     number: '03',
     title: 'Know where you’re going',
-    body: 'After approval, you can see the exact address and the people in the gathering.',
+    body: 'After approval, you can see the exact address and the people attending the event.',
   },
 ] as const;
 
@@ -91,13 +91,13 @@ export default function HomePage() {
             <div className="max-w-2xl">
               <p className="inline-flex items-center gap-2 rounded-full border border-[#314540] bg-[#14201f] px-3 py-1.5 text-xs font-medium tracking-wide text-[#9bd9ce]">
                 <span aria-hidden="true" className="size-1.5 rounded-full bg-[#70c2b4]" />
-                STUDY · PRAYER · COMMUNION · THE HAGUE
+                LOCAL EVENTS · THE HAGUE
               </p>
               <h1 className="mt-6 font-serif text-4xl font-normal leading-[1.08] tracking-tight text-[#f0f2f4] sm:text-5xl lg:text-6xl">
-                A real table. A real study. Room to belong.
+                Find an event. Find your people.
               </h1>
               <p className="mt-6 max-w-xl text-base leading-relaxed text-[#b5bdca] sm:text-lg">
-                Find a gathering near you, host one in your neighbourhood, or meet people around Scripture and a shared meal.
+                Komunyon brings local events together. Find a study, prayer gathering, communion, or shared meal—or host an event of your own.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <SignInButton busy={busy} unavailable={signInUnavailable} onWarm={prepareGoogleSignIn} onSignIn={() => void signIn()} />
@@ -121,7 +121,7 @@ export default function HomePage() {
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-3 md:gap-0">
             <TrustPoint title="Host approval" text="Requests are reviewed before someone joins the group." />
             <TrustPoint title="Address stays private" text="The exact location is shared after approval." />
-            <TrustPoint title="Your choice each session" text="Join or leave individual dates. A recurring study doesn’t commit you to every week." />
+            <TrustPoint title="Choose each date" text="Join or leave individual dates. A recurring event doesn’t commit you to every week." />
           </div>
         </section>
 
@@ -159,7 +159,7 @@ export default function HomePage() {
           <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
               <p className="text-xs font-semibold tracking-[0.18em] text-[#70c2b4]">FOR HOSTS</p>
-              <h2 className="mt-4 font-serif text-3xl font-normal leading-tight sm:text-4xl">Keep the gathering simple. Keep control of the group.</h2>
+              <h2 className="mt-4 font-serif text-3xl font-normal leading-tight sm:text-4xl">Host an event. Keep control of the group.</h2>
               <p className="mt-4 text-base leading-relaxed text-[#a7afbe]">
                 Set a place limit for each date, decide who can join, and hand specific responsibilities to a co-host when you need help.
               </p>
@@ -174,7 +174,7 @@ export default function HomePage() {
               <div className="flex items-center justify-between gap-4 border-b border-[#2b303b] pb-4">
                 <div>
                   <p className="text-xs text-[#8f9aaa]">HOST CONTROLS</p>
-                  <h3 className="mt-1 font-serif text-xl">Your gathering, your call</h3>
+                  <h3 className="mt-1 font-serif text-xl">Your event, your call</h3>
                 </div>
                 <span className="rounded-full border border-[#3e5b53] bg-[#14201f] px-3 py-1 text-xs text-[#9bd9ce]">Host + co-host</span>
               </div>
@@ -215,8 +215,8 @@ export default function HomePage() {
           <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-2xl">
               <p className="text-xs font-semibold tracking-[0.18em] text-[#70c2b4]">YOUR NEXT GATHERING COULD START HERE</p>
-              <h2 className="mt-3 font-serif text-3xl font-normal sm:text-4xl">Find a study. Or host the first one.</h2>
-              <p className="mt-3 text-sm leading-relaxed text-[#a7afbe]">Sign in to see events in The Hague and request a place, or create a gathering of your own.</p>
+              <h2 className="mt-3 font-serif text-3xl font-normal sm:text-4xl">Find an event. Or host one.</h2>
+              <p className="mt-3 text-sm leading-relaxed text-[#a7afbe]">Sign in to see events in The Hague and request a place, or create an event of your own.</p>
             </div>
             <div className="shrink-0">
               <SignInButton busy={busy} unavailable={signInUnavailable} onWarm={prepareGoogleSignIn} onSignIn={() => void signIn()} />
@@ -227,11 +227,19 @@ export default function HomePage() {
       </main>
 
       <footer className="border-t border-[#2b303b] bg-[#0f1115] pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 text-sm text-[#8d97a6] sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>Komunyon · The Hague</p>
-          <a href="mailto:angeloghafoerkhan@gmail.com" className="w-fit rounded-sm underline decoration-[#596572] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4db3a2]">
-            Questions? Contact us
-          </a>
+        <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 text-sm text-[#8d97a6] sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p>Komunyon · The Hague</p>
+            <address className="flex flex-col gap-2 not-italic sm:flex-row sm:gap-6">
+              <a href="mailto:angeloghafoerkhan@gmail.com" className="w-fit rounded-sm underline decoration-[#596572] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4db3a2]">
+                angeloleeuw@gmail.com
+              </a>
+              <a href="tel:+31681963662" className="w-fit rounded-sm underline decoration-[#596572] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4db3a2]">
+                +31 6 8196 3662
+              </a>
+            </address>
+          </div>
+          <p className="border-t border-[#2b303b] pt-4 text-xs">© 2026 Komunyon. All rights reserved.</p>
         </div>
       </footer>
     </div>
