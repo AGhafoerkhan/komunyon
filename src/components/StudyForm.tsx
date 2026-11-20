@@ -55,6 +55,7 @@ export function StudyForm({
   const { user } = useAuth();
   const initialDraft = useRef<StudyDraft>(initial ?? EMPTY).current;
   const [draft, setDraft] = useState<StudyDraft>(initialDraft);
+  const [selectedAddress, setSelectedAddress] = useState(initialDraft.exactAddress.trim());
   const [fields, setFields] = useState<Partial<Record<StudyField, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -90,6 +91,10 @@ export function StudyForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const found = validateStudyDraft(draft, minCapacity);
+    const address = draft.exactAddress.trim();
+    if (!found.exactAddress && address && address !== selectedAddress) {
+      found.exactAddress = 'Choose an address from the search results.';
+    }
     if (Object.keys(found).length > 0) {
       setFields(found);
       setFormError(CHECK_AGAIN);
@@ -324,12 +329,13 @@ export function StudyForm({
             Saved separately and shown only to you and people you approve. It is not on the public study.
           </p>
         </div>
-        <Field label="Exact address" hint="Search by street, postcode, or house number. Select a result to confirm a registered address." error={fields.exactAddress}>
+        <Field label="Exact address" hint="Search by street, postcode, or house number, then select the matching address." error={fields.exactAddress}>
           <AddressLookup
             value={draft.exactAddress}
             invalid={Boolean(fields.exactAddress)}
             disabled={saving}
             onChange={(exactAddress) => patch({ exactAddress })}
+            onSelect={setSelectedAddress}
           />
         </Field>
         <Field label="Entry notes" hint="Buzzer, floor, or where to wait. Optional." error={fields.entryNotes}>

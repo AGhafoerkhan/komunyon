@@ -21,7 +21,7 @@ interface AddressProperties {
   woonplaats_naam?: unknown;
 }
 
-type LookupStatus = 'idle' | 'searching' | 'results' | 'empty' | 'error' | 'verified' | 'resolving';
+type LookupStatus = 'idle' | 'searching' | 'results' | 'empty' | 'error' | 'selected' | 'resolving';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -68,11 +68,13 @@ function formatSelectedAddress(properties: AddressProperties, fallback: string):
 export function AddressLookup({
   value,
   onChange,
+  onSelect,
   disabled = false,
   invalid = false,
 }: {
   value: string;
   onChange: (value: string) => void;
+  onSelect: (value: string) => void;
   disabled?: boolean;
   invalid?: boolean;
 }) {
@@ -157,8 +159,9 @@ export function AddressLookup({
       const selected = formatSelectedAddress(payload.properties as AddressProperties, suggestion.label);
       setQuery(selected);
       setSearchEnabled(false);
-      setStatus('verified');
+      setStatus('selected');
       onChange(selected);
+      onSelect(selected);
     } catch {
       setStatus('error');
     }
@@ -183,15 +186,15 @@ export function AddressLookup({
   const statusText = status === 'searching'
     ? 'Searching the Dutch address register…'
     : status === 'resolving'
-      ? 'Checking the selected address…'
-      : status === 'verified'
-        ? 'Address found in the Dutch address register.'
+      ? 'Selecting this address…'
+      : status === 'selected'
+        ? 'Address selected.'
         : status === 'empty'
-          ? 'No registered address in The Hague matches this search. Check the street, postcode, and house number. You can still save a manually entered address.'
+          ? 'No matching address found in The Hague. Try a street name, postcode, or house number.'
           : status === 'error'
-            ? 'Address lookup is unavailable right now. You can still enter and save the address manually.'
+            ? 'Address search is unavailable right now. Please try again shortly.'
             : status === 'results'
-              ? 'Choose an address to confirm it.'
+              ? 'Select an address from the results.'
               : '';
 
   return (
@@ -242,10 +245,10 @@ export function AddressLookup({
         </ul>
       ) : null}
 
-      <p id={`${listboxId}-help`} role="status" aria-live="polite" className={`mt-1.5 text-xs leading-relaxed ${status === 'verified' ? 'text-moss' : status === 'empty' || status === 'error' ? 'text-clay' : 'text-muted'}`}>
+      <p id={`${listboxId}-help`} role="status" aria-live="polite" className={`mt-1.5 text-xs leading-relaxed ${status === 'selected' ? 'text-moss' : status === 'empty' || status === 'error' ? 'text-clay' : 'text-muted'}`}>
         {statusText}
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted">Searches official Dutch address records. Selecting a result confirms a registered address; manual entry is still allowed.</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">Search official Dutch address records and select the matching address.</p>
     </div>
   );
 }
