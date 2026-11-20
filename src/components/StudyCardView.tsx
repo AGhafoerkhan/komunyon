@@ -6,6 +6,7 @@ import type { BibleStudy } from '@/types';
 
 export interface StudyCardViewProps {
   study: BibleStudy;
+  href?: string;
   hosting: boolean;
   joined: boolean;
   past: boolean;
@@ -17,11 +18,13 @@ export interface StudyCardViewProps {
   sessionTaken: number;
   joinBusy: boolean;
   joinRequested: boolean;
+  onRequestJoinWarm?: () => void;
   onRequestJoin: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 export function StudyCardView({
   study,
+  href,
   hosting,
   joined,
   past,
@@ -33,16 +36,18 @@ export function StudyCardView({
   sessionTaken,
   joinBusy,
   joinRequested,
+  onRequestJoinWarm,
   onRequestJoin,
 }: StudyCardViewProps) {
   const hasJoinAction = !past && !hosting && !joined;
+  const studyHref = href ?? `/studies/${study.id}`;
 
   return (
     <div
       data-testid="study-card"
       className="relative flex h-[320px] w-full min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
     >
-      <Link href={`/studies/${study.id}`} className="flex min-h-0 flex-1 flex-col gap-2">
+      <Link href={studyHref} className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="flex h-10 shrink-0 items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar src={study.hostPhotoURL} name={study.hostName} size={36} />
@@ -99,6 +104,7 @@ export function StudyCardView({
           data-testid="card-join"
           type="button"
           className="absolute bottom-4 right-4 whitespace-nowrap text-sm text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
+          onPointerDown={onRequestJoinWarm}
           onClick={onRequestJoin}
           disabled={joinBusy || joinRequested}
         >

@@ -1,11 +1,49 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useAuth } from '@/components/AuthProvider';
+import { StudyCardView } from '@/components/StudyCardView';
 import { Spinner } from '@/components/ui';
 import { OFFLINE_AUTH_MESSAGE, SIGN_IN_CANCELLED_MESSAGE } from '@/lib/errors';
 import { missingFirebaseEnv } from '@/lib/firebase';
+import type { BibleStudy } from '@/types';
+
+const exampleStudy: BibleStudy = {
+  id: 'landing-example',
+  hostId: 'example-host',
+  hostName: 'Alex van Dijk',
+  hostAge: 29,
+  hostPhotoURL: '',
+  title: 'Understanding biblical history',
+  description: 'A welcoming event for conversation and shared study.',
+  tags: ['bible-study', 'communion'],
+  format: 'recurring',
+  dayOfWeek: 0,
+  date: null,
+  time: '19:00',
+  maxCapacity: 8,
+  area: 'Centrum',
+  isPublic: true,
+  showMemberContacts: false,
+  approvedCount: 4,
+  pendingUserIds: [],
+  approvedUserIds: [],
+  invitedUserIds: [],
+  skippedDates: [],
+  createdAt: '2026-11-20T00:00:00.000Z',
+  updatedAt: '2026-11-20T00:00:00.000Z',
+};
+
+const landingCardTheme = {
+  '--color-card': '#171a20',
+  '--color-ink': '#f0f2f4',
+  '--color-muted': '#a7afbe',
+  '--color-line': '#2b303b',
+  '--color-canal': '#70c2b4',
+  '--color-sand': '#252a33',
+  '--color-clay': '#ff999c',
+} as CSSProperties;
 
 const steps = [
   {
@@ -113,7 +151,12 @@ export default function HomePage() {
               </p>
             </div>
 
-            <ExampleStudyCard />
+            <ExampleStudyCard
+              busy={busy}
+              unavailable={signInUnavailable}
+              onWarm={prepareGoogleSignIn}
+              onSignIn={() => void signIn()}
+            />
           </div>
         </section>
 
@@ -272,36 +315,30 @@ function SignInButton({
   );
 }
 
-function ExampleStudyCard() {
+function ExampleStudyCard({ busy, unavailable, onWarm, onSignIn }: { busy: boolean; unavailable: boolean; onWarm: () => void; onSignIn: () => void }) {
   return (
-    <aside aria-label="Example event card" className="relative mx-auto w-full max-w-md rotate-[0.5deg] rounded-2xl border border-[#3a414c] bg-[#171a20] p-5 shadow-2xl shadow-black/40 sm:p-6">
-      <div className="flex items-center justify-between gap-3">
-        <span className="rounded-full border border-[#33443f] bg-[#14201f] px-3 py-1 text-xs font-medium text-[#9bd9ce]">EXAMPLE EVENT</span>
-        <span className="text-xs text-[#9099a7]">The Hague</span>
-      </div>
-      <h2 className="mt-6 font-serif text-2xl leading-snug text-[#f0f2f4]">Understanding biblical history</h2>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <span className="rounded-md bg-[#252a33] px-2.5 py-1 text-xs text-[#d5dbe3]">Study</span>
-        <span className="rounded-md bg-[#252a33] px-2.5 py-1 text-xs text-[#d5dbe3]">Communion</span>
-        <span className="rounded-md bg-[#252a33] px-2.5 py-1 text-xs text-[#d5dbe3]">Recurring</span>
-      </div>
-      <div className="mt-6 grid grid-cols-[1fr_auto] gap-5 border-t border-[#303640] pt-5">
-        <div>
-          <p className="text-xs text-[#929baa]">STARTS</p>
-          <p className="mt-1 text-sm font-medium">Sunday · 19:00</p>
-          <p className="mt-1 text-xs text-[#a7afbe]">Centrum</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-[#929baa]">THIS SESSION</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums">4 <span className="text-sm font-normal text-[#8993a1]">/ 8</span></p>
-          <p className="mt-1 text-xs text-[#70c2b4]">4 places left</p>
-        </div>
-      </div>
-      <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-[#2d3940] bg-[#12171b] px-3.5 py-3">
-        <span className="flex items-center gap-2 text-sm text-[#c2c9d5]"><ShieldIcon /> Request a place</span>
-        <span aria-hidden="true" className="text-[#70c2b4]">→</span>
-      </div>
-      <p className="mt-3 text-center text-xs leading-relaxed text-[#8993a1]">A host reviews every request before you join.</p>
+    <aside aria-label="Example event card" className="mx-auto w-full max-w-md" style={landingCardTheme}>
+      <StudyCardView
+        study={exampleStudy}
+        href="/login"
+        hosting={false}
+        joined={false}
+        past={false}
+        canceledDate={null}
+        scheduleText="Every Sunday · 19:00"
+        note=""
+        displayedHostName="A van Dijk"
+        sessionDate={null}
+        sessionTaken={4}
+        joinBusy={busy || unavailable}
+        joinRequested={false}
+        onRequestJoinWarm={onWarm}
+        onRequestJoin={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onSignIn();
+        }}
+      />
     </aside>
   );
 }
