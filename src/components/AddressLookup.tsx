@@ -4,12 +4,14 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { fieldClass } from '@/components/ui';
 
 const SEARCH_URL = 'https://api.pdok.nl/kadaster/location-api/v1/search';
+const SUGGEST_URL = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest';
 const MIN_QUERY_LENGTH = 1;
 
 interface AddressSuggestion {
   id: string;
   label: string;
-  detailUrl: string;
+  detailUrl?: string;
+  selectedValue?: string;
 }
 
 interface AddressProperties {
@@ -44,6 +46,19 @@ function parseSuggestions(payload: unknown): AddressSuggestion[] {
       return [];
     }
     return [{ id, label, detailUrl }];
+  });
+}
+
+function parseSingleCharacterSuggestions(payload: unknown): AddressSuggestion[] {
+  if (!isRecord(payload) || !isRecord(payload.response) || !Array.isArray(payload.response.docs)) return [];
+
+  return payload.response.docs.flatMap((item): AddressSuggestion[] => {
+    if (!isRecord(item) || item.type !== 'adres') return [];
+    const { id, weergavenaam: label } = item;
+    if (typeof id !== 'string' || typeof label !== 'string') return [];
+    const selectedValue = label.replace(/,\s*(\d{4})\s?([A-Z]{2})\s+'s-Gravenhage$/i, ', $1 $2, The Hague, Netherlands');
+    if (selectedValue === label) return [];
+    return [{ id, label, selectedValue }];
   });
 }
 
@@ -111,11 +126,21 @@ export function AddressLookup({
     setActiveIndex(0);
 
     const timer = window.setTimeout(() => {
-      const url = new URL(SEARCH_URL);
-      url.searchParams.set('q', normalized.slice(0, 120));
-      url.searchParams.set('limit', '6');
-      url.searchParams.set('f', 'json');
-      url.searchParams.set('adres[version]', '1');
+      const singleCharacterQuery = normalized.length === 1;
+      const url = new URL(singleCharacterQuery ? SUGGEST_URL : SEARCH_URL);
+      if (singleCharacterQuery) {
+        url.searchParams.set('wt', 'json');
+        url.searchParams.set('q', normalized);
+        url.searchParams.append('fq', 'type:adres');
+        url.searchParams.append('fq', `gemeentenaam:"'s-Gravenhage"`);
+        url.searchParams.set('rows', '6');
+        url.searchParams.set('sort', 'weergavenaam asc');
+      } else {
+        url.searchParams.set('q', normalized.slice(0, 120));
+        url.searchParams.set('limit', '6');
+        url.searchParams.set('f', 'json');
+        url.searchParams.set('adres[version]', '1');
+      }
 
       void fetch(url, { signal: controller.signal })
         .then(async (response) => {
@@ -124,7 +149,9 @@ export function AddressLookup({
         })
         .then((payload) => {
           if (currentRequest !== requestId.current) return;
-          const found = parseSuggestions(payload);
+          const found = singleCharacterQuery
+            ? parseSingleCharacterSuggestions(payload)
+            : parseSuggestions(payload);
           setSuggestions(found);
           setStatus(found.length ? 'results' : 'empty');
         })
@@ -150,6 +177,18 @@ export function AddressLookup({
   }
 
   async function chooseAddress(suggestion: AddressSuggestion) {
+    if (suggestion.selectedValue) {
+      setQuery(suggestion.selectedValue);
+      setSearchEnabled(false);
+      setStatus('selected');
+      onChange(suggestion.selectedValue);
+      onSelect(suggestion.selectedValue);
+      return;
+    }
+    if (!suggestion.detailUrl) {
+      setStatus('error');
+      return;
+    }
     setStatus('resolving');
     setSuggestions([]);
     try {
