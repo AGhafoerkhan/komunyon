@@ -11,6 +11,9 @@ import { sortTags, STUDY_TAGS, type StudyTag } from '@/lib/tags';
 import { CHECK_AGAIN, validateStudyDraft, type StudyField } from '@/lib/validate';
 import { jumpToFirstInvalidField } from '@/lib/forms';
 import { useSuccessToast } from '@/components/SuccessToast';
+import { useAuth } from '@/components/AuthProvider';
+import { ClientDraftStatus, useClientDraft } from '@/components/useClientDraft';
+import { clientDraftKey } from '@/lib/clientDrafts';
 import type { DayOfWeek, StudyDraft, StudyFormat } from '@/types';
 
 const EMPTY: StudyDraft = {
@@ -35,20 +38,34 @@ export function StudyForm({
   minCapacity = 1,
   submitLabel,
   successMessage,
+  draftId,
+  sourceVersion = null,
   onSubmit,
 }: {
   initial?: StudyDraft;
   minCapacity?: number;
   submitLabel: string;
   successMessage: string;
+  draftId: string;
+  sourceVersion?: string | null;
   onSubmit: (draft: StudyDraft) => Promise<void>;
 }) {
   const { showSuccess } = useSuccessToast();
-  const [draft, setDraft] = useState<StudyDraft>(initial ?? EMPTY);
+  const { user } = useAuth();
+  const initialDraft = useRef<StudyDraft>(initial ?? EMPTY).current;
+  const [draft, setDraft] = useState<StudyDraft>(initialDraft);
   const [fields, setFields] = useState<Partial<Record<StudyField, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const storageKey = user ? clientDraftKey(user.uid, `study-${draftId}`) : 'komunyon:form-draft:study:anonymous';
+  const { status: draftStatus, markSaved: markDraftSaved, discardDraft } = useClientDraft({
+    storageKey,
+    initialValue: initialDraft,
+    value: draft,
+    setValue: setDraft,
+    sourceVersion,
+  });
 
   useEffect(() => {
     if (Object.keys(fields).length === 0) return;
@@ -82,6 +99,7 @@ export function StudyForm({
     setFormError(null);
     try {
       await onSubmit(draft);
+      markDraftSaved();
       showSuccess(successMessage);
     } catch (failure) {
       setFormError(actionError(failure));
@@ -130,7 +148,7 @@ export function StudyForm({
             className="mt-2 flex flex-wrap gap-2"
             role="group"
             aria-label="What happens labels"
-            aria-invalid={Boolean(fields.tags)}
+            data-invalid={Boolean(fields.tags)}
             tabIndex={fields.tags ? -1 : undefined}
           >
             {STUDY_TAGS.map((tag) => {
@@ -329,6 +347,8 @@ export function StudyForm({
       </section>
 
       <div className="flex flex-col gap-3">
+        <p className="text-xs leading-relaxed text-muted">Drafts are saved in this browser tab for up to 7 days, including the private address and entry notes. They are not published until saved and are cleared after saving, signing out, or closing the tab.</p>
+        <ClientDraftStatus status={draftStatus} onDiscard={() => discardDraft()} />
         {formError ? <FormError>{formError}</FormError> : null}
         <Button type="submit" disabled={saving}>
           {saving ? <Spinner /> : null}

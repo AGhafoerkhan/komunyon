@@ -8,11 +8,16 @@ function sessionRef(studyId: string, date: string) {
   return doc(getFirebase().db, 'studies', studyId, 'sessions', date);
 }
 
-export async function loadSessionDescription(studyId: string, date: string): Promise<string> {
+export async function loadSessionDescription(studyId: string, date: string): Promise<{ text: string; updatedAt: string | null }> {
   const snap = await getDoc(sessionRef(studyId, date));
-  if (!snap.exists()) return '';
-  const description = snap.data().description;
-  return typeof description === 'string' ? description : '';
+  if (!snap.exists()) return { text: '', updatedAt: null };
+  const data = snap.data();
+  const updatedAt = typeof data.updatedAt === 'string'
+    ? data.updatedAt
+    : data.updatedAt?.toDate instanceof Function
+      ? data.updatedAt.toDate().toISOString()
+      : null;
+  return { text: typeof data.description === 'string' ? data.description : '', updatedAt };
 }
 
 export async function saveSessionDescription(studyId: string, date: string, description: string): Promise<void> {

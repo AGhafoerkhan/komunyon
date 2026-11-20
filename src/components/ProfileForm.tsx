@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Avatar, Button, Field, FormError, Spinner, fieldClass } from '@/components/ui';
 import { HAGUE_AREAS } from '@/lib/hague';
@@ -11,6 +11,19 @@ import { CHECK_AGAIN, validateProfile, type ProfileField } from '@/lib/validate'
 import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { jumpToFirstInvalidField } from '@/lib/forms';
 import { useSuccessToast } from '@/components/SuccessToast';
+import { ClientDraftStatus, useClientDraft } from '@/components/useClientDraft';
+import { clientDraftKey } from '@/lib/clientDrafts';
+
+type ProfileDraft = {
+  fullName: string;
+  age: string;
+  bio: string;
+  country: string;
+  city: string;
+  otherCity: boolean;
+  neighbourhood: string;
+  phone: string;
+};
 
 export function ProfileForm({
   mode,
@@ -27,6 +40,7 @@ export function ProfileForm({
     city: string;
     neighbourhood: string;
     phone: string;
+    updatedAt?: string;
   };
   activity?: {
     hosted: number;
@@ -38,17 +52,22 @@ export function ProfileForm({
   const { showSuccess } = useSuccessToast();
   const accountPhoto = initial.photoURL || user?.photoURL || '';
   const profileActivity = activity ?? { hosted: 0, joined: 0, circles: 0 };
-  const startingCountry = initial.country || 'Netherlands';
-  const startingCities = citiesIn(startingCountry);
-  const startingCity = initial.city || (startingCountry === 'Netherlands' ? 'The Hague' : '');
-  const [fullName, setFullName] = useState(initial.fullName);
-  const [age, setAge] = useState(initial.age > 0 ? String(initial.age) : '');
-  const [bio, setBio] = useState(initial.bio);
-  const [country, setCountry] = useState(startingCountry);
-  const [city, setCity] = useState(startingCity);
-  const [otherCity, setOtherCity] = useState(Boolean(startingCities && startingCity && !startingCities.includes(startingCity)));
-  const [neighbourhood, setNeighbourhood] = useState(initial.neighbourhood);
-  const [phone, setPhone] = useState(initial.phone);
+  const initialDraft = useMemo<ProfileDraft>(() => {
+    const country = initial.country || 'Netherlands';
+    const startingCities = citiesIn(country);
+    const city = initial.city || (country === 'Netherlands' ? 'The Hague' : '');
+    return {
+      fullName: initial.fullName,
+      age: initial.age > 0 ? String(initial.age) : '',
+      bio: initial.bio,
+      country,
+      city,
+      otherCity: Boolean(startingCities && city && !startingCities.includes(city)),
+      neighbourhood: initial.neighbourhood,
+      phone: initial.phone,
+    };
+  }, [initial.age, initial.bio, initial.city, initial.country, initial.fullName, initial.neighbourhood, initial.phone]);
+  const [draft, setDraft] = useState<ProfileDraft>(initialDraft);
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState(accountPhoto);
   const [fields, setFields] = useState<Partial<Record<ProfileField, string>>>({});
@@ -56,7 +75,19 @@ export function ProfileForm({
   const [saving, setSaving] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const listedCities = citiesIn(country);
+  const listedCities = citiesIn(draft.country);
+  const draftStorageKey = user ? clientDraftKey(user.uid, `profile-${mode}`) : 'komunyon:form-draft:profile:anonymous';
+  const { status: draftStatus, markSaved: markDraftSaved, discardDraft } = useClientDraft({
+    storageKey: draftStorageKey,
+    initialValue: initialDraft,
+    value: draft,
+    setValue: setDraft,
+    sourceVersion: mode === 'edit' ? initial.updatedAt ?? null : null,
+  });
+
+  function patchDraft(partial: Partial<ProfileDraft>) {
+    setDraft((current) => ({ ...current, ...partial }));
+  }
 
   useEffect(() => {
     if (Object.keys(fields).length === 0) return;
@@ -72,34 +103,21 @@ export function ProfileForm({
   }, [photo]);
 
   function chooseCountry(next: string) {
-    setCountry(next);
-    setCity(next === 'Netherlands' ? 'The Hague' : '');
-    setOtherCity(false);
-    setNeighbourhood('');
+    patchDraft({ country: next, city: next === 'Netherlands' ? 'The Hague' : '', otherCity: false, neighbourhood: '' });
   }
 
   function chooseCity(next: string) {
     if (next === '__other__') {
-      setOtherCity(true);
-      setCity('');
-      setNeighbourhood('');
+      patchDraft({ otherCity: true, city: '', neighbourhood: '' });
       return;
     }
-    setOtherCity(false);
-    setCity(next);
-    setNeighbourhood('');
+    patchDraft({ otherCity: false, city: next, neighbourhood: '' });
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const found = validateProfile({
-      fullName,
-      age,
-      bio,
-      country,
-      city,
-      neighbourhood,
-      phone,
+      ...draft,
       hasPhoto: preview.length > 0,
     });
     if (Object.keys(found).length > 0) {
@@ -110,19 +128,29 @@ export function ProfileForm({
     setSaving(true);
     setFields({});
     setFormError(null);
+    const savedDraft: ProfileDraft = {
+      ...draft,
+      fullName: draft.fullName.trim(),
+      age: String(Number(draft.age)),
+      bio: draft.bio.trim(),
+      city: draft.city.trim(),
+      neighbourhood: draft.neighbourhood.trim(),
+    };
     try {
       await saveProfile(
         {
-          fullName: fullName.trim(),
-          age: Number(age),
-          bio: bio.trim(),
-          country,
-          city: city.trim(),
-          neighbourhood: neighbourhood.trim(),
-          phone,
+          fullName: savedDraft.fullName,
+          age: Number(savedDraft.age),
+          bio: savedDraft.bio,
+          country: savedDraft.country,
+          city: savedDraft.city,
+          neighbourhood: savedDraft.neighbourhood,
+          phone: savedDraft.phone,
         },
         photo,
       );
+      setDraft(savedDraft);
+      markDraftSaved(savedDraft);
       showSuccess(mode === 'onboarding' ? 'Profile created.' : 'Profile saved.');
     } catch (failure) {
       setFormError(actionError(failure, {
@@ -138,9 +166,9 @@ export function ProfileForm({
   return (
     <form ref={formRef} onSubmit={(event) => void onSubmit(event)} className="mt-6 flex flex-col gap-5" noValidate>
       <div className="flex flex-wrap items-center gap-4">
-        <Avatar src={preview} name={fullName || 'Profile'} size={72} onOpen={() => setPhotoOpen(true)} />
+        <Avatar src={preview} name={draft.fullName || 'Profile'} size={72} onOpen={() => setPhotoOpen(true)} />
         <div className="min-w-0 flex-1 text-sm leading-relaxed text-muted">
-          <p className="font-medium text-ink">{fullName || 'Your profile'}{age ? ` · ${age}` : ''}</p>
+          <p className="font-medium text-ink">{draft.fullName || 'Your profile'}{draft.age ? ` · ${draft.age}` : ''}</p>
           <p className="mt-1 text-xs" aria-label="Profile activity">
             {profileActivity.hosted} Hosted <span aria-hidden="true">·</span>{' '}
             {profileActivity.joined} Joined <span aria-hidden="true">·</span>{' '}
@@ -159,9 +187,10 @@ export function ProfileForm({
               onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
             />
           </label>
+          <p className="mt-1 text-xs text-muted">Selected picture files are not kept in the draft; choose the picture again if you return after reloading.</p>
         </div>
       </div>
-      {photoOpen ? <PhotoLightbox src={preview} name={fullName || 'Profile'} onClose={() => setPhotoOpen(false)} /> : null}
+      {photoOpen ? <PhotoLightbox src={preview} name={draft.fullName || 'Profile'} onClose={() => setPhotoOpen(false)} /> : null}
 
       <Field
         label="Full name"
@@ -171,8 +200,8 @@ export function ProfileForm({
         <input
           className={fieldClass}
           aria-invalid={Boolean(fields.fullName)}
-          value={fullName}
-          onChange={(event) => setFullName(event.target.value)}
+          value={draft.fullName}
+          onChange={(event) => patchDraft({ fullName: event.target.value })}
           autoComplete="name"
           maxLength={LIMITS.nameMax}
           required
@@ -184,8 +213,8 @@ export function ProfileForm({
           className={fieldClass}
           aria-invalid={Boolean(fields.age)}
           inputMode="numeric"
-          value={age}
-          onChange={(event) => setAge(event.target.value)}
+          value={draft.age}
+          onChange={(event) => patchDraft({ age: event.target.value })}
           min={LIMITS.ageMin}
           max={LIMITS.ageMax}
           required
@@ -193,7 +222,7 @@ export function ProfileForm({
       </Field>
 
       <Field label="Country" error={fields.country}>
-        <select className={fieldClass} value={country} aria-invalid={Boolean(fields.country)} onChange={(event) => chooseCountry(event.target.value)} required>
+        <select className={fieldClass} value={draft.country} aria-invalid={Boolean(fields.country)} onChange={(event) => chooseCountry(event.target.value)} required>
           {COUNTRIES.map((item) => (
             <option key={item} value={item}>
               {item}
@@ -202,12 +231,12 @@ export function ProfileForm({
         </select>
       </Field>
 
-      <Field label="City" error={otherCity ? undefined : fields.city}>
+        <Field label="City" error={draft.otherCity ? undefined : fields.city}>
         {listedCities ? (
           <select
             className={fieldClass}
-            aria-invalid={Boolean(!otherCity && fields.city)}
-            value={otherCity ? '__other__' : city}
+            aria-invalid={Boolean(!draft.otherCity && fields.city)}
+            value={draft.otherCity ? '__other__' : draft.city}
             onChange={(event) => chooseCity(event.target.value)}
             required
           >
@@ -222,8 +251,8 @@ export function ProfileForm({
           <input
             className={fieldClass}
             aria-invalid={Boolean(fields.city)}
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
+            value={draft.city}
+            onChange={(event) => patchDraft({ city: event.target.value })}
             autoComplete="address-level2"
             maxLength={80}
             required
@@ -231,13 +260,13 @@ export function ProfileForm({
         )}
       </Field>
 
-      {listedCities && otherCity ? (
+      {listedCities && draft.otherCity ? (
         <Field label="Your city" error={fields.city}>
           <input
             className={fieldClass}
             aria-invalid={Boolean(fields.city)}
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
+            value={draft.city}
+            onChange={(event) => patchDraft({ city: event.target.value })}
             autoComplete="address-level2"
             maxLength={80}
             required
@@ -245,13 +274,13 @@ export function ProfileForm({
         </Field>
       ) : null}
 
-      {city === 'The Hague' ? (
+      {draft.city === 'The Hague' ? (
         <Field label="Neighbourhood" error={fields.neighbourhood}>
           <select
             className={fieldClass}
             aria-invalid={Boolean(fields.neighbourhood)}
-            value={neighbourhood}
-            onChange={(event) => setNeighbourhood(event.target.value)}
+            value={draft.neighbourhood}
+            onChange={(event) => patchDraft({ neighbourhood: event.target.value })}
             required
           >
             <option value="">Choose a neighbourhood</option>
@@ -267,8 +296,8 @@ export function ProfileForm({
           <input
             className={fieldClass}
             aria-invalid={Boolean(fields.neighbourhood)}
-            value={neighbourhood}
-            onChange={(event) => setNeighbourhood(event.target.value)}
+            value={draft.neighbourhood}
+            onChange={(event) => patchDraft({ neighbourhood: event.target.value })}
             autoComplete="address-level3"
             maxLength={80}
           />
@@ -279,8 +308,8 @@ export function ProfileForm({
         <textarea
           className={`${fieldClass} min-h-32 resize-y`}
           aria-invalid={Boolean(fields.bio)}
-          value={bio}
-          onChange={(event) => setBio(event.target.value)}
+          value={draft.bio}
+          onChange={(event) => patchDraft({ bio: event.target.value })}
           maxLength={LIMITS.bioMax}
           placeholder="I speak Dutch/English."
         />
@@ -292,8 +321,8 @@ export function ProfileForm({
           aria-invalid={Boolean(fields.phone)}
           type="tel"
           inputMode="tel"
-          value={phone}
-          onChange={(event) => setPhone(event.target.value)}
+          value={draft.phone}
+          onChange={(event) => patchDraft({ phone: event.target.value })}
           autoComplete="tel"
           maxLength={20}
           required
@@ -301,6 +330,12 @@ export function ProfileForm({
       </Field>
 
       <div className="flex flex-col gap-3">
+        <p className="text-xs leading-relaxed text-muted">Drafts are saved in this browser tab for up to 7 days, including your phone number. They are not published until saved and are cleared after saving, signing out, or closing the tab.</p>
+        <ClientDraftStatus status={draftStatus} onDiscard={() => {
+          discardDraft();
+          setPhoto(null);
+          setPreview(accountPhoto);
+        }} />
         {formError ? <FormError>{formError}</FormError> : null}
         <Button type="submit" disabled={saving}>
           {saving ? <Spinner /> : null}

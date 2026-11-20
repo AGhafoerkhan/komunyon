@@ -11,6 +11,8 @@ import { LIMITS } from '@/lib/limits';
 import { deleteSessionFile, downloadSessionFile, listSessionFiles, uploadSessionFile, type SessionFile } from '@/lib/photos';
 import { loadSessionDescription, saveSessionDescription } from '@/lib/sessions';
 import { useSuccessToast } from '@/components/SuccessToast';
+import { ClientDraftStatus, useClientDraft } from '@/components/useClientDraft';
+import { clientDraftKey } from '@/lib/clientDrafts';
 
 const cardGrid = 'mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4';
 
@@ -18,6 +20,9 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
   const { user } = useAuth();
   const { showSuccess } = useSuccessToast();
   const [description, setDescription] = useState('');
+  const [serverDescription, setServerDescription] = useState('');
+  const [descriptionVersion, setDescriptionVersion] = useState<string | null>(null);
+  const [descriptionLoaded, setDescriptionLoaded] = useState(false);
   const [files, setFiles] = useState<SessionFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -25,17 +30,36 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
   const [open, setOpen] = useState<SessionFile | null>(null);
   const [pendingRemove, setPendingRemove] = useState<SessionFile | null>(null);
   const [pendingDownload, setPendingDownload] = useState<SessionFile | null>(null);
+  const descriptionDraftKey = user ? clientDraftKey(user.uid, `session-description-${studyId}-${date}`) : 'komunyon:form-draft:session:anonymous';
+  const { status: descriptionDraftStatus, markSaved: markDescriptionSaved, discardDraft: discardDescriptionDraft } = useClientDraft({
+    storageKey: descriptionDraftKey,
+    initialValue: serverDescription,
+    value: description,
+    setValue: setDescription,
+    sourceVersion: descriptionVersion,
+    enabled: descriptionLoaded,
+  });
 
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setDescriptionLoaded(false);
     setError(null);
     void loadSessionDescription(studyId, date)
-      .then((text) => {
-        if (active) setDescription(text);
+      .then((result) => {
+        if (!active) return;
+        setServerDescription(result.text);
+        setDescription(result.text);
+        setDescriptionVersion(result.updatedAt);
+        setDescriptionLoaded(true);
       })
       .catch((failure: unknown) => {
-        if (active) setError(actionError(failure));
+        if (!active) return;
+        setError(actionError(failure));
+        setServerDescription('');
+        setDescription('');
+        setDescriptionVersion(null);
+        setDescriptionLoaded(true);
       });
     void listSessionFiles(studyId, date)
       .then((next) => {
@@ -66,6 +90,8 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
     try {
       await saveSessionDescription(studyId, date, description);
       setDescription(description.trim());
+      setServerDescription(description.trim());
+      markDescriptionSaved(description.trim());
       showSuccess('Session description saved.');
     } catch (failure) {
       setError(actionError(failure));
@@ -129,6 +155,8 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
               placeholder="What happened in this session?"
               className={`${fieldClass} mt-3`}
             />
+            <p className="mt-2 text-xs leading-relaxed text-muted">Description drafts are saved in this browser tab for up to 7 days. They are not visible to others until saved and are cleared after saving, signing out, or closing the tab.</p>
+            <ClientDraftStatus status={descriptionDraftStatus} onDiscard={discardDescriptionDraft} />
             <button
               type="button"
               onClick={() => void saveDescription()}

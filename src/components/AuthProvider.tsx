@@ -15,6 +15,7 @@ import {
 import { uploadProfilePhoto } from '@/lib/photos';
 import { loadOrCreateProfile, saveUserProfile } from '@/lib/users';
 import type { UserProfile } from '@/types';
+import { clearClientDrafts } from '@/lib/clientDrafts';
 
 interface ProfileInput {
   fullName: string;
@@ -137,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signOutUser() {
         const { auth } = getFirebase();
         await signOut(auth);
+        if (user) clearClientDrafts(user.uid);
         setUser(null);
         setProfile(null);
       },
