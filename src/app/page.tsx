@@ -130,7 +130,7 @@ export default function HomePage() {
             <div className="max-w-2xl">
               <p className="inline-flex items-center gap-2 rounded-full border border-[#314540] bg-[#14201f] px-3 py-1.5 text-xs font-medium tracking-wide text-[#9bd9ce]">
                 <span aria-hidden="true" className="size-1.5 rounded-full bg-[#70c2b4]" />
-                LOCAL EVENTS · THE HAGUE
+                LOCAL EVENTS · THE HAGUE · COMING TO YOUR CITY SOON!
               </p>
               <h1 className="mt-6 font-serif text-4xl font-normal leading-[1.08] tracking-tight text-[#f0f2f4] sm:text-5xl lg:text-6xl">
                 Find an event. Find your people.
