@@ -40,7 +40,7 @@ export function StudyCardView({
   return (
     <div
       data-testid="study-card"
-      className="relative flex h-[320px] w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-card p-4 shadow-sm transition duration-200 hover:border-canal/40 hover:shadow-md"
+      className="relative flex h-[320px] w-full min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-card p-4 transition hover:border-canal/40"
     >
       <Link href={`/studies/${study.id}`} className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="flex h-10 shrink-0 items-start justify-between gap-3">
@@ -64,52 +64,47 @@ export function StudyCardView({
           <div data-testid="card-tags" className="mt-0.5 h-12 overflow-hidden">
             <TagList tags={study.tags} />
           </div>
-          <div data-testid="card-date" className="mt-1 flex h-5 min-w-0 items-center gap-2 overflow-hidden rounded-md bg-sand/45 px-2.5 whitespace-nowrap text-sm text-muted">
-            <span className="shrink-0 border-r border-line pr-2 text-[9px] font-semibold tracking-[0.12em] text-muted">STARTS</span>
+          <div data-testid="card-date" className="mt-1 h-5 overflow-hidden whitespace-nowrap text-sm text-muted">
             {canceledDate ? (
-              <p className="truncate">{formatDdMmYyyy(canceledDate)} · {study.time} · <span className="text-clay">Canceled</span></p>
+              <p>{formatDdMmYyyy(canceledDate)} · {study.time} · <span className="text-clay">Canceled</span></p>
             ) : (
-              <p className="truncate">{scheduleText}</p>
+              <p>{scheduleText}</p>
             )}
           </div>
         </div>
 
         <p
           data-testid="card-note"
-          className={`h-9 shrink-0 overflow-hidden rounded-md px-2.5 py-1.5 text-sm leading-[18px] line-clamp-2 ${canceledDate ? 'bg-canal/5 text-canal' : note ? 'bg-clay/5 text-clay' : 'bg-transparent text-muted'}`}
+          className={`h-9 shrink-0 overflow-hidden text-sm leading-[18px] line-clamp-2 ${canceledDate ? 'text-canal' : note ? 'text-clay' : 'text-muted'}`}
         >
           {note || '\u00a0'}
         </p>
+
+        <p
+          data-testid="card-footer"
+          className={`mt-auto h-10 shrink-0 overflow-hidden text-[13px] leading-5 tabular-nums line-clamp-2 ${hasJoinAction ? 'pr-36' : ''}`}
+        >
+          <span className="font-medium text-ink">
+            {sessionDate ? sessionTaken : past ? 'Past' : study.approvedCount} {past ? '' : `/ ${study.maxCapacity}`}
+          </span>
+          {!past ? <span className="text-muted"> · {spotsLabel(sessionDate ? sessionTaken : study.approvedCount, study.maxCapacity)}</span> : null}
+          {hosting && !study.isPublic ? <span className="text-muted"> · Private</span> : null}
+          {hosting ? <span className="text-canal"> · Your study</span> : null}
+          {joined && !canceledDate ? <span className="text-canal"> · Joined</span> : null}
+        </p>
       </Link>
 
-      <div
-        data-testid="card-footer"
-        className={`relative mt-auto flex h-10 shrink-0 items-center overflow-hidden rounded-lg border border-line/70 bg-sand/35 px-3 py-1.5 ${hasJoinAction ? 'pr-36' : ''}`}
-      >
-        <Link href={`/studies/${study.id}`} className="block min-w-0 flex-1 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canal">
-          <p className="text-[9px] font-semibold leading-3 tracking-[0.12em] text-muted">{past ? 'STATUS' : 'THIS SESSION'}</p>
-          <p className="truncate text-xs leading-4 tabular-nums">
-            <span className="font-semibold text-ink">
-              {sessionDate ? sessionTaken : past ? 'Past' : study.approvedCount} {past ? '' : `/ ${study.maxCapacity}`}
-            </span>
-            {!past ? <span className="text-muted"> · {spotsLabel(sessionDate ? sessionTaken : study.approvedCount, study.maxCapacity)}</span> : null}
-            {hosting && !study.isPublic ? <span className="text-muted"> · Private</span> : null}
-            {hosting ? <span className="text-canal"> · Your study</span> : null}
-            {joined && !canceledDate ? <span className="text-canal"> · Joined</span> : null}
-          </p>
-        </Link>
-        {hasJoinAction ? (
-          <button
-            data-testid="card-join"
-            type="button"
-            className="absolute bottom-1 right-1 inline-flex h-8 items-center justify-center rounded-md border border-canal/35 bg-canal/10 px-3 text-sm font-semibold text-canal transition hover:bg-canal/15 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={onRequestJoin}
-            disabled={joinBusy || joinRequested}
-          >
-            {joinRequested ? 'Waiting for approval' : 'Join'}
-          </button>
-        ) : null}
-      </div>
+      {hasJoinAction ? (
+        <button
+          data-testid="card-join"
+          type="button"
+          className="absolute bottom-4 right-4 whitespace-nowrap text-sm text-canal underline decoration-1 underline-offset-2 disabled:opacity-50"
+          onClick={onRequestJoin}
+          disabled={joinBusy || joinRequested}
+        >
+          {joinRequested ? 'Waiting for approval' : 'Join'}
+        </button>
+      ) : null}
     </div>
   );
 }
