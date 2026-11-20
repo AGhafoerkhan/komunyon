@@ -109,6 +109,11 @@ The old US-central function may produce a harmless cleanup warning because the a
 - Use the existing dark-mode colors and transition behavior.
 - Keep phone numbers underlined/clickable and offer Phone or WhatsApp where already implemented.
 
+## Future ideas (not implemented)
+
+- **Instagram event post:** Add an optional, off-by-default `Create Instagram post` choice when hosting an event. First version should prepare an editable caption and shareable graphic after event creation, with host preview and manual share/download. Consider direct publishing later, after account connection and explicit host confirmation. Only public event details may be included; never expose the exact address or attendee/contact information. Keep this unavailable for private events.
+- **Bible-study audio transcription:** Explore OpenRouter as a possible audio-to-text provider. This is a research note, not an implementation decision.
+
 ## Development rules
 
 - Workspace: `C:\github\projects\komunyon`
