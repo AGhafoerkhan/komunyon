@@ -561,6 +561,10 @@ export async function archiveStudy(studyId: string): Promise<void> {
   await httpsCallable(getFirebase().functions, 'archiveHostedStudy')({ studyId });
 }
 
+export async function unarchiveStudy(studyId: string): Promise<void> {
+  await httpsCallable(getFirebase().functions, 'unarchiveHostedStudy')({ studyId });
+}
+
 export async function setSessionCanceled(studyId: string, date: string, canceled: boolean): Promise<void> {
   await updateDoc(studyRef(studyId), {
     skippedDates: canceled ? arrayUnion(date) : arrayRemove(date),

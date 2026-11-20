@@ -383,6 +383,20 @@ exports.archiveHostedStudy = onCall({ region: 'europe-west4' }, async (request) 
   const snapshot = await studyRef.get();
   if (!snapshot.exists) throw new HttpsError('not-found', 'Event not found.');
   if (snapshot.data().hostId !== request.auth.uid) throw new HttpsError('permission-denied', 'Only the host can archive this event.');
-  await studyRef.update({ archived: true, isPublic: false, updatedAt: new Date().toISOString() });
+  await studyRef.update({ archived: true, updatedAt: new Date().toISOString() });
+  return { success: true };
+});
+
+exports.unarchiveHostedStudy = onCall({ region: 'europe-west4' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to restore this event.');
+  const { studyId } = request.data || {};
+  if (typeof studyId !== 'string' || studyId.length === 0 || studyId.length > 128 || studyId.includes('/')) {
+    throw new HttpsError('invalid-argument', 'Invalid study ID.');
+  }
+  const studyRef = db.doc(`studies/${studyId}`);
+  const snapshot = await studyRef.get();
+  if (!snapshot.exists) throw new HttpsError('not-found', 'Event not found.');
+  if (snapshot.data().hostId !== request.auth.uid) throw new HttpsError('permission-denied', 'Only the host can restore this event.');
+  await studyRef.update({ archived: false, isPublic: true, updatedAt: new Date().toISOString() });
   return { success: true };
 });

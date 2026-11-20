@@ -25,6 +25,7 @@ import {
   declineInvite,
   declineMember,
   archiveStudy,
+  unarchiveStudy,
   leaveStudy,
   loadJoinRequests,
   subscribeCoHostIds,
@@ -60,6 +61,7 @@ function uniqueMembers(members: JoinRequest[]): JoinRequest[] {
 type ConfirmAction =
   | { kind: 'leave' }
   | { kind: 'archive' }
+  | { kind: 'unarchive' }
   | { kind: 'remove'; userId: string; name: string };
 
 function roleFor(study: BibleStudy, uid: string): Role {
@@ -418,7 +420,7 @@ export default function StudyPage() {
           onRequest={() => void run('join', () => requestToJoin(study.id, user.uid))}
           onCancel={() => void run('cancel', () => cancelRequest(study.id, user.uid))}
           onAskLeave={() => ask({ kind: 'leave' })}
-          onAskArchive={() => ask({ kind: 'archive' })}
+          onAskArchive={() => ask({ kind: study.archived ? 'unarchive' : 'archive' })}
           onApprove={(request) => void run(`approve:${request.userId}`, () => approveMember(study, request.userId))}
           onDecline={(request) => void run(`decline:${request.userId}`, () => declineMember(study.id, request.userId))}
           onAskRemove={(request) => ask({ kind: 'remove', userId: request.userId, name: request.fullName })}
@@ -447,6 +449,17 @@ export default function StudyPage() {
               }, {
                 action: 'archive event',
                 operation: 'archive event',
+                target: `studies/${study.id}`,
+              });
+              return;
+            }
+            if (confirm.kind === 'unarchive') {
+              void run('unarchive', async () => {
+                await unarchiveStudy(study.id);
+                router.push('/dashboard');
+              }, {
+                action: 'restore event',
+                operation: 'restore archived event',
                 target: `studies/${study.id}`,
               });
               return;
@@ -647,6 +660,13 @@ function dialogCopy(action: ConfirmAction, studyTitle: string): { title: string;
       title: 'Archive this event?',
       body: `${studyTitle} will leave active listings and remain available in Archived.`,
       confirmLabel: 'Archive event',
+    };
+  }
+  if (action.kind === 'unarchive') {
+    return {
+      title: 'Restore this event?',
+      body: `${studyTitle} will return to active event listings.`,
+      confirmLabel: 'Restore event',
     };
   }
   return {
@@ -1182,7 +1202,7 @@ function StudyBody({
               </Link>
               {role === 'host' ? (
                 <Button className="w-full" variant="danger" onClick={onAskArchive} disabled={busy !== null}>
-                  Archive event
+                  {study.archived ? 'Restore event' : 'Archive event'}
                 </Button>
               ) : null}
             </div>
