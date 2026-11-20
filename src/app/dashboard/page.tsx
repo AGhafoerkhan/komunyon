@@ -21,9 +21,11 @@ export default function DashboardPage() {
   const [studies, setStudies] = useState<BibleStudy[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [studyFilter, setStudyFilter] = useState<'upcoming' | 'past'>('upcoming');
-  const upcomingStudies = studies.filter((study) => !isPastStudy(study));
-  const pastStudies = studies.filter((study) => isPastStudy(study));
+  const [studyFilter, setStudyFilter] = useState<'upcoming' | 'past' | 'archived'>('upcoming');
+  const activeStudies = studies.filter((study) => !study.archived);
+  const upcomingStudies = activeStudies.filter((study) => !isPastStudy(study));
+  const pastStudies = activeStudies.filter((study) => isPastStudy(study));
+  const archivedStudies = studies.filter((study) => study.archived);
 
   useEffect(() => {
     if (!user) return;
@@ -36,7 +38,7 @@ export default function DashboardPage() {
       if (!hasFirstResult) return;
       const byId = new Map<string, BibleStudy>();
       for (const study of publicStudies) {
-        if (study.isPublic) byId.set(study.id, study);
+        if (study.isPublic && !study.archived) byId.set(study.id, study);
       }
       for (const study of hostedStudies) byId.set(study.id, study);
       for (const study of memberStudies) byId.set(study.id, study);
@@ -126,9 +128,10 @@ export default function DashboardPage() {
         <section>
           <label className="mb-4 flex max-w-xs items-center gap-3">
             <span className="shrink-0 text-sm font-medium">Show</span>
-            <select className={fieldClass} value={studyFilter} onChange={(event) => setStudyFilter(event.target.value as 'upcoming' | 'past')}>
+            <select className={fieldClass} value={studyFilter} onChange={(event) => setStudyFilter(event.target.value as 'upcoming' | 'past' | 'archived')}>
               <option value="upcoming">Upcoming</option>
               <option value="past">Past</option>
+              <option value="archived">Archived</option>
             </select>
           </label>
           {studyFilter === 'upcoming' ? (
@@ -137,12 +140,18 @@ export default function DashboardPage() {
                 {upcomingStudies.map((study) => <li key={study.id} className="min-w-0"><StudyCard study={study} viewerId={user.uid} /></li>)}
               </ul>
             ) : <p className="text-sm text-muted">No upcoming events.</p>
-          ) : (
+          ) : studyFilter === 'past' ? (
             pastStudies.length ? (
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {pastStudies.map((study) => <li key={study.id} className="min-w-0"><StudyCard study={study} viewerId={user.uid} /></li>)}
               </ul>
             ) : <p className="text-sm text-muted">No past events.</p>
+          ) : (
+            archivedStudies.length ? (
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {archivedStudies.map((study) => <li key={study.id} className="min-w-0"><StudyCard study={study} viewerId={user.uid} /></li>)}
+              </ul>
+            ) : <p className="text-sm text-muted">No archived events.</p>
           )}
         </section>
       )}

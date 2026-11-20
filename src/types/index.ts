@@ -58,6 +58,7 @@ export interface BibleStudy {
   /** False hides the study from everyone except the host. */
   isPublic: boolean;
   showMemberContacts: boolean;
+  archived: boolean;
   /** Public aggregate; individual member IDs are stored in the members subcollection. */
   approvedCount: number;
   /** Authorized, client-side view of the membership documents. Not stored on the study root. */

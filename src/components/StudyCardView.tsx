@@ -10,6 +10,7 @@ export interface StudyCardViewProps {
   hosting: boolean;
   joined: boolean;
   past: boolean;
+  archived?: boolean;
   canceledDate: string | null;
   scheduleText: string;
   note: string;
@@ -28,6 +29,7 @@ export function StudyCardView({
   hosting,
   joined,
   past,
+  archived = false,
   canceledDate,
   scheduleText,
   note,
@@ -39,7 +41,7 @@ export function StudyCardView({
   onRequestJoinWarm,
   onRequestJoin,
 }: StudyCardViewProps) {
-  const hasJoinAction = !past && !hosting && !joined;
+  const hasJoinAction = !past && !archived && !hosting && !joined;
   const studyHref = href ?? `/studies/${study.id}`;
 
   return (
@@ -94,7 +96,8 @@ export function StudyCardView({
           </span>
           {!past ? <span className="text-muted"> · {spotsLabel(sessionDate ? sessionTaken : study.approvedCount, study.maxCapacity)}</span> : null}
           {hosting && !study.isPublic ? <span className="text-muted"> · Private</span> : null}
-          {hosting ? <span className="text-canal"> · Your study</span> : null}
+          {hosting ? <span className="text-canal"> · Your event</span> : null}
+          {archived ? <span className="text-muted"> · Archived</span> : null}
           {joined && !canceledDate ? <span className="text-canal"> · Joined</span> : null}
         </p>
       </Link>

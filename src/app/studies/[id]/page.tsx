@@ -24,7 +24,7 @@ import {
   cancelRequest,
   declineInvite,
   declineMember,
-  deleteStudy,
+  archiveStudy,
   leaveStudy,
   loadJoinRequests,
   subscribeCoHostIds,
@@ -59,7 +59,7 @@ function uniqueMembers(members: JoinRequest[]): JoinRequest[] {
 
 type ConfirmAction =
   | { kind: 'leave' }
-  | { kind: 'delete' }
+  | { kind: 'archive' }
   | { kind: 'remove'; userId: string; name: string };
 
 function roleFor(study: BibleStudy, uid: string): Role {
@@ -418,7 +418,7 @@ export default function StudyPage() {
           onRequest={() => void run('join', () => requestToJoin(study.id, user.uid))}
           onCancel={() => void run('cancel', () => cancelRequest(study.id, user.uid))}
           onAskLeave={() => ask({ kind: 'leave' })}
-          onAskDelete={() => ask({ kind: 'delete' })}
+          onAskArchive={() => ask({ kind: 'archive' })}
           onApprove={(request) => void run(`approve:${request.userId}`, () => approveMember(study, request.userId))}
           onDecline={(request) => void run(`decline:${request.userId}`, () => declineMember(study.id, request.userId))}
           onAskRemove={(request) => ask({ kind: 'remove', userId: request.userId, name: request.fullName })}
@@ -440,13 +440,13 @@ export default function StudyPage() {
               });
               return;
             }
-            if (confirm.kind === 'delete') {
-              void run('delete', async () => {
-                await deleteStudy(study.id);
+            if (confirm.kind === 'archive') {
+              void run('archive', async () => {
+                await archiveStudy(study.id);
                 router.push('/dashboard');
               }, {
-                action: 'delete study',
-                operation: 'delete study files and Firestore data',
+                action: 'archive event',
+                operation: 'archive event',
                 target: `studies/${study.id}`,
               });
               return;
@@ -642,11 +642,11 @@ function dialogCopy(action: ConfirmAction, studyTitle: string): { title: string;
       confirmLabel: 'Leave group',
     };
   }
-  if (action.kind === 'delete') {
+  if (action.kind === 'archive') {
     return {
-      title: 'Delete this event?',
-      body: `${studyTitle} will be removed for everyone, including the address.`,
-      confirmLabel: 'Delete event',
+      title: 'Archive this event?',
+      body: `${studyTitle} will leave active listings and remain available in Archived.`,
+      confirmLabel: 'Archive event',
     };
   }
   return {
@@ -680,7 +680,7 @@ function StudyBody({
   onRequest,
   onCancel,
   onAskLeave,
-  onAskDelete,
+  onAskArchive,
   onApprove,
   onDecline,
   onAskRemove,
@@ -708,7 +708,7 @@ function StudyBody({
   onRequest: () => void;
   onCancel: () => void;
   onAskLeave: () => void;
-  onAskDelete: () => void;
+  onAskArchive: () => void;
   onApprove: (request: JoinRequest) => void;
   onDecline: (request: JoinRequest) => void;
   onAskRemove: (request: JoinRequest) => void;
@@ -1181,8 +1181,8 @@ function StudyBody({
                 Edit study
               </Link>
               {role === 'host' ? (
-                <Button className="w-full" variant="danger" onClick={onAskDelete} disabled={busy !== null}>
-                  Delete study
+                <Button className="w-full" variant="danger" onClick={onAskArchive} disabled={busy !== null}>
+                  Archive event
                 </Button>
               ) : null}
             </div>

@@ -149,6 +149,7 @@ service cloud.firestore {
         'area',
         'isPublic',
         'showMemberContacts',
+        'archived',
         'approvedCount',
         'skippedDates',
         'createdAt',
@@ -242,6 +243,7 @@ service cloud.firestore {
         && isHagueArea(data.area)
         && (!data.keys().hasAny(['isPublic']) || data.isPublic is bool)
         && (!data.keys().hasAny(['showMemberContacts']) || data.showMemberContacts is bool)
+        && (!data.keys().hasAny(['archived']) || data.archived is bool)
         && data.approvedCount is int
         && data.approvedCount >= 0
         && validSkippedDates(data)

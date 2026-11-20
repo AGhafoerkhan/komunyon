@@ -67,6 +67,7 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
   if (typeof data.maxCapacity !== 'number' || !Number.isInteger(data.maxCapacity)) return null;
   if (typeof data.area !== 'string' || !isHagueArea(data.area)) return null;
   if (data.isPublic !== undefined && typeof data.isPublic !== 'boolean') return null;
+  if (data.archived !== undefined && typeof data.archived !== 'boolean') return null;
   if (data.approvedCount !== undefined && (!Number.isInteger(data.approvedCount) || (data.approvedCount as number) < 0)) return null;
   // These arrays are accepted only as a legacy-read path during staged migration.
   if (data.pendingUserIds !== undefined && !isStringArray(data.pendingUserIds)) return null;
@@ -97,6 +98,7 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
     area: data.area,
     isPublic: data.isPublic !== false,
     showMemberContacts: data.showMemberContacts !== false,
+    archived: data.archived === true,
     approvedCount: typeof data.approvedCount === 'number' ? data.approvedCount : (Array.isArray(data.approvedUserIds) ? data.approvedUserIds.length : 0),
     pendingUserIds: isStringArray(data.pendingUserIds) ? data.pendingUserIds : [],
     approvedUserIds: isStringArray(data.approvedUserIds) ? data.approvedUserIds : [],

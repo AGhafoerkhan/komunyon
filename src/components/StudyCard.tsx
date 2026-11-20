@@ -98,9 +98,10 @@ export function StudyCard({ study, viewerId }: { study: BibleStudy; viewerId: st
       hosting={hosting}
       joined={joined}
       past={past}
+      archived={study.archived}
       canceledDate={canceledDate}
       scheduleText={formatSchedule(study)}
-      note={past ? 'This study has ended.' : canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || ''}
+      note={study.archived ? 'This event is archived.' : past ? 'This event has ended.' : canceledDate ? `Next session: ${formatSchedule(study)}` : cancellationNote(study) || ''}
       displayedHostName={displayedHostName}
       sessionDate={sessionDate}
       sessionTaken={sessionDate ? sessionTaken : taken}

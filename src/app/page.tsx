@@ -26,6 +26,7 @@ const exampleStudy: BibleStudy = {
   area: 'Centrum',
   isPublic: true,
   showMemberContacts: false,
+  archived: false,
   approvedCount: 4,
   pendingUserIds: [],
   approvedUserIds: [],

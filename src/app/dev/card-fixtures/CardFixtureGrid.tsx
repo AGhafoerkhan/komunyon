@@ -24,6 +24,7 @@ function makeStudy(overrides: Partial<BibleStudy> = {}): BibleStudy {
     area: 'Scheveningen, The Hague',
     isPublic: true,
     showMemberContacts: true,
+    archived: false,
     approvedCount: 8,
     pendingUserIds: [],
     approvedUserIds: [],

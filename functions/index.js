@@ -89,6 +89,7 @@ exports.createHostedStudy = onCall({ region: 'europe-west4' }, async (request) =
       area,
       isPublic,
       showMemberContacts,
+      archived: false,
       approvedCount: 0,
       skippedDates: [],
       createdAt: now,
@@ -276,7 +277,7 @@ exports.changeStudyMembership = onCall({ region: 'europe-west4' }, async (reques
 
     switch (action) {
       case 'request':
-        if (isHost || study.isPublic === false || member || noticeSnap.data()?.type === 'removed'
+        if (isHost || study.archived === true || study.isPublic === false || member || noticeSnap.data()?.type === 'removed'
           || !targetProfileSnap?.exists || targetProfileSnap.data().publicProfile !== true) {
           throw new HttpsError('failed-precondition', 'This event is not available for a join request.');
         }
@@ -369,5 +370,19 @@ exports.deleteHostedStudy = onCall({ region: 'europe-west4' }, async (request) =
 
   await getStorage().bucket().deleteFiles({ prefix: `sessions/${studyId}/`, force: true });
   await db.recursiveDelete(studyRef);
+  return { success: true };
+});
+
+exports.archiveHostedStudy = onCall({ region: 'europe-west4' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to archive this event.');
+  const { studyId } = request.data || {};
+  if (typeof studyId !== 'string' || studyId.length === 0 || studyId.length > 128 || studyId.includes('/')) {
+    throw new HttpsError('invalid-argument', 'Invalid study ID.');
+  }
+  const studyRef = db.doc(`studies/${studyId}`);
+  const snapshot = await studyRef.get();
+  if (!snapshot.exists) throw new HttpsError('not-found', 'Event not found.');
+  if (snapshot.data().hostId !== request.auth.uid) throw new HttpsError('permission-denied', 'Only the host can archive this event.');
+  await studyRef.update({ archived: true, isPublic: false, updatedAt: new Date().toISOString() });
   return { success: true };
 });
