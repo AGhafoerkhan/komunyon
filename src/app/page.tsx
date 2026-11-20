@@ -138,6 +138,7 @@ export default function HomePage() {
               <p className="mt-6 max-w-xl text-base leading-relaxed text-[#b5bdca] sm:text-lg">
                 Komunyon brings local events together. Find a study, prayer gathering, communion, or shared meal—or host an event of your own.
               </p>
+              <p className="mt-3 text-sm font-medium text-[#70c2b4]">Coming to your city soon!</p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <SignInButton busy={busy} unavailable={signInUnavailable} onWarm={prepareGoogleSignIn} onSignIn={() => void signIn()} />
                 <a href="#how-it-works" className="inline-flex min-h-12 items-center justify-center rounded-md px-4 text-sm font-medium text-[#c6ced9] underline decoration-[#53606e] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4db3a2]">
