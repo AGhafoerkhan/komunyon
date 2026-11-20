@@ -27,6 +27,7 @@ export interface FirebaseClient {
 }
 
 function readConfig() {
+  // Keep Firebase targets deployment-configurable; production settings are supplied by Vercel.
   const configuredDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '';
   const onProductionSite =
     typeof window !== 'undefined' && window.location.hostname === 'komunyon.vercel.app';
