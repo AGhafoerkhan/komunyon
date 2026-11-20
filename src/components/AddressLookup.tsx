@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { fieldClass } from '@/components/ui';
 
 const SEARCH_URL = 'https://api.pdok.nl/kadaster/location-api/v1/search';
-const MIN_QUERY_LENGTH = 4;
+const MIN_QUERY_LENGTH = 1;
 
 interface AddressSuggestion {
   id: string;
