@@ -32,8 +32,9 @@ function parseSuggestions(payload: unknown): AddressSuggestion[] {
 
   return payload.features.flatMap((feature): AddressSuggestion[] => {
     if (!isRecord(feature) || !isRecord(feature.properties)) return [];
-    const { id, display_name: label, href } = feature.properties;
-    if (typeof id !== 'string' || typeof label !== 'string' || !Array.isArray(href)) return [];
+    const { id } = feature;
+    const { collection_id: collectionId, display_name: label, href } = feature.properties;
+    if (typeof id !== 'string' || collectionId !== 'adres' || typeof label !== 'string' || !Array.isArray(href)) return [];
     if (!/(?:s[’']?-gravenhage|den\s+haag|the\s+hague)/i.test(label)) return [];
     const detailUrl = href.find((candidate): candidate is string => typeof candidate === 'string');
     if (!detailUrl) return [];
@@ -248,7 +249,6 @@ export function AddressLookup({
       <p id={`${listboxId}-help`} role="status" aria-live="polite" className={`mt-1.5 text-xs leading-relaxed ${status === 'selected' ? 'text-moss' : status === 'empty' || status === 'error' ? 'text-clay' : 'text-muted'}`}>
         {statusText}
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted">Search official Dutch address records and select the matching address.</p>
     </div>
   );
 }
