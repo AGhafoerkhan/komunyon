@@ -242,6 +242,21 @@ export default function HomePage() {
           <p className="border-t border-[#2b303b] pt-4 text-xs">© 2026 Komunyon. All rights reserved.</p>
         </div>
       </footer>
+
+      <button
+        type="button"
+        aria-label="Sign in with Google"
+        title="Sign in with Google"
+        onPointerDown={prepareGoogleSignIn}
+        onClick={() => void signIn()}
+        disabled={busy || signInUnavailable}
+        className="group fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 flex size-14 items-center justify-center rounded-full border border-[#d6dae0] bg-white text-[#202124] shadow-[0_8px_28px_rgba(0,0,0,0.38)] transition duration-200 hover:scale-105 hover:shadow-[0_10px_34px_rgba(0,0,0,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4db3a2] disabled:cursor-not-allowed disabled:opacity-60 sm:bottom-[max(1.5rem,env(safe-area-inset-bottom))] sm:right-6"
+      >
+        {busy ? <Spinner className="text-[#4285F4]" /> : <GoogleMark />}
+        <span className="pointer-events-none absolute right-[calc(100%+0.65rem)] whitespace-nowrap rounded-md border border-[#3a414c] bg-[#171a20] px-3 py-2 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          Sign in with Google
+        </span>
+      </button>
     </div>
   );
 }
