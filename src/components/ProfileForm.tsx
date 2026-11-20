@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Avatar, Button, Field, FormError, Spinner, fieldClass } from '@/components/ui';
 import { HAGUE_AREAS } from '@/lib/hague';
@@ -9,6 +9,7 @@ import { LIMITS } from '@/lib/limits';
 import { COUNTRIES, citiesIn } from '@/lib/places';
 import { CHECK_AGAIN, validateProfile, type ProfileField } from '@/lib/validate';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
+import { jumpToFirstInvalidField } from '@/lib/forms';
 
 export function ProfileForm({
   mode,
@@ -53,7 +54,14 @@ export function ProfileForm({
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const listedCities = citiesIn(country);
+
+  useEffect(() => {
+    if (Object.keys(fields).length === 0) return;
+    const frame = window.requestAnimationFrame(() => jumpToFirstInvalidField(formRef.current));
+    return () => window.cancelAnimationFrame(frame);
+  }, [fields]);
 
   useEffect(() => {
     if (!photo) return;
@@ -129,7 +137,7 @@ export function ProfileForm({
   }
 
   return (
-    <form onSubmit={(event) => void onSubmit(event)} className="mt-6 flex flex-col gap-5" noValidate>
+    <form ref={formRef} onSubmit={(event) => void onSubmit(event)} className="mt-6 flex flex-col gap-5" noValidate>
       {saved && mode === 'edit' ? (
         <p className="rounded-md border border-moss/30 bg-moss/5 px-3 py-2 text-sm text-moss">Profile saved.</p>
       ) : null}
@@ -156,6 +164,8 @@ export function ProfileForm({
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="sr-only"
+              aria-label="Profile picture"
+              aria-invalid={Boolean(fields.photo)}
               onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
             />
           </label>
@@ -170,6 +180,7 @@ export function ProfileForm({
       >
         <input
           className={fieldClass}
+          aria-invalid={Boolean(fields.fullName)}
           value={fullName}
           onChange={(event) => setFullName(event.target.value)}
           autoComplete="name"
@@ -181,6 +192,7 @@ export function ProfileForm({
       <Field label="Age" error={fields.age}>
         <input
           className={fieldClass}
+          aria-invalid={Boolean(fields.age)}
           inputMode="numeric"
           value={age}
           onChange={(event) => setAge(event.target.value)}
@@ -191,7 +203,7 @@ export function ProfileForm({
       </Field>
 
       <Field label="Country" error={fields.country}>
-        <select className={fieldClass} value={country} onChange={(event) => chooseCountry(event.target.value)} required>
+        <select className={fieldClass} value={country} aria-invalid={Boolean(fields.country)} onChange={(event) => chooseCountry(event.target.value)} required>
           {COUNTRIES.map((item) => (
             <option key={item} value={item}>
               {item}
@@ -204,6 +216,7 @@ export function ProfileForm({
         {listedCities ? (
           <select
             className={fieldClass}
+            aria-invalid={Boolean(!otherCity && fields.city)}
             value={otherCity ? '__other__' : city}
             onChange={(event) => chooseCity(event.target.value)}
             required
@@ -218,6 +231,7 @@ export function ProfileForm({
         ) : (
           <input
             className={fieldClass}
+            aria-invalid={Boolean(fields.city)}
             value={city}
             onChange={(event) => setCity(event.target.value)}
             autoComplete="address-level2"
@@ -231,6 +245,7 @@ export function ProfileForm({
         <Field label="Your city" error={fields.city}>
           <input
             className={fieldClass}
+            aria-invalid={Boolean(fields.city)}
             value={city}
             onChange={(event) => setCity(event.target.value)}
             autoComplete="address-level2"
@@ -244,6 +259,7 @@ export function ProfileForm({
         <Field label="Neighbourhood" error={fields.neighbourhood}>
           <select
             className={fieldClass}
+            aria-invalid={Boolean(fields.neighbourhood)}
             value={neighbourhood}
             onChange={(event) => setNeighbourhood(event.target.value)}
             required
@@ -260,6 +276,7 @@ export function ProfileForm({
         <Field label="Neighbourhood" hint="Add it if you know it." error={fields.neighbourhood}>
           <input
             className={fieldClass}
+            aria-invalid={Boolean(fields.neighbourhood)}
             value={neighbourhood}
             onChange={(event) => setNeighbourhood(event.target.value)}
             autoComplete="address-level3"
@@ -271,6 +288,7 @@ export function ProfileForm({
       <Field label="Bio" hint="Optional. Church background, languages, or anything a host should know." error={fields.bio}>
         <textarea
           className={`${fieldClass} min-h-32 resize-y`}
+          aria-invalid={Boolean(fields.bio)}
           value={bio}
           onChange={(event) => setBio(event.target.value)}
           maxLength={LIMITS.bioMax}
@@ -281,6 +299,7 @@ export function ProfileForm({
       <Field label="Phone number" hint="Include the country code, for example +31 6 1234 5678." error={fields.phone}>
         <input
           className={fieldClass}
+          aria-invalid={Boolean(fields.phone)}
           type="tel"
           inputMode="tel"
           value={phone}

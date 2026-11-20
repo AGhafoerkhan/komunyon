@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Field, FormError, Spinner, fieldClass } from '@/components/ui';
 import { actionError } from '@/lib/errors';
 import { HAGUE_AREAS } from '@/lib/hague';
@@ -9,6 +9,7 @@ import { DAY_FILTERS, dayName, formatDdMmYyyy, upcomingSessions } from '@/lib/fo
 import { LIMITS } from '@/lib/limits';
 import { sortTags, STUDY_TAGS, type StudyTag } from '@/lib/tags';
 import { CHECK_AGAIN, validateStudyDraft, type StudyField } from '@/lib/validate';
+import { jumpToFirstInvalidField } from '@/lib/forms';
 import type { DayOfWeek, StudyDraft, StudyFormat } from '@/types';
 
 const EMPTY: StudyDraft = {
@@ -43,6 +44,13 @@ export function StudyForm({
   const [fields, setFields] = useState<Partial<Record<StudyField, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (Object.keys(fields).length === 0) return;
+    const frame = window.requestAnimationFrame(() => jumpToFirstInvalidField(formRef.current));
+    return () => window.cancelAnimationFrame(frame);
+  }, [fields]);
 
   function patch(partial: Partial<StudyDraft>) {
     setDraft((current) => ({ ...current, ...partial }));
@@ -77,7 +85,7 @@ export function StudyForm({
   }
 
   return (
-    <form onSubmit={(event) => void handleSubmit(event)} className="mt-6 flex flex-col gap-8 pb-16" noValidate>
+    <form ref={formRef} onSubmit={(event) => void handleSubmit(event)} className="mt-6 flex flex-col gap-8 pb-16" noValidate>
       <section className="flex flex-col gap-4">
         <div>
           <h2 className="font-serif text-xl">The gathering</h2>
@@ -87,6 +95,7 @@ export function StudyForm({
         <Field label="Title" hint="At least 6 characters." error={fields.title}>
           <input
             className={fieldClass}
+            aria-invalid={Boolean(fields.title)}
             value={draft.title}
             maxLength={LIMITS.titleMax}
             onChange={(event) => patch({ title: event.target.value })}
@@ -98,6 +107,7 @@ export function StudyForm({
         <Field label="Description" hint="At least 12 characters." error={fields.description}>
           <textarea
             className={`${fieldClass} min-h-28 resize-y`}
+            aria-invalid={Boolean(fields.description)}
             value={draft.description}
             maxLength={LIMITS.descriptionMax}
             onChange={(event) => patch({ description: event.target.value })}
@@ -111,7 +121,13 @@ export function StudyForm({
           <p className="mt-1 text-xs leading-relaxed text-muted">
             Pick every label that fits. A prayer night with communion can wear both.
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div
+            className="mt-2 flex flex-wrap gap-2"
+            role="group"
+            aria-label="What happens labels"
+            aria-invalid={Boolean(fields.tags)}
+            tabIndex={fields.tags ? -1 : undefined}
+          >
             {STUDY_TAGS.map((tag) => {
               const pressed = draft.tags.includes(tag.id);
               return (
@@ -152,6 +168,7 @@ export function StudyForm({
             <Field label="Day of week" error={fields.day}>
               <select
                 className={fieldClass}
+                aria-invalid={Boolean(fields.day)}
                 value={draft.dayOfWeek === null ? '' : String(draft.dayOfWeek)}
                 onChange={(event) => {
                   const value = Number(event.target.value);
@@ -171,6 +188,7 @@ export function StudyForm({
             <Field label="Date" error={fields.date}>
               <input
                 className={fieldClass}
+                aria-invalid={Boolean(fields.date)}
                 type="date"
                 value={draft.date ?? ''}
                 onChange={(event) => patch({ date: event.target.value || null })}
@@ -181,6 +199,7 @@ export function StudyForm({
           <Field label="Time" error={fields.time}>
             <input
               className={fieldClass}
+              aria-invalid={Boolean(fields.time)}
               type="time"
               value={draft.time}
               onChange={(event) => patch({ time: event.target.value })}
@@ -209,6 +228,7 @@ export function StudyForm({
           <Field label="Neighbourhood" hint="Shown on the study card." error={fields.area}>
             <select
               className={fieldClass}
+              aria-invalid={Boolean(fields.area)}
               value={draft.area}
               onChange={(event) => patch({ area: event.target.value })}
               required
@@ -228,6 +248,7 @@ export function StudyForm({
           >
             <input
               className={fieldClass}
+              aria-invalid={Boolean(fields.maxCapacity)}
               type="number"
               min={minCapacity}
               max={LIMITS.capacityMax}
@@ -282,6 +303,7 @@ export function StudyForm({
         <Field label="Exact address" error={fields.exactAddress}>
           <input
             className={fieldClass}
+            aria-invalid={Boolean(fields.exactAddress)}
             value={draft.exactAddress}
             maxLength={LIMITS.addressMax}
             autoComplete="street-address"
@@ -293,6 +315,7 @@ export function StudyForm({
         <Field label="Entry notes" hint="Buzzer, floor, or where to wait. Optional." error={fields.entryNotes}>
           <textarea
             className={`${fieldClass} min-h-24 resize-y`}
+            aria-invalid={Boolean(fields.entryNotes)}
             value={draft.entryNotes}
             maxLength={LIMITS.entryNotesMax}
             onChange={(event) => patch({ entryNotes: event.target.value })}
