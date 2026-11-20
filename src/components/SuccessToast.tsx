@@ -4,8 +4,11 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 
 const TOAST_DURATION = 4500;
 
-type Toast = { id: number; message: string };
-type ToastContextValue = { showSuccess: (message: string) => void };
+type Toast = { id: number; message: string; action?: { label: string; run: () => void | Promise<void> } };
+type ToastContextValue = {
+  showSuccess: (message: string) => void;
+  showAction: (message: string, label: string, run: () => void | Promise<void>) => void;
+};
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
@@ -17,6 +20,10 @@ export function SuccessToastProvider({ children }: { children: ReactNode }) {
     nextId.current += 1;
     setToast({ id: nextId.current, message });
   }, []);
+  const showAction = useCallback((message: string, label: string, run: () => void | Promise<void>) => {
+    nextId.current += 1;
+    setToast({ id: nextId.current, message, action: { label, run } });
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -27,7 +34,7 @@ export function SuccessToastProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   return (
-    <ToastContext.Provider value={{ showSuccess }}>
+    <ToastContext.Provider value={{ showSuccess, showAction }}>
       {children}
       {toast ? (
         <aside
@@ -37,6 +44,19 @@ export function SuccessToastProvider({ children }: { children: ReactNode }) {
           className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.5rem)] z-[90] mx-auto flex max-w-2xl items-center gap-3 overflow-hidden rounded-lg border border-moss/30 bg-card px-4 py-3 text-ink shadow-lg sm:top-[calc(env(safe-area-inset-top)+5rem)]"
         >
           <p role="status" className="min-w-0 flex-1 text-sm text-moss">{toast.message}</p>
+          {toast.action ? (
+            <button
+              type="button"
+              className="shrink-0 rounded-md px-2 py-1 text-sm font-medium text-canal underline underline-offset-2 hover:bg-sand"
+              onClick={() => {
+                const action = toast.action;
+                setToast(null);
+                void action?.run();
+              }}
+            >
+              {toast.action.label}
+            </button>
+          ) : null}
           <button
             type="button"
             aria-label="Dismiss confirmation"

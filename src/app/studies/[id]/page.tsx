@@ -10,6 +10,7 @@ import { MemberList } from '@/components/MemberList';
 import { SessionRecorder } from '@/components/SessionRecorder';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { useAuth } from '@/components/AuthProvider';
+import { useSuccessToast } from '@/components/SuccessToast';
 import { clearStudyLink, rememberStudyLink } from '@/components/RouteGuard';
 import { AppShell } from '@/components/TopBar';
 import { Alert, Avatar, Button, FormatBadge, FormError, LoadingScreen, Spinner, TagList, buttonClass } from '@/components/ui';
@@ -77,6 +78,7 @@ export default function StudyPage() {
   const studyId = typeof params.id === 'string' ? params.id : '';
   const router = useRouter();
   const { user, profile } = useAuth();
+  const { showSuccess, showAction } = useSuccessToast();
   const [study, setStudy] = useState<BibleStudy | null>(null);
   const [details, setDetails] = useState<PrivateStudyDetails | null>(null);
   const [detailsState, setDetailsState] = useState<'hidden' | 'loading' | 'ready'>('hidden');
@@ -446,6 +448,10 @@ export default function StudyPage() {
               void run('archive', async () => {
                 await archiveStudy(study.id);
                 router.push('/dashboard');
+                showAction('Event archived.', 'Restore', async () => {
+                  await unarchiveStudy(study.id);
+                  showSuccess('Event restored.');
+                });
               }, {
                 action: 'archive event',
                 operation: 'archive event',
