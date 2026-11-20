@@ -34,7 +34,7 @@ export function SuccessToastProvider({ children }: { children: ReactNode }) {
           key={toast.id}
           aria-live="polite"
           aria-atomic="true"
-          className="fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-[90] mx-auto flex max-w-2xl items-center gap-3 overflow-hidden rounded-lg border border-moss/30 bg-card px-4 py-3 text-ink shadow-lg"
+          className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.5rem)] z-[90] mx-auto flex max-w-2xl items-center gap-3 overflow-hidden rounded-lg border border-moss/30 bg-card px-4 py-3 text-ink shadow-lg sm:top-[calc(env(safe-area-inset-top)+5rem)]"
         >
           <p role="status" className="min-w-0 flex-1 text-sm text-moss">{toast.message}</p>
           <button
