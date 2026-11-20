@@ -644,9 +644,9 @@ function dialogCopy(action: ConfirmAction, studyTitle: string): { title: string;
   }
   if (action.kind === 'delete') {
     return {
-      title: 'Delete this study?',
+      title: 'Delete this event?',
       body: `${studyTitle} will be removed for everyone, including the address.`,
-      confirmLabel: 'Delete study',
+      confirmLabel: 'Delete event',
     };
   }
   return {
