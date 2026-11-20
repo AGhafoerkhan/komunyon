@@ -665,26 +665,23 @@ function AddressMapPreview({ place, directionsUrl }: { place: string; directions
   const query = new URLSearchParams({ q: place, z: '16', output: 'embed' });
 
   return (
-    <div className="relative aspect-square w-full max-w-52 overflow-hidden rounded-md border border-line bg-sand">
+    <div className="w-full max-w-72">
       <iframe
         src={`https://www.google.com/maps?${query}`}
         title="Map of the event surroundings"
         loading="lazy"
         referrerPolicy="no-referrer"
-        tabIndex={-1}
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 size-full border-0"
+        sandbox="allow-scripts allow-same-origin"
+        className="aspect-square w-full rounded-md border border-line bg-sand"
       />
       <a
         href={directionsUrl}
         target="_blank"
         rel="noreferrer"
-        className="group absolute inset-0 rounded-md focus-visible:-outline-offset-2"
+        className={`${buttonClass('secondary')} mt-3 w-full`}
       >
-        <span className="absolute top-2 right-2 rounded border border-line bg-card px-2 py-1 text-xs font-medium text-ink shadow-sm group-hover:text-canal">
-          Open in Google Maps <span aria-hidden="true">↗</span>
-          <span className="sr-only"> (opens in a new tab)</span>
-        </span>
+        Open in Google Maps <span aria-hidden="true">↗</span>
+        <span className="sr-only"> (opens in a new tab)</span>
       </a>
     </div>
   );
@@ -1190,20 +1187,17 @@ function StudyBody({
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20 lg:h-fit lg:self-start">
           {showPrivateDetails ? (
-            <div className="@container min-h-[260px] rounded-lg border border-line bg-card p-4">
-              <div className="grid items-start gap-4 @min-[22rem]:grid-cols-[minmax(0,1fr)_13rem]">
-                <div className="min-w-0 @min-[22rem]:max-h-56 @min-[22rem]:overflow-y-auto">
+            <div className="@container rounded-lg border border-line bg-card p-4">
+              <div className="grid items-start gap-5 @min-[36rem]:grid-cols-[minmax(0,1fr)_18rem]">
+                <div className="min-w-0">
                   <h2 className="text-sm font-medium">Exact address</h2>
                   {detailsState === 'loading' ? <p className="mt-2 text-sm text-muted">Loading the address…</p> : null}
                   {detailsState === 'ready' && details ? (
                     <>
                       {directionsUrl ? (
-                        <a
-                          href={directionsUrl}
-                          className="mt-2 block text-sm break-words whitespace-pre-wrap text-ink underline decoration-1 underline-offset-2 hover:text-canal"
-                        >
+                        <p className="mt-2 text-sm break-words whitespace-pre-wrap text-ink">
                           {details.exactAddress}
-                        </a>
+                        </p>
                       ) : (
                         <p className="mt-2 text-sm text-muted">No exact address saved yet.</p>
                       )}
