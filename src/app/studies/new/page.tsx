@@ -18,9 +18,9 @@ export default function NewStudyPage() {
       <Link href="/dashboard" className="inline-flex text-sm text-muted hover:text-ink">
         ← All studies
       </Link>
-      <h1 className={`mt-3 ${pageTitleClass}`}>Host a Study</h1>
+      <h1 className={`mt-3 ${pageTitleClass}`}>Host an event</h1>
       <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-        Tell people when and where in The Hague you meet. The exact address is stored privately.
+        Tell people when and where in The Hague you meet. Your exact address stays private until you approve someone.
       </p>
       <div className="max-w-2xl">
         <StudyForm
