@@ -568,22 +568,18 @@ function GuestStudy({
 
 function ShareStudy({ study }: { study: BibleStudy }) {
   const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  function shareDetails() {
+    const url = `${window.location.origin}/studies/${study.id}`;
+    return {
+      url,
+      text: `${study.title}\n${study.area} · ${formatSchedule(study)}\n\nJoin or ask to join on Komunyon:\n${url}`,
+    };
+  }
 
   async function onShare() {
-    const url = `${window.location.origin}/studies/${study.id}`;
-    const phone = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (phone && typeof navigator.share === 'function') {
-      try {
-        await navigator.share({
-          title: study.title,
-          text: `${study.title} · ${study.area}`,
-          url,
-        });
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-      }
-    }
+    const { url } = shareDetails();
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -596,19 +592,61 @@ function ShareStudy({ study }: { study: BibleStudy }) {
       field.remove();
     }
     setCopied(true);
+    setOpen(false);
     window.setTimeout(() => setCopied(false), 4000);
+  }
+
+  async function nativeShare() {
+    const { url, text } = shareDetails();
+    if (typeof navigator.share !== 'function') return;
+    try {
+      await navigator.share({ title: study.title, text, url });
+      setOpen(false);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) throw error;
+    }
+  }
+
+  function whatsappShare() {
+    const { text } = shareDetails();
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    setOpen(false);
+  }
+
+  function emailShare() {
+    const { url, text } = shareDetails();
+    window.location.href = `mailto:?subject=${encodeURIComponent(study.title)}&body=${encodeURIComponent(text)}%0A${encodeURIComponent(url)}`;
+    setOpen(false);
+  }
+
+  function smsShare() {
+    const { text } = shareDetails();
+    window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
+    setOpen(false);
   }
 
   return (
     <div className="relative shrink-0">
       <button
         type="button"
-        onClick={() => void onShare()}
-        aria-label="Share study"
+        onClick={() => setOpen((current) => !current)}
+        aria-label="Share event"
+        aria-expanded={open}
         className="inline-flex h-10 w-10 items-center justify-center rounded-md text-ink hover:bg-sand"
       >
         <ShareIcon />
       </button>
+      {open ? (
+        <div className="absolute top-11 right-0 z-20 w-60 rounded-lg border border-line bg-card p-2 shadow-xl" role="menu" aria-label="Share event options">
+          {typeof navigator !== 'undefined' && typeof navigator.share === 'function' ? (
+            <button type="button" role="menuitem" onClick={() => void nativeShare()} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Share with another app</button>
+          ) : null}
+          <button type="button" role="menuitem" onClick={() => void onShare()} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Copy link</button>
+          <button type="button" role="menuitem" onClick={whatsappShare} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Share on WhatsApp</button>
+          <button type="button" role="menuitem" onClick={smsShare} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Send by text message</button>
+          <button type="button" role="menuitem" onClick={emailShare} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Send by email</button>
+        </div>
+      ) : null}
       {copied ? (
         <p role="status" className="absolute top-11 right-0 whitespace-nowrap text-xs text-canal">
           Share link copied
@@ -618,11 +656,38 @@ function ShareStudy({ study }: { study: BibleStudy }) {
   );
 }
 
-function mapsHref(address: string): string {
+function mapsPlace(address: string): string {
   const line = address.trim().replace(/\s+/g, ' ');
-  const lower = line.toLowerCase();
-  const place = lower.includes('hague') || lower.includes('den haag') ? line : `${line}, The Hague, Netherlands`;
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place)}`;
+  return /\b(?:the hague|den haag|s-gravenhage)\b/i.test(line) ? line : `${line}, The Hague, Netherlands`;
+}
+
+function AddressMapPreview({ place, directionsUrl }: { place: string; directionsUrl: string }) {
+  const query = new URLSearchParams({ q: place, z: '16', output: 'embed' });
+
+  return (
+    <div className="relative aspect-square w-full max-w-52 overflow-hidden rounded-md border border-line bg-sand">
+      <iframe
+        src={`https://www.google.com/maps?${query}`}
+        title="Map of the event surroundings"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 size-full border-0"
+      />
+      <a
+        href={directionsUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="group absolute inset-0 rounded-md focus-visible:-outline-offset-2"
+      >
+        <span className="absolute top-2 right-2 rounded border border-line bg-card px-2 py-1 text-xs font-medium text-ink shadow-sm group-hover:text-canal">
+          Open in Google Maps <span aria-hidden="true">↗</span>
+          <span className="sr-only"> (opens in a new tab)</span>
+        </span>
+      </a>
+    </div>
+  );
 }
 
 function HostPhone({ phone }: { phone: string | null }) {
@@ -739,6 +804,10 @@ function StudyBody({
   onDecline: (request: JoinRequest) => void;
   onAskRemove: (request: JoinRequest) => void;
 }) {
+  const showPrivateDetails = role === 'host' || role === 'approved';
+  const address = showPrivateDetails && detailsState === 'ready' ? details?.exactAddress.trim() : undefined;
+  const place = address ? mapsPlace(address) : null;
+  const directionsUrl = place ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place)}` : null;
   const taken = study.approvedCount;
   const [photo, setPhoto] = useState<{ src: string; name: string } | null>(null);
   const sessionDate = upcomingSession(study);
@@ -911,7 +980,7 @@ function StudyBody({
         </div>
       ) : null}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className={`grid items-start gap-6 ${showPrivateDetails ? 'lg:grid-cols-[minmax(0,1fr)_25rem]' : 'lg:grid-cols-[minmax(0,1fr)_18rem]'}`}>
         <article>
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -1120,35 +1189,44 @@ function StudyBody({
         </article>
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-20 lg:h-fit lg:self-start">
-          {role === 'host' || role === 'approved' ? (
-            <div className="h-[260px] shrink-0 overflow-y-auto rounded-lg border border-line bg-card p-4">
-              <h2 className="text-sm font-medium">Exact address</h2>
-              {detailsState === 'loading' ? <p className="mt-2 text-sm text-muted">Loading the address…</p> : null}
-              {detailsState === 'ready' && details ? (
-                <>
-                  <a
-                    href={mapsHref(details.exactAddress)}
-                    className="mt-2 block text-sm break-words whitespace-pre-wrap text-ink underline decoration-1 underline-offset-2 hover:text-canal"
-                  >
-                    {details.exactAddress}
-                  </a>
-                  <h3 className="mt-4 text-sm font-medium">Entry notes</h3>
-                  <p className="mt-2 text-sm whitespace-pre-wrap text-muted">
-                    {details.entryNotes.trim() || 'No entry notes.'}
-                  </p>
-                </>
-              ) : null}
-              {detailsState === 'ready' && !details ? (
-                <p className="mt-2 text-sm text-muted">No private details saved yet.</p>
-              ) : null}
-              {role === 'approved' ? (
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium">Host phone</h3>
-                  <div className="mt-2">
-                    <HostPhone phone={hostPhone} />
-                  </div>
+          {showPrivateDetails ? (
+            <div className="@container min-h-[260px] rounded-lg border border-line bg-card p-4">
+              <div className="grid items-start gap-4 @min-[22rem]:grid-cols-[minmax(0,1fr)_13rem]">
+                <div className="min-w-0 @min-[22rem]:max-h-56 @min-[22rem]:overflow-y-auto">
+                  <h2 className="text-sm font-medium">Exact address</h2>
+                  {detailsState === 'loading' ? <p className="mt-2 text-sm text-muted">Loading the address…</p> : null}
+                  {detailsState === 'ready' && details ? (
+                    <>
+                      {directionsUrl ? (
+                        <a
+                          href={directionsUrl}
+                          className="mt-2 block text-sm break-words whitespace-pre-wrap text-ink underline decoration-1 underline-offset-2 hover:text-canal"
+                        >
+                          {details.exactAddress}
+                        </a>
+                      ) : (
+                        <p className="mt-2 text-sm text-muted">No exact address saved yet.</p>
+                      )}
+                      <h3 className="mt-4 text-sm font-medium">Entry notes</h3>
+                      <p className="mt-2 text-sm break-words whitespace-pre-wrap text-muted">
+                        {details.entryNotes.trim() || 'No entry notes.'}
+                      </p>
+                    </>
+                  ) : null}
+                  {detailsState === 'ready' && !details ? (
+                    <p className="mt-2 text-sm text-muted">No private details saved yet.</p>
+                  ) : null}
+                  {role === 'approved' ? (
+                    <div className="mt-4">
+                      <h3 className="text-sm font-medium">Host phone</h3>
+                      <div className="mt-2">
+                        <HostPhone phone={hostPhone} />
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+                {place && directionsUrl ? <AddressMapPreview place={place} directionsUrl={directionsUrl} /> : null}
+              </div>
             </div>
           ) : (
             <div className="rounded-lg border border-line bg-card p-4">
