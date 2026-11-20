@@ -1,84 +1,35 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useState, type KeyboardEvent } from 'react';
 import { fieldClass } from '@/components/ui';
 
-const SEARCH_URL = 'https://api.pdok.nl/kadaster/location-api/v1/search';
 const SUGGEST_URL = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest';
-const MIN_QUERY_LENGTH = 1;
+const THE_HAGUE_TOWN_CODE = '1245';
 
 interface AddressSuggestion {
   id: string;
   label: string;
-  detailUrl?: string;
-  selectedValue?: string;
+  selectedValue: string;
 }
 
-interface AddressProperties {
-  openbare_ruimte_naam?: unknown;
-  huisnummer?: unknown;
-  huisletter?: unknown;
-  toevoeging?: unknown;
-  postcode?: unknown;
-  woonplaats_naam?: unknown;
-}
-
-type LookupStatus = 'idle' | 'searching' | 'results' | 'empty' | 'error' | 'selected' | 'resolving';
+type LookupStatus = 'idle' | 'searching' | 'results' | 'empty' | 'error' | 'selected';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
 function parseSuggestions(payload: unknown): AddressSuggestion[] {
-  if (!isRecord(payload) || !Array.isArray(payload.features)) return [];
-
-  return payload.features.flatMap((feature): AddressSuggestion[] => {
-    if (!isRecord(feature) || !isRecord(feature.properties)) return [];
-    const { id } = feature;
-    const { collection_id: collectionId, display_name: label, href } = feature.properties;
-    if (typeof id !== 'string' || collectionId !== 'adres' || typeof label !== 'string' || !Array.isArray(href)) return [];
-    if (!/(?:s[’']?-gravenhage|den\s+haag|the\s+hague)/i.test(label)) return [];
-    const detailUrl = href.find((candidate): candidate is string => typeof candidate === 'string');
-    if (!detailUrl) return [];
-    try {
-      if (new URL(detailUrl).hostname !== 'api.pdok.nl') return [];
-    } catch {
-      return [];
-    }
-    return [{ id, label, detailUrl }];
-  });
-}
-
-function parseSingleCharacterSuggestions(payload: unknown): AddressSuggestion[] {
   if (!isRecord(payload) || !isRecord(payload.response) || !Array.isArray(payload.response.docs)) return [];
 
   return payload.response.docs.flatMap((item): AddressSuggestion[] => {
-    if (!isRecord(item) || item.type !== 'adres') return [];
-    const { id, weergavenaam: label } = item;
-    if (typeof id !== 'string' || typeof label !== 'string') return [];
-    const selectedValue = label.replace(/,\s*(\d{4})\s?([A-Z]{2})\s+'s-Gravenhage$/i, ', $1 $2, The Hague, Netherlands');
-    if (selectedValue === label) return [];
+    if (!isRecord(item) || item.type !== 'adres' || item.woonplaatscode !== THE_HAGUE_TOWN_CODE) return [];
+    const { id, weergavenaam: label, straatnaam: street, huis_nlt: house, postcode } = item;
+    if (typeof id !== 'string' || typeof label !== 'string' || typeof street !== 'string' || typeof house !== 'string') return [];
+
+    const formattedPostcode = typeof postcode === 'string' ? postcode.replace(/^(\d{4})([A-Z]{2})$/, '$1 $2') : '';
+    const selectedValue = [`${street} ${house}`, formattedPostcode, 'The Hague', 'Netherlands'].filter(Boolean).join(', ');
     return [{ id, label, selectedValue }];
   });
-}
-
-function formatSelectedAddress(properties: AddressProperties, fallback: string): string {
-  const street = typeof properties.openbare_ruimte_naam === 'string' ? properties.openbare_ruimte_naam.trim() : '';
-  const number = typeof properties.huisnummer === 'string' || typeof properties.huisnummer === 'number'
-    ? String(properties.huisnummer).trim()
-    : '';
-  const letter = typeof properties.huisletter === 'string' ? properties.huisletter.trim() : '';
-  const addition = typeof properties.toevoeging === 'string' ? properties.toevoeging.trim() : '';
-  const postcode = typeof properties.postcode === 'string' ? properties.postcode.trim().toUpperCase() : '';
-  const town = typeof properties.woonplaats_naam === 'string' ? properties.woonplaats_naam.trim() : '';
-
-  if (!street || !number || !postcode || !town) return fallback;
-
-  const house = `${number}${letter}${addition ? ` ${addition}` : ''}`;
-  const formattedPostcode = postcode.replace(/^(\d{4})([A-Z]{2})$/, '$1 $2');
-  const formattedTown = /(?:s[’']?-gravenhage|den\s+haag|the\s+hague)/i.test(town) ? 'The Hague' : town;
-  const country = formattedTown === 'The Hague' ? ', Netherlands' : '';
-  return `${street} ${house}, ${formattedPostcode}, ${formattedTown}${country}`;
 }
 
 export function AddressLookup({
@@ -95,7 +46,6 @@ export function AddressLookup({
   invalid?: boolean;
 }) {
   const listboxId = useId();
-  const requestId = useRef(0);
   const [query, setQuery] = useState(value);
   const [searchEnabled, setSearchEnabled] = useState(false);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -112,35 +62,31 @@ export function AddressLookup({
 
   useEffect(() => {
     if (!searchEnabled) return;
-    const normalized = query.trim();
-    if (normalized.length < MIN_QUERY_LENGTH) {
+    const normalized = query.trim().replace(/,?\s+The Hague(?:,\s*Netherlands)?$/i, ' Den Haag');
+    if (!normalized) {
       setSuggestions([]);
       setStatus('idle');
       return;
     }
 
     const controller = new AbortController();
-    const currentRequest = ++requestId.current;
     setStatus('searching');
     setSuggestions([]);
     setActiveIndex(0);
 
     const timer = window.setTimeout(() => {
-      const singleCharacterQuery = normalized.length === 1;
-      const url = new URL(singleCharacterQuery ? SUGGEST_URL : SEARCH_URL);
-      if (singleCharacterQuery) {
-        url.searchParams.set('wt', 'json');
-        url.searchParams.set('q', normalized);
-        url.searchParams.append('fq', 'type:adres');
-        url.searchParams.append('fq', `gemeentenaam:"'s-Gravenhage"`);
-        url.searchParams.set('rows', '6');
-        url.searchParams.set('sort', 'weergavenaam asc');
-      } else {
-        url.searchParams.set('q', normalized.slice(0, 120));
-        url.searchParams.set('limit', '6');
-        url.searchParams.set('f', 'json');
-        url.searchParams.set('adres[version]', '1');
+      const url = new URL(SUGGEST_URL);
+      url.searchParams.set('q', normalized.slice(0, 120));
+      url.searchParams.set('wt', 'json');
+      url.searchParams.append('fq', 'type:adres');
+      url.searchParams.append('fq', `woonplaatscode:${THE_HAGUE_TOWN_CODE}`);
+      url.searchParams.set('rows', '6');
+      url.searchParams.set('fl', 'id,type,weergavenaam,straatnaam,woonplaatscode,huis_nlt,postcode');
+
+      if (/^[a-z]{1,2}$/i.test(normalized)) {
+        url.searchParams.append('fq', `straatnaam:${normalized.toLowerCase()}*`);
       }
+      if (normalized.length === 1) url.searchParams.set('sort', 'weergavenaam asc');
 
       void fetch(url, { signal: controller.signal })
         .then(async (response) => {
@@ -148,15 +94,13 @@ export function AddressLookup({
           return response.json() as Promise<unknown>;
         })
         .then((payload) => {
-          if (currentRequest !== requestId.current) return;
-          const found = singleCharacterQuery
-            ? parseSingleCharacterSuggestions(payload)
-            : parseSuggestions(payload);
+          if (controller.signal.aborted) return;
+          const found = parseSuggestions(payload);
           setSuggestions(found);
           setStatus(found.length ? 'results' : 'empty');
         })
         .catch(() => {
-          if (controller.signal.aborted || currentRequest !== requestId.current) return;
+          if (controller.signal.aborted) return;
           setStatus('error');
           setSuggestions([]);
         });
@@ -176,35 +120,13 @@ export function AddressLookup({
     onChange(next);
   }
 
-  async function chooseAddress(suggestion: AddressSuggestion) {
-    if (suggestion.selectedValue) {
-      setQuery(suggestion.selectedValue);
-      setSearchEnabled(false);
-      setStatus('selected');
-      onChange(suggestion.selectedValue);
-      onSelect(suggestion.selectedValue);
-      return;
-    }
-    if (!suggestion.detailUrl) {
-      setStatus('error');
-      return;
-    }
-    setStatus('resolving');
+  function chooseAddress({ selectedValue }: AddressSuggestion) {
+    setQuery(selectedValue);
+    setSearchEnabled(false);
     setSuggestions([]);
-    try {
-      const response = await fetch(suggestion.detailUrl, { headers: { Accept: 'application/geo+json' } });
-      if (!response.ok) throw new Error(`PDOK responded with ${response.status}`);
-      const payload: unknown = await response.json();
-      if (!isRecord(payload) || !isRecord(payload.properties)) throw new Error('Address details were incomplete.');
-      const selected = formatSelectedAddress(payload.properties as AddressProperties, suggestion.label);
-      setQuery(selected);
-      setSearchEnabled(false);
-      setStatus('selected');
-      onChange(selected);
-      onSelect(selected);
-    } catch {
-      setStatus('error');
-    }
+    setStatus('selected');
+    onChange(selectedValue);
+    onSelect(selectedValue);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -216,7 +138,7 @@ export function AddressLookup({
       setActiveIndex((index) => (index - 1 + suggestions.length) % suggestions.length);
     } else if (event.key === 'Enter' && suggestions[activeIndex]) {
       event.preventDefault();
-      void chooseAddress(suggestions[activeIndex]);
+      chooseAddress(suggestions[activeIndex]);
     } else if (event.key === 'Escape') {
       setSuggestions([]);
       setSearchEnabled(false);
@@ -225,17 +147,15 @@ export function AddressLookup({
 
   const statusText = status === 'searching'
     ? 'Searching the Dutch address register…'
-    : status === 'resolving'
-      ? 'Selecting this address…'
-      : status === 'selected'
-        ? 'Address selected.'
-        : status === 'empty'
-          ? 'No matching address found in The Hague. Try a street name, postcode, or house number.'
-          : status === 'error'
-            ? 'Address search is unavailable right now. Please try again shortly.'
-            : status === 'results'
-              ? 'Select an address from the results.'
-              : '';
+    : status === 'selected'
+      ? 'Address selected.'
+      : status === 'empty'
+        ? 'No matching address found in The Hague. Try a street name, postcode, or house number.'
+        : status === 'error'
+          ? 'Address search is unavailable right now. Please try again shortly.'
+          : status === 'results'
+            ? 'Select an address from the results.'
+            : '';
 
   return (
     <div className="relative" onBlur={(event) => {
@@ -258,7 +178,7 @@ export function AddressLookup({
         maxLength={180}
         autoComplete="street-address"
         placeholder="Street, postcode, or house number"
-        disabled={disabled || status === 'resolving'}
+        disabled={disabled}
         required
         onChange={(event) => updateAddress(event.target.value)}
         onKeyDown={handleKeyDown}
@@ -276,7 +196,7 @@ export function AddressLookup({
                 className={`w-full px-3 py-2 text-left text-sm leading-5 transition ${activeIndex === index ? 'bg-sand text-ink' : 'text-ink hover:bg-sand'}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => void chooseAddress(suggestion)}
+                onClick={() => chooseAddress(suggestion)}
               >
                 {suggestion.label}
               </button>
