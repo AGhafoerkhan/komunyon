@@ -14,6 +14,7 @@ import { useSuccessToast } from '@/components/SuccessToast';
 import { useAuth } from '@/components/AuthProvider';
 import { ClientDraftStatus, useClientDraft } from '@/components/useClientDraft';
 import { clientDraftKey } from '@/lib/clientDrafts';
+import { AddressLookup } from '@/components/AddressLookup';
 import type { DayOfWeek, StudyDraft, StudyFormat } from '@/types';
 
 const EMPTY: StudyDraft = {
@@ -323,16 +324,12 @@ export function StudyForm({
             Saved separately and shown only to you and people you approve. It is not on the public study.
           </p>
         </div>
-        <Field label="Exact address" error={fields.exactAddress}>
-          <input
-            className={fieldClass}
-            aria-invalid={Boolean(fields.exactAddress)}
+        <Field label="Exact address" hint="Search by street, postcode, or house number. Select a result to confirm a registered address." error={fields.exactAddress}>
+          <AddressLookup
             value={draft.exactAddress}
-            maxLength={LIMITS.addressMax}
-            autoComplete="street-address"
-            onChange={(event) => patch({ exactAddress: event.target.value })}
-            placeholder="Street and number"
-            required
+            invalid={Boolean(fields.exactAddress)}
+            disabled={saving}
+            onChange={(exactAddress) => patch({ exactAddress })}
           />
         </Field>
         <Field label="Entry notes" hint="Buzzer, floor, or where to wait. Optional." error={fields.entryNotes}>
