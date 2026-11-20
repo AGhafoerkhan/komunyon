@@ -1,49 +1,39 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { Spinner } from '@/components/ui';
 import { OFFLINE_AUTH_MESSAGE, SIGN_IN_CANCELLED_MESSAGE } from '@/lib/errors';
 import { missingFirebaseEnv } from '@/lib/firebase';
 
-const story = [
-  {
-    label: 'Problem',
-    title: 'You want to go, and you don’t know where',
-    body: 'People want a study almost every day. They don’t know who is hosting, where they could go, or how to host their own. They want to meet new people and really connect.',
-    tone: 'slate',
-    labelClass: 'text-[#fa387f]',
-  },
-  {
-    label: 'Solution',
-    title: 'Every study in the city, on one list',
-    body: 'Komunyon is the overview for The Hague. Join a communion any time a seat is left, anywhere in the city, even if you don’t know the people. Or host one yourself.',
-    tone: 'teal',
-    labelClass: 'text-[#94d1c7]',
-  },
-  {
-    label: 'Benefit',
-    title: 'You find a study, and people to meet there',
-    body: 'You do not need a friend to invite you. You see who is hosting, the neighbourhood, and the time, and you ask for a seat if one is open. That is how you meet new people and connect. The address comes after the host approves you.',
-    tone: 'ink',
-    labelClass: 'text-[#ff999c]',
-  },
-] as const;
-
 const steps = [
-  { n: '1', title: 'Sign in', body: 'Start here with your Google account.' },
-  { n: '2', title: 'Host or request', body: 'Host a study, or request to join one that still has a seat.' },
-  { n: '3', title: 'Get the information', body: 'Once you are in, you receive the details for that gathering.' },
+  {
+    number: '01',
+    title: 'Find a gathering',
+    body: 'See public studies by neighbourhood, time, and the next session’s available places.',
+  },
+  {
+    number: '02',
+    title: 'Ask to join',
+    body: 'A place being open does not add you automatically. The host or an authorized co-host reviews your request.',
+  },
+  {
+    number: '03',
+    title: 'Know where you’re going',
+    body: 'After approval, you can see the exact address and the people in the gathering.',
+  },
 ] as const;
-
-const titleClass = 'w-full font-serif text-2xl leading-snug font-normal break-words text-[#f0f2f4] sm:text-3xl';
-const bodyClass = 'mt-4 w-full text-sm leading-relaxed text-[#a7afbe] sm:text-base';
 
 export default function HomePage() {
   const { signInWithGoogle, prepareGoogleSignIn, configured, signInError } = useAuth();
   const [busy, setBusy] = useState(false);
-  const missing = missingFirebaseEnv();
-  const message = signInError === SIGN_IN_CANCELLED_MESSAGE || signInError === OFFLINE_AUTH_MESSAGE ? signInError : null;
+  const signInUnavailable = !configured || missingFirebaseEnv().length > 0;
+  const message = signInError === SIGN_IN_CANCELLED_MESSAGE || signInError === OFFLINE_AUTH_MESSAGE
+    ? signInError
+    : signInError
+      ? 'Sign-in didn’t work. Please try again or contact support.'
+      : null;
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -59,224 +49,317 @@ export default function HomePage() {
     try {
       await signInWithGoogle();
     } catch {
-      // AuthProvider records the failure once and supplies the safe user message.
+      // AuthProvider logs the failure and provides the safe user-facing message.
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="flex min-h-dvh w-full flex-col bg-[#0f1115] text-[#e2e4e9]">
-      <section className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[#0f1115]">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(77,179,162,0.18),transparent_58%)]"
-        />
-        <header className="relative w-full border-b border-[#2b303b]">
-          <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
-            <div className="min-w-0">
-              <span className="block font-serif text-lg leading-tight text-[#f0f2f4]">Komunyon</span>
-              <span className="block text-sm leading-tight text-[#8a94a8]">The Hague</span>
-            </div>
-            <a
-              href="/login"
-              className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-[#4db3a2] px-4 text-sm font-medium text-[#dbf0ec] transition hover:bg-[#4db3a2] hover:text-[#0f1115] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4db3a2]"
-            >
-              Sign in
+    <div className="min-h-dvh bg-[#0f1115] text-[#f0f2f4]">
+      <a href="#main" className="sr-only z-[100] rounded-md bg-[#f0f2f4] px-4 py-3 text-sm font-medium text-[#0f1115] focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+        Skip to content
+      </a>
+
+      <header className="relative z-10 border-b border-[#2b303b] bg-[#0f1115]/90 pt-[env(safe-area-inset-top)] backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:h-16 sm:px-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4db3a2]">
+            <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-lg bg-[#4db3a2] font-serif text-lg text-[#0f1115]">K</span>
+            <span>
+              <span className="block font-serif text-lg leading-5">Komunyon</span>
+              <span className="block text-xs leading-4 text-[#a7afbe]">The Hague</span>
+            </span>
+          </Link>
+          <nav aria-label="Main navigation" className="ml-auto flex items-center gap-2 sm:gap-5">
+            <a href="#how-it-works" className="hidden rounded-sm text-sm text-[#c2c9d5] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4db3a2] sm:inline">
+              How it works
             </a>
-          </div>
-        </header>
-        <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-5 py-12 text-center">
-          <p className="text-xs tracking-wide text-[#70c2b4]">Bible studies &amp; communion</p>
-          <span aria-hidden className="mt-5 h-px w-16 bg-gradient-to-r from-[#4db3a2] to-[#f9065f]" />
-          <h1 className="mt-5 w-full font-serif text-3xl leading-tight font-normal break-words text-[#f0f2f4] sm:text-4xl">
-            A seat at a study, with people you have yet to meet.
-          </h1>
-          <p className="mt-4 w-full text-base leading-relaxed text-[#a7afbe]">
-            Find who is gathering in The Hague, ask for a seat, or host a table of your own.
-          </p>
+            <a href="#for-hosts" className="hidden rounded-sm text-sm text-[#c2c9d5] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4db3a2] sm:inline">
+              For hosts
+            </a>
+            <Link href="/login" className="inline-flex min-h-10 items-center justify-center rounded-md border border-[#3b4654] px-4 text-sm font-medium text-white transition hover:border-[#4db3a2] hover:bg-[#161e24] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4db3a2]">
+              Sign in
+            </Link>
+          </nav>
         </div>
-      </section>
+      </header>
 
-      <main className="w-full">
-        {story.map((item) => (
-          <Band key={item.label} fill tone={item.tone}>
-            <p className={`text-xs tracking-wide ${item.labelClass}`}>{item.label}</p>
-            <h2 className={`mt-4 ${titleClass}`}>{item.title}</h2>
-            <p className={bodyClass}>{item.body}</p>
-          </Band>
-        ))}
+      <main id="main">
+        <section className="relative isolate overflow-hidden">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_75%_25%,rgba(77,179,162,0.19),transparent_40%),radial-gradient(ellipse_at_10%_80%,rgba(77,179,162,0.08),transparent_35%)]" />
+          <div className="mx-auto grid min-h-[620px] max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16 lg:py-24">
+            <div className="max-w-2xl">
+              <p className="inline-flex items-center gap-2 rounded-full border border-[#314540] bg-[#14201f] px-3 py-1.5 text-xs font-medium tracking-wide text-[#9bd9ce]">
+                <span aria-hidden="true" className="size-1.5 rounded-full bg-[#70c2b4]" />
+                STUDY · PRAYER · COMMUNION · THE HAGUE
+              </p>
+              <h1 className="mt-6 font-serif text-4xl font-normal leading-[1.08] tracking-tight text-[#f0f2f4] sm:text-5xl lg:text-6xl">
+                A real table. A real study. Room to belong.
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-relaxed text-[#b5bdca] sm:text-lg">
+                Find a gathering near you, host one in your neighbourhood, or meet people around Scripture and a shared meal.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <SignInButton busy={busy} unavailable={signInUnavailable} onWarm={prepareGoogleSignIn} onSignIn={() => void signIn()} />
+                <a href="#how-it-works" className="inline-flex min-h-12 items-center justify-center rounded-md px-4 text-sm font-medium text-[#c6ced9] underline decoration-[#53606e] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4db3a2]">
+                  See how joining works
+                </a>
+              </div>
+              {message ? <p role="alert" className="mt-4 max-w-md text-sm text-[#ffb1b4]">{message}</p> : null}
+              {signInUnavailable ? <p role="status" className="mt-4 max-w-md text-sm text-[#a7afbe]">Sign-in is temporarily unavailable. Please try again later.</p> : null}
+              <p className="mt-5 flex items-start gap-2 text-sm leading-relaxed text-[#a7afbe]">
+                <ShieldIcon />
+                <span>You are never added just because a place is open. A host reviews your request first.</span>
+              </p>
+            </div>
 
-        <Band tone="slate">
-          <h2 className={titleClass}>Start now</h2>
-          <p className={bodyClass}>
-            First sign in here. Then host a study, or request to join one. After that, you get the information about it.
-          </p>
-          <ol className="mt-8 grid w-full border-t border-[#2b303b] sm:grid-cols-3">
-            {steps.map((step) => (
-              <li
-                key={step.n}
-                className="border-b border-[#2b303b] py-5 sm:border-b-0 sm:border-l sm:px-6 sm:first:border-l-0 sm:first:pl-0 sm:last:pr-0"
-              >
-                <p className="text-xs tracking-wide text-[#70c2b4]">{step.n}</p>
-                <h3 className="mt-2 text-sm font-medium text-[#f0f2f4]">{step.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-[#a7afbe]">{step.body}</p>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-8">
-            <Access
-              configured={configured}
-              missing={missing}
-              busy={busy}
-              message={message}
-              onWarm={prepareGoogleSignIn}
-              onSignIn={() => void signIn()}
-            />
+            <ExampleStudyCard />
           </div>
-        </Band>
+        </section>
 
-        <Band>
-          <p className="text-xs tracking-wide text-[#ff999c]">Questions</p>
-          <h2 className={`mt-4 ${titleClass}`}>Bring a question, or a specific request.</h2>
-          <p className={bodyClass}>
-            If you want to know how a study works before you sign in, or you need something the list does not cover, write
-            or call. The contact is just below.
-          </p>
-        </Band>
+        <section aria-label="How Komunyon works" className="border-y border-[#2b303b] bg-[#16181d]">
+          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-3 md:gap-0">
+            <TrustPoint title="Host approval" text="Requests are reviewed before someone joins the group." />
+            <TrustPoint title="Address stays private" text="The exact location is shared after approval." />
+            <TrustPoint title="Your choice each session" text="Join or leave individual dates. A recurring study doesn’t commit you to every week." />
+          </div>
+        </section>
 
-        <Band>
-          <h2 className={titleClass}>Inquiries and specific requests</h2>
-          <dl className="mt-8 grid w-full gap-6 border-t border-[#2b303b] pt-6 sm:grid-cols-3">
-            <div>
-              <dt className="text-xs tracking-wide text-[#8a94a8]">Name</dt>
-              <dd className="mt-1 text-sm break-words text-[#f0f2f4]">Angelo Ghafoerkhan</dd>
+        <section id="how-it-works" className="scroll-mt-20 px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold tracking-[0.18em] text-[#70c2b4]">A CLEAR WAY IN</p>
+              <h2 className="mt-4 font-serif text-3xl font-normal leading-tight sm:text-4xl">A place is requested, not claimed.</h2>
+              <p className="mt-4 text-base leading-relaxed text-[#a7afbe]">
+                Open spots help you decide whether to ask. They never bypass the host’s approval.
+              </p>
             </div>
-            <div>
-              <dt className="text-xs tracking-wide text-[#8a94a8]">Phone</dt>
-              <dd className="mt-1 text-sm">
-                <a href="tel:+31681963662" className="text-[#70c2b4] underline-offset-2 hover:underline">
-                  +31 6 8196 3662
-                </a>
-              </dd>
+            <ol className="mt-12 grid gap-4 md:grid-cols-3">
+              {steps.map((step) => (
+                <li key={step.number} className="rounded-xl border border-[#2b303b] bg-[#14161b] p-5 sm:p-6">
+                  <p className="font-mono text-xs tracking-widest text-[#70c2b4]">{step.number}</p>
+                  <h3 className="mt-5 text-lg font-medium text-[#f0f2f4]">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#a7afbe]">{step.body}</p>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-6 flex flex-col gap-4 rounded-xl border border-[#33443f] bg-[#14201f] p-5 sm:flex-row sm:items-start sm:p-6">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#203a35] text-[#9bd9ce]"><LockIcon /></span>
+              <div>
+                <h3 className="font-medium text-[#e9f5f2]">No surprise access to someone’s home</h3>
+                <p className="mt-1 text-sm leading-relaxed text-[#b5c9c4]">
+                  Public event cards show a neighbourhood, not a street address. Only approved members can open the private address and entry notes.
+                </p>
+              </div>
             </div>
+          </div>
+        </section>
+
+        <section id="for-hosts" className="scroll-mt-20 border-y border-[#2b303b] bg-[#16181d] px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
-              <dt className="text-xs tracking-wide text-[#8a94a8]">Email</dt>
-              <dd className="mt-1 text-sm">
-                <a href="mailto:angeloghafoerkhan@gmail.com" className="break-all text-[#70c2b4] underline-offset-2 hover:underline">
-                  angeloghafoerkhan@gmail.com
-                </a>
-              </dd>
+              <p className="text-xs font-semibold tracking-[0.18em] text-[#70c2b4]">FOR HOSTS</p>
+              <h2 className="mt-4 font-serif text-3xl font-normal leading-tight sm:text-4xl">Keep the gathering simple. Keep control of the group.</h2>
+              <p className="mt-4 text-base leading-relaxed text-[#a7afbe]">
+                Set a place limit for each date, decide who can join, and hand specific responsibilities to a co-host when you need help.
+              </p>
+              <ul className="mt-7 space-y-3 text-sm text-[#d1d6df]">
+                <Feature>Set recurring or one-off dates and cancel a single week.</Feature>
+                <Feature>See who is attending each session and manage its open places.</Feature>
+                <Feature>Grant co-host permissions by task, then change them when needed.</Feature>
+                <Feature>Add session notes, photos, recordings, and transcripts to its history.</Feature>
+              </ul>
             </div>
-          </dl>
-        </Band>
+            <div className="rounded-2xl border border-[#303743] bg-[#101318] p-5 shadow-2xl shadow-black/20 sm:p-7">
+              <div className="flex items-center justify-between gap-4 border-b border-[#2b303b] pb-4">
+                <div>
+                  <p className="text-xs text-[#8f9aaa]">HOST CONTROLS</p>
+                  <h3 className="mt-1 font-serif text-xl">Your gathering, your call</h3>
+                </div>
+                <span className="rounded-full border border-[#3e5b53] bg-[#14201f] px-3 py-1 text-xs text-[#9bd9ce]">Host + co-host</span>
+              </div>
+              <div className="mt-5 space-y-3">
+                <ControlRow icon={<CheckIcon />} title="Approve a request" detail="Share the address only when you approve." />
+                <ControlRow icon={<CheckIcon />} title="Set a session limit" detail="Each date has its own attendance count." />
+                <ControlRow icon={<CheckIcon />} title="Delegate carefully" detail="Give a co-host only the permissions you choose." />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-6xl">
+            <p className="text-xs font-semibold tracking-[0.18em] text-[#70c2b4]">BUILT FOR PEOPLE, NOT PAPERWORK</p>
+            <h2 className="mt-4 max-w-2xl font-serif text-3xl font-normal leading-tight sm:text-4xl">Quick to use. Clear about what happens next.</h2>
+            <div className="mt-10 grid gap-8 border-t border-[#2b303b] pt-7 sm:grid-cols-3">
+              <div>
+                <h3 className="font-medium">Move at the speed of a tap</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#a7afbe]">Check dates, spots, and attendance together. Join one session without planning months ahead.</p>
+              </div>
+              <div>
+                <h3 className="font-medium">Made to work on phones</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#a7afbe]">Responsive layouts, visible keyboard focus, reduced-motion support, and forms that take you to the first field needing attention.</p>
+              </div>
+              <div>
+                <h3 className="font-medium">Private by design</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#a7afbe]">Firebase access rules protect private details and role-based actions. The host decides who is approved and which co-host tasks are allowed.</p>
+              </div>
+            </div>
+            <p className="mt-8 max-w-3xl text-xs leading-relaxed text-[#8791a0]">
+              Komunyon gives hosts tools to review membership and manage access; it does not independently verify a person’s identity or guarantee who will attend.
+            </p>
+          </div>
+        </section>
+
+        <section className="border-t border-[#2b303b] bg-[#11151a] px-4 py-16 sm:px-6 sm:py-20">
+          <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold tracking-[0.18em] text-[#70c2b4]">YOUR NEXT GATHERING COULD START HERE</p>
+              <h2 className="mt-3 font-serif text-3xl font-normal sm:text-4xl">Find a study. Or host the first one.</h2>
+              <p className="mt-3 text-sm leading-relaxed text-[#a7afbe]">Sign in to see events in The Hague and request a place, or create a gathering of your own.</p>
+            </div>
+            <div className="shrink-0">
+              <SignInButton busy={busy} unavailable={signInUnavailable} onWarm={prepareGoogleSignIn} onSignIn={() => void signIn()} />
+              {message ? <p role="status" className="mt-3 text-sm text-[#ffb1b4]">{message}</p> : null}
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="w-full border-t border-[#2b303b] bg-[#0f1115] pb-[max(1.5rem,env(safe-area-inset-bottom))] text-sm text-[#8a94a8]">
-        <div className="mx-auto w-full max-w-2xl px-5 py-6 text-center">
+      <footer className="border-t border-[#2b303b] bg-[#0f1115] pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 text-sm text-[#8d97a6] sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>Komunyon · The Hague</p>
-          <p className="mt-1">Hosts approve each person. You can host, and you can join.</p>
+          <a href="mailto:angeloghafoerkhan@gmail.com" className="w-fit rounded-sm underline decoration-[#596572] underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4db3a2]">
+            Questions? Contact us
+          </a>
         </div>
       </footer>
     </div>
   );
 }
 
-function Band({
-  children,
-  fill = false,
-  tone = 'ink',
-}: {
-  children: ReactNode;
-  fill?: boolean;
-  tone?: 'ink' | 'slate' | 'teal';
-}) {
-  const tones = {
-    ink: 'bg-[#0f1115]',
-    slate: 'bg-[#16181d]',
-    teal: 'bg-[#0f2420]',
-  };
-  return (
-    <section className={`flex w-full items-center justify-center border-t border-[#2b303b] text-[#f0f2f4] ${tones[tone]} ${fill ? 'min-h-dvh' : ''}`}>
-      <div className={`mx-auto flex w-full max-w-2xl flex-col items-center justify-center px-5 text-center ${fill ? 'py-12' : 'py-12 sm:py-16'}`}>
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function Access({
-  configured,
-  missing,
+function SignInButton({
   busy,
-  message,
+  unavailable,
   onWarm,
   onSignIn,
 }: {
-  configured: boolean;
-  missing: string[];
   busy: boolean;
-  message: string | null;
+  unavailable: boolean;
   onWarm: () => void;
   onSignIn: () => void;
 }) {
-  if (!configured) {
-    return (
-      <div className="w-full border border-[#2b303b] p-4 text-left text-[#f0f2f4]">
-        <p className="text-sm font-medium">Add your Firebase web config to continue.</p>
-        <p className="mt-2 text-sm leading-relaxed text-[#a7afbe]">
-          Copy <code className="text-[#f0f2f4]">.env.example</code> to <code className="text-[#f0f2f4]">.env.local</code>, then deploy{' '}
-          <code className="text-[#f0f2f4]">firestore.rules</code> and <code className="text-[#f0f2f4]">storage.rules</code>.
-        </p>
-        <ul className="mt-3 space-y-1 font-mono text-xs text-[#f0f2f4]">
-          {missing.map((key) => (
-            <li key={key}>{key}</li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex w-full flex-col items-center gap-3">
-      {message ? (
-        <p role="alert" className="text-center text-sm text-[#ff999c]">
-          {message}
-        </p>
-      ) : null}
-      <button
-        type="button"
-        onPointerDown={onWarm}
-        onClick={onSignIn}
-        disabled={busy}
-        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-[#4db3a2] bg-transparent px-4 text-sm font-medium text-[#dbf0ec] transition hover:bg-[#4db3a2] hover:text-[#0f1115] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-      >
-        {busy ? <Spinner /> : <GoogleMark />}
-        Sign in with Google
-      </button>
+    <button
+      type="button"
+      onPointerDown={onWarm}
+      onClick={onSignIn}
+      disabled={busy || unavailable}
+      className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-md bg-[#4db3a2] px-5 text-sm font-semibold text-[#0f1115] transition hover:bg-[#70c2b4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#b6eee3] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
+    >
+      {busy ? <Spinner /> : <GoogleMark />}
+      {busy ? 'Signing in…' : unavailable ? 'Sign-in unavailable' : 'Continue with Google'}
+    </button>
+  );
+}
+
+function ExampleStudyCard() {
+  return (
+    <aside aria-label="Example event card" className="relative mx-auto w-full max-w-md rotate-[0.5deg] rounded-2xl border border-[#3a414c] bg-[#171a20] p-5 shadow-2xl shadow-black/40 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <span className="rounded-full border border-[#33443f] bg-[#14201f] px-3 py-1 text-xs font-medium text-[#9bd9ce]">EXAMPLE EVENT</span>
+        <span className="text-xs text-[#9099a7]">The Hague</span>
+      </div>
+      <h2 className="mt-6 font-serif text-2xl leading-snug text-[#f0f2f4]">Understanding biblical history</h2>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className="rounded-md bg-[#252a33] px-2.5 py-1 text-xs text-[#d5dbe3]">Study</span>
+        <span className="rounded-md bg-[#252a33] px-2.5 py-1 text-xs text-[#d5dbe3]">Communion</span>
+        <span className="rounded-md bg-[#252a33] px-2.5 py-1 text-xs text-[#d5dbe3]">Recurring</span>
+      </div>
+      <div className="mt-6 grid grid-cols-[1fr_auto] gap-5 border-t border-[#303640] pt-5">
+        <div>
+          <p className="text-xs text-[#929baa]">STARTS</p>
+          <p className="mt-1 text-sm font-medium">Sunday · 19:00</p>
+          <p className="mt-1 text-xs text-[#a7afbe]">Centrum</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-[#929baa]">THIS SESSION</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums">4 <span className="text-sm font-normal text-[#8993a1]">/ 8</span></p>
+          <p className="mt-1 text-xs text-[#70c2b4]">4 places left</p>
+        </div>
+      </div>
+      <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-[#2d3940] bg-[#12171b] px-3.5 py-3">
+        <span className="flex items-center gap-2 text-sm text-[#c2c9d5]"><ShieldIcon /> Request a place</span>
+        <span aria-hidden="true" className="text-[#70c2b4]">→</span>
+      </div>
+      <p className="mt-3 text-center text-xs leading-relaxed text-[#8993a1]">A host reviews every request before you join.</p>
+    </aside>
+  );
+}
+
+function TrustPoint({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="border-b border-[#2b303b] py-3 first:pt-0 last:border-b-0 last:pb-0 md:border-b-0 md:border-l md:px-7 md:first:border-l-0 md:first:pl-0 md:last:pr-0">
+      <h2 className="text-sm font-semibold text-[#eef1f5]">{title}</h2>
+      <p className="mt-1 text-sm leading-relaxed text-[#a7afbe]">{text}</p>
     </div>
+  );
+}
+
+function Feature({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-2.5 leading-relaxed">
+      <span aria-hidden="true" className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#203a35] text-[#9bd9ce]"><CheckIcon /></span>
+      <span>{children}</span>
+    </li>
+  );
+}
+
+function ControlRow({ icon, title, detail }: { icon: React.ReactNode; title: string; detail: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-[#2b303b] bg-[#171a20] p-4">
+      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-[#203a35] text-[#9bd9ce]">{icon}</span>
+      <span>
+        <span className="block text-sm font-medium">{title}</span>
+        <span className="mt-1 block text-xs leading-relaxed text-[#a7afbe]">{detail}</span>
+      </span>
+    </div>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg aria-hidden="true" className="size-4 shrink-0" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2.5 16 5v4.4c0 3.9-2.6 6.7-6 8.1-3.4-1.4-6-4.2-6-8.1V5l6-2.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="m7.3 9.8 1.8 1.8 3.7-3.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg aria-hidden="true" className="size-5" viewBox="0 0 20 20" fill="none">
+      <rect x="3.5" y="8.5" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M6.5 8.5V6a3.5 3.5 0 1 1 7 0v2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" className="size-3.5" viewBox="0 0 16 16" fill="none">
+      <path d="m3.5 8.2 2.8 2.7 6.2-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
 function GoogleMark() {
   return (
-    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
-      <path
-        fill="#4285F4"
-        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
-      />
-      <path
-        fill="#34A853"
-        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
-      />
-      <path
-        fill="#EA4335"
-        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
-      />
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" />
+      <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
+      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
     </svg>
   );
 }
