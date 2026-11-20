@@ -119,7 +119,7 @@ export default function EditStudyPage() {
       <Link href={`/studies/${study.id}`} className="block truncate text-sm text-muted hover:text-ink">
         ← {study.title}
       </Link>
-      <h1 className={`mt-3 ${pageTitleClass}`}>Edit study</h1>
+      <h1 className={`mt-3 ${pageTitleClass}`}>Edit event</h1>
       {error ? (
         <div className="mt-4">
           <Alert>{error}</Alert>
