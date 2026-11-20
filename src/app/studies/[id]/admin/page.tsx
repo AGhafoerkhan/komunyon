@@ -2,7 +2,7 @@
 
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { AppShell } from '@/components/TopBar';
@@ -14,6 +14,7 @@ import { loadProfile } from '@/lib/users';
 
 export default function CoHostAdminPage() {
   const params = useParams();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const studyId = typeof params.id === 'string' ? params.id : '';
   const uid = searchParams.get('uid') ?? '';
@@ -136,6 +137,7 @@ export default function CoHostAdminPage() {
         permissions: { canEdit, canManageParticipants, canManageCoHosts, canManageCoHostPermissions, canManageSessions, grantable: safeGrantable },
         updatedAt: new Date().toISOString(),
       }, { merge: true });
+      router.push(`/studies/${studyId}`);
     } catch (failure) {
       setError(actionError(failure));
     } finally {
