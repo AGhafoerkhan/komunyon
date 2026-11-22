@@ -11,6 +11,7 @@ import { CHECK_AGAIN, validateProfile, type ProfileField } from '@/lib/validate'
 import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { jumpToFirstInvalidField } from '@/lib/forms';
 import { useSuccessToast } from '@/components/SuccessToast';
+import { formatPersonName } from '@/lib/names';
 import { ClientDraftStatus, useClientDraft } from '@/components/useClientDraft';
 import { clientDraftKey } from '@/lib/clientDrafts';
 
@@ -130,7 +131,7 @@ export function ProfileForm({
     setFormError(null);
     const savedDraft: ProfileDraft = {
       ...draft,
-      fullName: draft.fullName.trim(),
+      fullName: formatPersonName(draft.fullName),
       age: String(Number(draft.age)),
       bio: draft.bio.trim(),
       city: draft.city.trim(),

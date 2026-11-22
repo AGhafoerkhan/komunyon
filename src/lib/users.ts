@@ -1,6 +1,7 @@
 import { type User } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
+import { formatPersonName } from '@/lib/names';
 import { parseUserProfile } from '@/lib/parse';
 import { normalizePhone } from '@/lib/validate';
 import type { UserProfile } from '@/types';
@@ -148,7 +149,7 @@ export async function saveUserProfile(
   const profile: UserProfile = {
     uid: user.uid,
     email: user.email ?? '',
-    fullName: input.fullName.trim(),
+    fullName: formatPersonName(input.fullName),
     age: input.age,
     photoURL: input.photoURL,
     bio: input.bio.trim(),

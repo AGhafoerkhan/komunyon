@@ -1,4 +1,5 @@
 import { isHagueArea } from '@/lib/hague';
+import { formatPersonName } from '@/lib/names';
 import { isStudyTag, sortTags, type StudyTag } from '@/lib/tags';
 import { isDayOfWeek, isIsoDate, normalizeTime } from '@/lib/guards';
 import type { BibleStudy, PrivateStudyDetails, StudyFormat, UserProfile } from '@/types';
@@ -39,7 +40,7 @@ export function parseUserProfile(id: string, data: unknown, fallbackEmail = ''):
   return {
     uid: id,
     email: typeof data.email === 'string' ? data.email : fallbackEmail,
-    fullName: data.fullName,
+    fullName: formatPersonName(data.fullName),
     age: data.age,
     photoURL: data.photoURL,
     bio: data.bio,
@@ -84,7 +85,7 @@ export function parseBibleStudy(id: string, data: unknown): BibleStudy | null {
   return {
     id,
     hostId: data.hostId,
-    hostName: data.hostName,
+    hostName: formatPersonName(data.hostName),
     hostAge: data.hostAge,
     hostPhotoURL: data.hostPhotoURL,
     title: data.title,
