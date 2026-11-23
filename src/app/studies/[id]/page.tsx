@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { CoHostPanel } from '@/components/CoHostPanel';
 import { InvitePeople } from '@/components/InvitePeople';
@@ -569,6 +569,13 @@ function GuestStudy({
 function ShareStudy({ study }: { study: BibleStudy }) {
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
+  const optionsId = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
+
+  function closeShareOptions() {
+    setOpen(false);
+    trigger.current?.focus();
+  }
 
   function shareDetails() {
     const url = `${window.location.origin}/studies/${study.id}`;
@@ -592,7 +599,7 @@ function ShareStudy({ study }: { study: BibleStudy }) {
       field.remove();
     }
     setCopied(true);
-    setOpen(false);
+    closeShareOptions();
     window.setTimeout(() => setCopied(false), 4000);
   }
 
@@ -601,7 +608,7 @@ function ShareStudy({ study }: { study: BibleStudy }) {
     if (typeof navigator.share !== 'function') return;
     try {
       await navigator.share({ title: study.title, text, url });
-      setOpen(false);
+      closeShareOptions();
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) throw error;
     }
@@ -610,41 +617,54 @@ function ShareStudy({ study }: { study: BibleStudy }) {
   function whatsappShare() {
     const { text } = shareDetails();
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
-    setOpen(false);
+    closeShareOptions();
   }
 
   function emailShare() {
     const { url, text } = shareDetails();
     window.location.href = `mailto:?subject=${encodeURIComponent(study.title)}&body=${encodeURIComponent(text)}%0A${encodeURIComponent(url)}`;
-    setOpen(false);
+    closeShareOptions();
   }
 
   function smsShare() {
     const { text } = shareDetails();
     window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
-    setOpen(false);
+    closeShareOptions();
   }
 
   return (
-    <div className="relative shrink-0">
+    <div
+      className="relative shrink-0"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (open && event.key === 'Escape') {
+          event.preventDefault();
+          closeShareOptions();
+        }
+      }}
+    >
       <button
+        ref={trigger}
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-label="Share event"
         aria-expanded={open}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-md text-ink hover:bg-sand"
+        aria-controls={open ? optionsId : undefined}
+        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-ink hover:bg-sand"
       >
         <ShareIcon />
       </button>
       {open ? (
-        <div className="absolute top-11 right-0 z-20 w-60 rounded-lg border border-line bg-card p-2 shadow-xl" role="menu" aria-label="Share event options">
+        <div id={optionsId} className="absolute top-12 right-0 z-20 w-60 rounded-lg border border-line bg-card p-2 shadow-xl" role="group" aria-label="Share event options">
           {typeof navigator !== 'undefined' && typeof navigator.share === 'function' ? (
-            <button type="button" role="menuitem" onClick={() => void nativeShare()} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Share with another app</button>
+            <button type="button" onClick={() => void nativeShare()} className="block min-h-10 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Share with another app</button>
           ) : null}
-          <button type="button" role="menuitem" onClick={() => void onShare()} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Copy link</button>
-          <button type="button" role="menuitem" onClick={whatsappShare} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Share on WhatsApp</button>
-          <button type="button" role="menuitem" onClick={smsShare} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Send by text message</button>
-          <button type="button" role="menuitem" onClick={emailShare} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Send by email</button>
+          <button type="button" onClick={() => void onShare()} className="block min-h-10 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Copy link</button>
+          <button type="button" onClick={whatsappShare} className="block min-h-10 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Share on WhatsApp</button>
+          <button type="button" onClick={smsShare} className="block min-h-10 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Send by text message</button>
+          <button type="button" onClick={emailShare} className="block min-h-10 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-sand">Send by email</button>
         </div>
       ) : null}
       {copied ? (
@@ -820,6 +840,7 @@ function StudyBody({
   const [showAttending, setShowAttending] = useState(false);
   const [attendingDate, setAttendingDate] = useState<string | null>(null);
   const [attendingMembers, setAttendingMembers] = useState<JoinRequest[]>([]);
+  const attendeesId = useId();
   const [planningOpen, setPlanningOpen] = useState(false);
   const [personalPlanningOpen, setPersonalPlanningOpen] = useState(false);
   const [plannedSessions, setPlannedSessions] = useState<Record<string, boolean>>({});
@@ -832,6 +853,11 @@ function StudyBody({
   const visibleSessionTaken = sessionTaken;
   const hostTeamMember = role === 'host' || coHostIds.includes(viewerId);
   const displayedHostName = visibleHostName(study.hostName, role);
+  const canViewAttendees = role === 'approved' || hostTeamMember;
+  const visibleAttendingDate = canViewAttendees && showAttending && attendingDate && !study.skippedDates.includes(attendingDate)
+    ? attendingDate
+    : null;
+  const currentAttendeesOpen = visibleAttendingDate !== null && visibleAttendingDate === sessionDate;
 
 
   useEffect(() => {
@@ -1022,15 +1048,17 @@ function StudyBody({
               <dt className="text-muted">
                 <span className="inline-flex items-center gap-1">
                   Spots
-                  {sessionDate && !sessionCanceled && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) ? (
+                  {sessionDate && !sessionCanceled && canViewAttendees ? (
                     <button
                       type="button"
-                      aria-label={showAttending ? 'Hide people attending' : 'See people attending'}
-                      title={showAttending ? 'Hide people attending' : 'See people attending'}
+                      aria-label="People attending this session"
+                      aria-expanded={currentAttendeesOpen}
+                      aria-controls={currentAttendeesOpen ? attendeesId : undefined}
+                      title="People attending this session"
                       onClick={() => void toggleAttending()}
-                      className="text-xs leading-none text-muted hover:text-ink"
+                      className="inline-flex size-6 items-center justify-center rounded-sm text-xs leading-none text-muted hover:bg-sand hover:text-ink"
                     >
-                      ⓘ
+                      <span aria-hidden="true">ⓘ</span>
                     </button>
                   ) : null}
                 </span>
@@ -1074,10 +1102,10 @@ function StudyBody({
               {scheduledDate ? <SessionRecorder studyId={study.id} date={scheduledDate} uid={viewerId} /> : null}
             </div>
           ) : null}
-          {attendingDate && !study.skippedDates.includes(attendingDate) && (role === 'approved' || role === 'host' || coHostIds.includes(viewerId)) && showAttending ? (
-            <div className="mt-3 max-w-lg">
+          {visibleAttendingDate ? (
+            <div id={attendeesId} className="mt-3 max-w-lg">
               <MemberList
-                title={`Attending this session · ${formatDdMmYyyy(attendingDate)}`}
+                title={`Attending this session · ${formatDdMmYyyy(visibleAttendingDate)}`}
                 description={role === 'approved' ? 'Host and co-host attendance is shown live.' : undefined}
                 empty="No one has joined this session yet."
                     studyId={study.id}
@@ -1144,15 +1172,19 @@ function StudyBody({
                       <span className="min-w-0">{formatDdMmYyyy(date)} · {study.time}</span>
                       <span className="w-full text-left text-muted tabular-nums">
                         {sessionCounts[date] ?? 0} / {study.maxCapacity} · {spotsLabel(sessionCounts[date] ?? 0, study.maxCapacity)}
-                        <button
-                          type="button"
-                          aria-label={`See people attending ${formatDdMmYyyy(date)}`}
-                          title="See people attending"
-                          onClick={() => void toggleAttending(date)}
-                          className="ml-2 text-xs leading-none hover:text-ink"
-                        >
-                          ⓘ
-                        </button>
+                        {study.skippedDates.includes(date) ? null : (
+                          <button
+                            type="button"
+                            aria-label={`People attending ${formatDdMmYyyy(date)}`}
+                            aria-expanded={visibleAttendingDate === date}
+                            aria-controls={visibleAttendingDate === date ? attendeesId : undefined}
+                            title="People attending"
+                            onClick={() => void toggleAttending(date)}
+                            className="ml-1 inline-flex size-6 items-center justify-center rounded-sm text-xs leading-none hover:bg-sand hover:text-ink"
+                          >
+                            <span aria-hidden="true">ⓘ</span>
+                          </button>
+                        )}
                       </span>
                       <button
                         type="button"

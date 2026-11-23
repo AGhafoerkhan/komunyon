@@ -22,20 +22,23 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="fixed inset-0 flex h-dvh w-screen items-center justify-center bg-paper p-4">
-      <div className="rounded-lg border border-line bg-card p-6">
+    <main className="grid min-h-dvh place-items-center bg-paper p-4">
+      <div className="w-full max-w-xs rounded-lg border border-line bg-card p-6">
+        <h1 className="mb-4 font-serif text-2xl">Sign in</h1>
         <button
           type="button"
-          aria-label="Sign in with Google"
+          aria-busy={busy}
           onPointerDown={prepareGoogleSignIn}
+          onFocus={prepareGoogleSignIn}
           onClick={() => void signIn()}
           disabled={busy}
-          className="inline-flex h-14 w-14 items-center justify-center rounded-md border border-line bg-paper transition hover:border-canal disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-md border border-line bg-paper px-3 py-2 text-sm font-medium transition hover:border-canal disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? <Spinner /> : <GoogleMark />}
+          Sign in with Google
         </button>
         {message === SIGN_IN_CANCELLED_MESSAGE || message === OFFLINE_AUTH_MESSAGE ? (
-          <p role="alert" className="mt-3 max-w-48 text-center text-sm text-clay">
+          <p role="alert" className="mt-3 text-sm text-clay">
             {message}
           </p>
         ) : null}

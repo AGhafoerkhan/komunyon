@@ -1,28 +1,19 @@
 'use client';
 
-import { useEffect } from 'react';
+import { ModalDialog } from '@/components/ModalDialog';
 
 export function canShowPhoto(src: string): boolean {
   return src.startsWith('https://') || src.startsWith('data:image/jpeg;base64,');
 }
 
 export function PhotoLightbox({ src, name, onClose }: { src: string; name: string; onClose: () => void }) {
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previous;
-    };
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/80" role="dialog" aria-modal="true" aria-label={name}>
-      <div className="flex h-dvh w-screen flex-col">
+    <ModalDialog
+      aria-label={name}
+      onDismiss={onClose}
+      className="fixed inset-0 h-dvh max-h-none w-full max-w-none overflow-hidden bg-transparent backdrop:bg-black/80"
+    >
+      <div className="flex h-full w-full flex-col">
         <div className="flex justify-end px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))]">
           <button
             type="button"
@@ -42,7 +33,7 @@ export function PhotoLightbox({ src, name, onClose }: { src: string; name: strin
           </figure>
         </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 }
 

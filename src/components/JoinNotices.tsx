@@ -220,7 +220,7 @@ export function JoinNotices() {
       >
         <BellIcon />
         {count > 0 ? (
-          <span className="absolute top-1 right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-canal px-1 text-[10px] font-medium text-white">
+          <span className="absolute top-1 right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-canal px-1 text-[10px] font-medium text-on-canal">
             {count > 9 ? '9+' : count}
           </span>
         ) : null}

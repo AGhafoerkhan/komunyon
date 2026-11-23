@@ -12,14 +12,15 @@ export function SpringHash() {
 
     function spring() {
       const id = hashId();
-      if (!id || sprung === id) return;
+      if (!id || id === 'main-content' || sprung === id) return;
       const node = document.getElementById(id);
       if (!node) return;
       sprung = id;
       node.classList.remove('spring-target');
       void node.offsetWidth;
       node.classList.add('spring-target');
-      node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      node.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
     }
 
     function onHash() {

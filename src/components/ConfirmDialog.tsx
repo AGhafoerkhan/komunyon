@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useId, useRef } from 'react';
+import { useId } from 'react';
+import { ModalDialog } from '@/components/ModalDialog';
 import { Alert, Button, Spinner } from '@/components/ui';
 
 type DialogButtonVariant = 'primary' | 'secondary' | 'danger';
@@ -27,44 +28,22 @@ export function ConfirmDialog({
   confirmVariant?: DialogButtonVariant;
 }) {
   const titleId = useId();
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    panelRef.current?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [busy, onClose]);
+  const bodyId = useId();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-ink/40"
-        aria-label="Close"
-        onClick={() => {
-          if (!busy) onClose();
-        }}
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        className="relative max-h-[min(32rem,calc(100dvh-2rem))] w-full max-w-md overflow-y-auto rounded-lg border border-line bg-card p-5 shadow-lg outline-none"
-      >
+    <ModalDialog
+      aria-labelledby={titleId}
+      aria-describedby={bodyId}
+      onDismiss={onClose}
+      dismissible={!busy}
+      dismissOnBackdrop
+      className="fixed inset-0 m-auto max-h-[min(32rem,calc(100dvh-2rem))] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg border border-line bg-card text-ink shadow-lg backdrop:bg-black/50"
+    >
+      <div className="p-5">
         <h2 id={titleId} className="font-serif text-2xl leading-tight break-words">
           {title}
         </h2>
-        <p className="mt-2 text-sm leading-relaxed break-words text-muted">{body}</p>
+        <p id={bodyId} className="mt-2 text-sm leading-relaxed break-words text-muted">{body}</p>
         {error ? (
           <div className="mt-4">
             <Alert>{error}</Alert>
@@ -80,6 +59,6 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 }

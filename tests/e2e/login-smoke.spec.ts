@@ -72,7 +72,7 @@ test('Google popup signs in to onboarding and sign-out returns to the public ent
 
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.waitForURL(/\/$/);
-  await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue with Google' }).first()).toBeVisible();
 });
 
 test('onboarding labels, profile save, and accessible validation work in the browser', async ({ page }) => {
@@ -213,8 +213,7 @@ test('account deletion requires confirmation and starts Google reauthentication'
     });
     throw new Error(`Account deletion failed in the app: ${message}\nCleanup state: ${JSON.stringify(cleanupState)}\nBrowser errors: ${browserErrors.slice(0, 2).join('\n')}`);
   }
-  await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
-
+  await expect(page.getByRole('button', { name: 'Continue with Google' }).first()).toBeVisible();
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const paths = [
       ['users', uid],
