@@ -103,7 +103,7 @@ export default function HomePage() {
       <header className="relative z-10 border-b border-[#2b303b] bg-[#0f1115]/90 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:h-16 sm:px-6">
           <Link href="/" className="flex shrink-0 items-center gap-2.5 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#4db3a2]">
-            <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-lg bg-[#4db3a2] font-serif text-lg text-[#0f1115]">K</span>
+            <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-lg bg-[#4db3a2] font-serif text-lg text-[#0f1115]">K.</span>
             <span>
               <span className="block font-serif text-lg leading-5">Komunyon</span>
               <span className="block text-xs leading-4 text-[#a7afbe]">The Hague</span>
