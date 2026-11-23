@@ -6,6 +6,9 @@ env:
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     value: "komunyon-dev.firebaseapp.com"
     availability: [BUILD]
+  - variable: NEXT_PUBLIC_FIREBASE_REDIRECT_DOMAIN
+    value: "komunyon--komunyon-dev.europe-west4.hosted.app"
+    availability: [BUILD]
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
     value: "komunyon-dev"
     availability: [BUILD]
