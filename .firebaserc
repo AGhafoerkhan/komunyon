@@ -1,6 +1,7 @@
 {
   "projects": {
     "default": "komunyon-eu",
+    "dev": "komunyon-dev",
     "staging": "continuity-32390",
     "prod": "komunyon-eu"
   }

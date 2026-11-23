@@ -1,0 +1,20 @@
+# Public browser configuration for the dev App Hosting backend.
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyDr2elnG0nLPWM_bdhiFdQoxkibU0XKKwc"
+    availability: [BUILD]
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "komunyon-dev.firebaseapp.com"
+    availability: [BUILD]
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "komunyon-dev"
+    availability: [BUILD]
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "komunyon-dev.firebasestorage.app"
+    availability: [BUILD]
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "120537887790"
+    availability: [BUILD]
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:120537887790:web:f64ad40d99b3e33664dbbf"
+    availability: [BUILD]
