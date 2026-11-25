@@ -38,9 +38,12 @@ export function TopBar() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
+      <a href="#main-content" className="sr-only z-50 rounded-md bg-card px-4 py-3 text-sm font-medium text-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+        Skip to main content
+      </a>
       <SpringHash />
       <TopBar />
-      <main className="mx-auto w-full max-w-5xl px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-5xl px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8">
         {children}
       </main>
     </div>

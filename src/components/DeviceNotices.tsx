@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
+import { ModalDialog } from '@/components/ModalDialog';
 import { Button } from '@/components/ui';
 import {
   askDeviceNotices,
@@ -21,6 +22,7 @@ export function NoticePermission() {
   const [open, setOpen] = useState(false);
   const [needsInstall, setNeedsInstall] = useState(false);
   const titleId = useId();
+  const bodyId = useId();
 
   useEffect(() => {
     if (pathname === '/logout') return;
@@ -63,41 +65,36 @@ export function NoticePermission() {
     setOpen(false);
   }
 
+  function dismiss() {
+    void setNoticesEnabled(false);
+    setOpen(false);
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-ink/40" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="relative w-full max-w-md rounded-lg border border-line bg-card p-5 shadow-lg"
-      >
-        <h2 id={titleId} className="font-serif text-2xl leading-tight">
-          Allow notices
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          A short alert when someone asks to join, cancels, or leaves a study you host.
-        </p>
-        {needsInstall ? (
-          <p className="mt-3 text-sm text-muted">Add Komunyon to your home screen, then allow notices.</p>
-        ) : null}
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button
-            variant="secondary"
-            className="w-full sm:w-auto"
-            onClick={() => {
-              void setNoticesEnabled(false);
-              setOpen(false);
-            }}
-          >
-            Not now
-          </Button>
-          <Button className="w-full sm:w-auto" onClick={() => void allow()}>
-            Allow
-          </Button>
-        </div>
+    <ModalDialog
+      aria-labelledby={titleId}
+      aria-describedby={bodyId}
+      onDismiss={dismiss}
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg border border-line bg-card p-5 text-ink shadow-lg backdrop:bg-black/50"
+    >
+      <h2 id={titleId} className="font-serif text-2xl leading-tight">
+        Allow notices
+      </h2>
+      <p id={bodyId} className="mt-2 text-sm leading-relaxed text-muted">
+        A short alert when someone asks to join, cancels, or leaves a study you host.
+      </p>
+      {needsInstall ? (
+        <p className="mt-3 text-sm text-muted">Add Komunyon to your home screen, then allow notices.</p>
+      ) : null}
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button variant="secondary" className="w-full sm:w-auto" onClick={dismiss}>
+          Not now
+        </Button>
+        <Button className="w-full sm:w-auto" onClick={() => void allow()}>
+          Allow
+        </Button>
       </div>
-    </div>
+    </ModalDialog>
   );
 }
 

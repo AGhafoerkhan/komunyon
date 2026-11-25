@@ -23,6 +23,19 @@ test('profile activity counts have an accessible label', async ({ page }) => {
   await expect(activity).toContainText('0 Circles');
 });
 
+test('keyboard users can skip navigation to the profile', async ({ page }) => {
+  await openProfile(page);
+  await expect(page.getByRole('heading', { name: 'My profile' })).toBeVisible();
+  const skipLink = page.getByRole('link', { name: 'Skip to main content' });
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await page.keyboard.press('Tab');
+    if (await skipLink.evaluate((element) => element === document.activeElement)) break;
+  }
+  await expect(skipLink).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('main')).toBeFocused();
+});
+
 test('appearance switch changes the document into dark mode', async ({ page }) => {
   await openProfile(page);
   await page.getByText('Settings', { exact: true }).click();
@@ -32,6 +45,9 @@ test('appearance switch changes the document into dark mode', async ({ page }) =
   await expect(page.getByRole('switch', { name: 'Switch to light mode' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('html')).toHaveClass(/dark/);
   await expect(page.getByText('Dark mode on')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save profile' })).toBeVisible();
+  const scan = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze();
+  expect(scan.violations, 'profile in dark mode should meet text contrast').toEqual([]);
 });
 
 test('dark mode choice persists after reloading the profile', async ({ page }) => {
@@ -72,11 +88,18 @@ test('profile picture opens in the accessible photo dialog', async ({ page }) =>
 
 test('photo dialog closes with Escape and restores page scrolling', async ({ page }) => {
   await openProfile(page);
-  await page.getByRole('button', { name: "View E2E Test User's photo" }).click();
-  await expect(page.getByRole('dialog', { name: 'E2E Test User' })).toBeVisible();
+  const trigger = page.getByRole('button', { name: "View E2E Test User's photo" });
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'E2E Test User' });
+  await expect(dialog.getByRole('button', { name: 'Close photo' })).toBeFocused();
   await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button', { name: 'Close photo' })).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'E2E Test User' })).toHaveCount(0);
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
   await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
 });
 

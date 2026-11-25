@@ -25,7 +25,7 @@ async function fillValidOneOff(page: import('@playwright/test').Page, title: str
   await page.getByRole('textbox', { name: 'Title' }).fill(title);
   await page.getByRole('textbox', { name: 'Description' }).fill('A detailed browser test gathering.');
   await page.getByRole('button', { name: 'Event', exact: true }).click();
-  await page.getByRole('button', { name: 'One-off' }).click();
+  await page.getByRole('button', { name: 'One-time event' }).click();
   await page.getByLabel('Date').fill('2026-12-10');
   await page.getByLabel('Time').fill('19:00');
   await page.getByLabel('Neighbourhood').selectOption('Centrum');
@@ -39,7 +39,7 @@ async function waitForCreatedStudy(page: import('@playwright/test').Page) {
 
 test('host a study page exposes the required fields with accessible names', async ({ page }) => {
   await beginHostStudy(page);
-  await page.getByRole('button', { name: 'One-off' }).click();
+  await page.getByRole('button', { name: 'One-time event' }).click();
   for (const label of ['Title', 'Description', 'Date', 'Time', 'Neighbourhood', 'Max capacity', 'Exact address']) {
     await expect(page.getByLabel(label)).toBeVisible();
   }
@@ -66,7 +66,7 @@ test('host creation requires at least one event label', async ({ page }) => {
   await beginHostStudy(page);
   await page.getByRole('textbox', { name: 'Title' }).fill('No label event E2E');
   await page.getByRole('textbox', { name: 'Description' }).fill('A sufficiently detailed event description.');
-  await page.getByRole('button', { name: 'One-off' }).click();
+  await page.getByRole('button', { name: 'One-time event' }).click();
   await page.getByLabel('Date').fill('2026-12-10');
   await page.getByLabel('Time').fill('19:00');
   await page.getByLabel('Neighbourhood').selectOption('Centrum');
@@ -123,7 +123,7 @@ test('host can create a recurring event with the next eight weeks shown', async 
   await page.getByRole('textbox', { name: 'Title' }).fill('Recurring schedule E2E');
   await page.getByRole('textbox', { name: 'Description' }).fill('A detailed recurring browser test event.');
   await page.getByRole('button', { name: 'Study', exact: true }).click();
-  await page.getByRole('button', { name: 'Recurring' }).click();
+  await page.getByRole('button', { name: 'Weekly event' }).click();
   await page.getByLabel('Day of week').selectOption('1');
   await page.getByLabel('Time').fill('19:00');
   await page.getByLabel('Neighbourhood').selectOption('Centrum');
@@ -139,7 +139,7 @@ test('host recurring event creation adds the host to all eight planned sessions'
   await page.getByRole('textbox', { name: 'Title' }).fill('Host plans eight dates E2E');
   await page.getByRole('textbox', { name: 'Description' }).fill('A detailed recurring browser test event.');
   await page.getByRole('button', { name: 'Study', exact: true }).click();
-  await page.getByRole('button', { name: 'Recurring' }).click();
+  await page.getByRole('button', { name: 'Weekly event' }).click();
   await page.getByLabel('Day of week').selectOption('1');
   await page.getByLabel('Time').fill('19:00');
   await page.getByLabel('Neighbourhood').selectOption('Centrum');

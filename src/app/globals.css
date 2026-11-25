@@ -10,6 +10,7 @@
   --color-card: #fffdf9;
   --color-canal: #1b4c55;
   --color-canal-dark: #14393f;
+  --color-on-canal: #ffffff;
   --color-sand: #e7dfd1;
   --color-moss: #24664a;
   --color-clay: #8d4632;
@@ -31,6 +32,7 @@ html.dark {
   --color-card: #16181d;
   --color-canal: #4db3a2;
   --color-canal-dark: #348f82;
+  --color-on-canal: #0f1115;
   --color-sand: #252a33;
   --color-moss: #70c2b4;
   --color-clay: #ff999c;
@@ -60,6 +62,8 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-canal);
   outline-offset: 2px;
+  scroll-margin-top: calc(4.5rem + env(safe-area-inset-top));
+  scroll-margin-bottom: 1rem;
 }
 
 :target {
@@ -103,5 +107,9 @@ body {
   body {
     animation: none;
     transition: none;
+  }
+  html.theme-changing body,
+  html.theme-changing body * {
+    transition: none !important;
   }
 }

@@ -148,6 +148,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
         {isHost ? (
           <>
             <textarea
+              aria-label="Session description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               maxLength={LIMITS.sessionDescriptionMax}
@@ -161,7 +162,7 @@ export function SessionRecord({ studyId, date, isHost }: { studyId: string; date
               type="button"
               onClick={() => void saveDescription()}
               disabled={busy}
-              className="mt-3 inline-flex h-10 items-center justify-center rounded-md bg-canal px-3.5 text-sm font-medium text-white hover:bg-canal-dark disabled:opacity-50"
+              className="mt-3 inline-flex h-10 items-center justify-center rounded-md bg-canal px-3.5 text-sm font-medium text-on-canal hover:bg-canal-dark disabled:opacity-50"
             >
               {busy ? 'Saving…' : 'Save description'}
             </button>
@@ -414,7 +415,7 @@ function FileButton({
   onFile: (file: File) => void;
 }) {
   return (
-    <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-canal px-3.5 text-sm font-medium text-white hover:bg-canal-dark">
+    <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-canal px-3.5 text-sm font-medium text-on-canal hover:bg-canal-dark has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-canal">
       {label}
       <input
         type="file"

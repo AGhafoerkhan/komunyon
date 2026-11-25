@@ -123,7 +123,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         <section className="relative isolate overflow-hidden">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_75%_25%,rgba(77,179,162,0.19),transparent_40%),radial-gradient(ellipse_at_10%_80%,rgba(77,179,162,0.08),transparent_35%)]" />
           <div className="mx-auto grid min-h-[620px] max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16 lg:py-24">

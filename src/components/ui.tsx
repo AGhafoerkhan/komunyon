@@ -8,7 +8,7 @@ type ButtonSize = 'md' | 'sm';
 
 export function buttonClass(variant: ButtonVariant = 'primary', size: ButtonSize = 'md'): string {
   const variants: Record<ButtonVariant, string> = {
-    primary: 'bg-canal text-white hover:bg-canal-dark',
+    primary: 'bg-canal text-on-canal hover:bg-canal-dark',
     secondary: 'border border-line bg-card text-ink hover:bg-sand',
     ghost: 'text-muted hover:bg-sand hover:text-ink',
     danger: 'border border-danger/30 bg-card text-danger hover:bg-danger/5',
@@ -75,7 +75,7 @@ export function Alert({ children }: { children: ReactNode }) {
 export function Spinner({ className = '' }: { className?: string }) {
   return (
     <span
-      className={`inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent ${className}`}
+      className={`inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none ${className}`}
       aria-hidden
     />
   );

@@ -176,7 +176,7 @@ export default function CoHostAdminPage() {
                 className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canEdit ? 'border-canal bg-canal' : 'border-line bg-sand'}`}
               >
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canEdit ? 'translate-x-6' : 'translate-x-0'}`} />
-                <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canEdit ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>
+                <span aria-hidden="true" className={`absolute inset-0 flex items-center text-[10px] font-medium ${canEdit ? 'justify-start pl-2 text-on-canal' : 'justify-end pr-2 text-muted'}`}>
                   {canEdit ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -195,7 +195,7 @@ export default function CoHostAdminPage() {
                 className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canManageParticipants ? 'border-canal bg-canal' : 'border-line bg-sand'}`}
               >
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageParticipants ? 'translate-x-6' : 'translate-x-0'}`} />
-                <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageParticipants ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>
+                <span aria-hidden="true" className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageParticipants ? 'justify-start pl-2 text-on-canal' : 'justify-end pr-2 text-muted'}`}>
                   {canManageParticipants ? 'ON' : 'OFF'}
                 </span>
               </button>
@@ -207,7 +207,7 @@ export default function CoHostAdminPage() {
               </span>
               <button type="button" role="switch" aria-checked={canManageSessions} aria-label="Can manage sessions" onClick={() => setCanManageSessions((current) => !current)} className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canManageSessions ? 'border-canal bg-canal' : 'border-line bg-sand'}`}>
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageSessions ? 'translate-x-6' : 'translate-x-0'}`} />
-                <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageSessions ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageSessions ? 'ON' : 'OFF'}</span>
+                <span aria-hidden="true" className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageSessions ? 'justify-start pl-2 text-on-canal' : 'justify-end pr-2 text-muted'}`}>{canManageSessions ? 'ON' : 'OFF'}</span>
               </button>
             </div> : null}
             {grantableAllowed.canManageCoHosts ? <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
@@ -217,7 +217,7 @@ export default function CoHostAdminPage() {
               </span>
               <button type="button" role="switch" aria-checked={canManageCoHosts} aria-label="Can manage co-hosts" onClick={() => setCanManageCoHosts((current) => !current)} className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canManageCoHosts ? 'border-canal bg-canal' : 'border-line bg-sand'}`}>
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageCoHosts ? 'translate-x-6' : 'translate-x-0'}`} />
-                <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHosts ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageCoHosts ? 'ON' : 'OFF'}</span>
+                <span aria-hidden="true" className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHosts ? 'justify-start pl-2 text-on-canal' : 'justify-end pr-2 text-muted'}`}>{canManageCoHosts ? 'ON' : 'OFF'}</span>
               </button>
             </div> : null}
             {grantableAllowed.canManageCoHostPermissions ? <div className="mt-6 flex items-center justify-between gap-4 border-t border-line pt-5">
@@ -227,7 +227,7 @@ export default function CoHostAdminPage() {
               </span>
               <button type="button" role="switch" aria-checked={canManageCoHostPermissions} aria-label="Can manage co-host permissions" onClick={() => setCanManageCoHostPermissions((current) => !current)} className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-colors duration-200 ${canManageCoHostPermissions ? 'border-canal bg-canal' : 'border-line bg-sand'}`}>
                 <span className={`size-6 rounded-full bg-card shadow-sm transition-transform duration-200 ${canManageCoHostPermissions ? 'translate-x-6' : 'translate-x-0'}`} />
-                <span className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHostPermissions ? 'justify-start pl-2 text-white' : 'justify-end pr-2 text-muted'}`}>{canManageCoHostPermissions ? 'ON' : 'OFF'}</span>
+                <span aria-hidden="true" className={`absolute inset-0 flex items-center text-[10px] font-medium ${canManageCoHostPermissions ? 'justify-start pl-2 text-on-canal' : 'justify-end pr-2 text-muted'}`}>{canManageCoHostPermissions ? 'ON' : 'OFF'}</span>
               </button>
             </div> : null}
             {(isPrimaryHost || canManageCoHostPermissions || grantableAllowed.canManageCoHostPermissions) ? (
