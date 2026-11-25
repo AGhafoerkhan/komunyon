@@ -179,14 +179,14 @@ export function StudyForm({
 
         <div className="grid gap-2 sm:grid-cols-2">
           <FormatChoice
-            label="Recurring"
-            detail="Same day each week"
+            label="Weekly event"
+            detail="Repeats on the same day each week"
             pressed={draft.format === 'recurring'}
             onClick={() => patch({ format: 'recurring' })}
           />
           <FormatChoice
-            label="One-off"
-            detail="A single tryout gathering"
+            label="One-time event"
+            detail="Happens on one date"
             pressed={draft.format === 'one-off'}
             onClick={() => patch({ format: 'one-off' })}
           />
